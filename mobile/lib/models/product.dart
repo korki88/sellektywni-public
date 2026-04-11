@@ -1,6 +1,8 @@
 import 'product_category.dart';
 import 'product_condition.dart';
 
+export 'product_condition.dart';
+
 class Product {
   const Product({
     required this.id,
