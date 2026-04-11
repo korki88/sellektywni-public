@@ -1,0 +1,103 @@
+import '../models/product.dart';
+import '../models/product_category.dart';
+import '../models/product_condition.dart';
+
+/// Przykładowe produkty (duże zdjęcia z Unsplash).
+final List<Product> mockProducts = [
+  Product(
+    id: '1',
+    name: 'Kaszmirowy sweter',
+    pricePln: 459,
+    imageUrl: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=900&q=80',
+    category: ProductCategory.clothing,
+    condition: ProductCondition.newItem,
+  ),
+  Product(
+    id: '2',
+    name: 'Lniana koszula',
+    pricePln: 289,
+    imageUrl: 'https://images.unsplash.com/photo-1596755094514-f87e34085b87?w=900&q=80',
+    category: ProductCategory.clothing,
+    condition: ProductCondition.outlet,
+  ),
+  Product(
+    id: '3',
+    name: 'Trencz wełniany',
+    pricePln: 899,
+    imageUrl: 'https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=900&q=80',
+    category: ProductCategory.clothing,
+    condition: ProductCondition.used,
+  ),
+  Product(
+    id: '4',
+    name: 'Spodnie garniturowe',
+    pricePln: 349,
+    imageUrl: 'https://images.unsplash.com/photo-1624378515193-120160d0a9a5?w=900&q=80',
+    category: ProductCategory.clothing,
+    condition: ProductCondition.newItem,
+  ),
+  Product(
+    id: '5',
+    name: 'Skórzane sneakersy',
+    pricePln: 629,
+    imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=900&q=80',
+    category: ProductCategory.shoes,
+    condition: ProductCondition.newItem,
+  ),
+  Product(
+    id: '6',
+    name: 'Kozaki na obcasie',
+    pricePln: 519,
+    imageUrl: 'https://images.unsplash.com/photo-1515347619252-60bff8a0966e?w=900&q=80',
+    category: ProductCategory.shoes,
+    condition: ProductCondition.outlet,
+  ),
+  Product(
+    id: '7',
+    name: 'Loafers zamszowe',
+    pricePln: 449,
+    imageUrl: 'https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=900&q=80',
+    category: ProductCategory.shoes,
+    condition: ProductCondition.used,
+  ),
+  Product(
+    id: '8',
+    name: 'Buty sportowe',
+    pricePln: 399,
+    imageUrl: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=900&q=80',
+    category: ProductCategory.shoes,
+    condition: ProductCondition.newItem,
+  ),
+  Product(
+    id: '9',
+    name: 'Skórzana torba',
+    pricePln: 759,
+    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=900&q=80',
+    category: ProductCategory.accessories,
+    condition: ProductCondition.newItem,
+  ),
+  Product(
+    id: '10',
+    name: 'Jedwabny szalik',
+    pricePln: 199,
+    imageUrl: 'https://images.unsplash.com/photo-1520903920245-00d872a2d1c9?w=900&q=80',
+    category: ProductCategory.accessories,
+    condition: ProductCondition.outlet,
+  ),
+  Product(
+    id: '11',
+    name: 'Zegarek minimalistyczny',
+    pricePln: 1129,
+    imageUrl: 'https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=900&q=80',
+    category: ProductCategory.accessories,
+    condition: ProductCondition.used,
+  ),
+  Product(
+    id: '12',
+    name: 'Okulary przeciwsłoneczne',
+    pricePln: 429,
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=900&q=80',
+    category: ProductCategory.accessories,
+    condition: ProductCondition.newItem,
+  ),
+];

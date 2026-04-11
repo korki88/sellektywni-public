@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SELLEKTYWNI — podgląd</title>
+  <style>
+    :root {
+      --ink: #111111;
+      --muted: #6b6b6b;
+      --line: #eeeeee;
+      --fill: #f4f4f4;
+      --bg: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.35;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      max-width: 14rem;
+      text-align: right;
+    }
+    main { padding: 0 1rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .hint { color: var(--muted); font-size: 0.9rem; margin: 1rem 0 0.5rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; }
+    .chip {
+      border: none;
+      padding: 0.5rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--fill);
+      color: var(--ink);
+    }
+    .chip.on { background: var(--ink); color: #fff; }
+    h2.section { font-size: 1rem; margin: 1rem 0 0.4rem; font-weight: 600; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.9rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    }
+    @media (min-width: 900px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .card {
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .img-wrap {
+      aspect-ratio: 3/4;
+      position: relative;
+      background: var(--fill);
+    }
+    .img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .pill {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .card-body { padding: 0.85rem 0.9rem 1rem; }
+    .card-body h3 { margin: 0 0 0.35rem; font-size: 0.95rem; font-weight: 600; }
+    .price { font-weight: 600; margin-bottom: 0.65rem; }
+    .btn {
+      width: 100%;
+      padding: 0.65rem;
+      border-radius: 12px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--fill);
+      color: var(--ink);
+    }
+    .btn.dark { background: var(--ink); color: #fff; }
+    .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .cart-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .cart-badge {
+      min-width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    dialog {
+      border: none;
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      max-width: min(400px, 92vw);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.25); }
+    dialog h3 { margin: 0 0 0.75rem; }
+    dialog p { margin: 0 0 1rem; color: var(--muted); }
+    dialog button {
+      border: none;
+      background: var(--ink);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #cartPanel {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+    }
+    #cartPanel h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+    .cart-line {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--line);
+      align-items: flex-start;
+    }
+    .cart-line img {
+      width: 64px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    .cart-line .meta { flex: 1; }
+    .buy-row { margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .buy-row .btn-buy {
+      flex: 1;
+      max-width: 200px;
+      padding: 0.75rem;
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SELLEKTYWNI</h1>
+    <p class="note">Statyczny podgląd (Flutter wymaga SDK). Te same produkty co w <code>mock_catalog.dart</code>.</p>
+  </header>
+  <main>
+    <p class="hint">Wybierz kategorię i stan produktu</p>
+    <div class="chips" id="catChips"></div>
+    <h2 class="section">Stan</h2>
+    <div class="chips" id="condChips"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Brak produktów dla wybranych filtrów.</div>
+
+    <section id="cartPanel">
+      <h2>Koszyk <span class="cart-bar" id="cartSummary"></span></h2>
+      <div id="cartLines"></div>
+      <div class="buy-row">
+        <strong id="total"></strong>
+        <button type="button" class="btn-buy" id="buyBtn" disabled>Kupuję</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dlg">
+    <h3>Dziękujemy</h3>
+    <p id="dlgMsg"></p>
+    <button type="button" id="dlgClose">OK</button>
+  </dialog>
+
+  <script>
+    const PRODUCTS = [
+      { id: "1", name: "Kaszmirowy sweter", pricePln: 459, imageUrl: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=900&q=80", category: "clothing", condition: "newItem" },
+      { id: "2", name: "Lniana koszula", pricePln: 289, imageUrl: "https://images.unsplash.com/photo-1596755094514-f87e34085b87?w=900&q=80", category: "clothing", condition: "outlet" },
+      { id: "3", name: "Trencz wełniany", pricePln: 899, imageUrl: "https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=900&q=80", category: "clothing", condition: "used" },
+      { id: "4", name: "Spodnie garniturowe", pricePln: 349, imageUrl: "https://images.unsplash.com/photo-1624378515193-120160d0a9a5?w=900&q=80", category: "clothing", condition: "newItem" },
+      { id: "5", name: "Skórzane sneakersy", pricePln: 629, imageUrl: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=900&q=80", category: "shoes", condition: "newItem" },
+      { id: "6", name: "Kozaki na obcasie", pricePln: 519, imageUrl: "https://images.unsplash.com/photo-1515347619252-60bff8a0966e?w=900&q=80", category: "shoes", condition: "outlet" },
+      { id: "7", name: "Loafers zamszowe", pricePln: 449, imageUrl: "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=900&q=80", category: "shoes", condition: "used" },
+      { id: "8", name: "Buty sportowe", pricePln: 399, imageUrl: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=900&q=80", category: "shoes", condition: "newItem" },
+      { id: "9", name: "Skórzana torba", pricePln: 759, imageUrl: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=900&q=80", category: "accessories", condition: "newItem" },
+      { id: "10", name: "Jedwabny szalik", pricePln: 199, imageUrl: "https://images.unsplash.com/photo-1520903920245-00d872a2d1c9?w=900&q=80", category: "accessories", condition: "outlet" },
+      { id: "11", name: "Zegarek minimalistyczny", pricePln: 1129, imageUrl: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=900&q=80", category: "accessories", condition: "used" },
+      { id: "12", name: "Okulary przeciwsłoneczne", pricePln: 429, imageUrl: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=900&q=80", category: "accessories", condition: "newItem" },
+    ];
+    const COND_LABEL = { newItem: "Nowe", outlet: "Outlet", used: "Używane" };
+    const CAT_LABEL = { clothing: "Odzież", shoes: "Buty", accessories: "Akcesoria" };
+
+    let cat = null;
+    let cond = null;
+    const cart = {};
+
+    function filterProducts() {
+      return PRODUCTS.filter((p) => {
+        const cOk = !cat || p.category === cat;
+        const kOk = !cond || p.condition === cond;
+        return cOk && kOk;
+      });
+    }
+
+    function renderChips() {
+      const catEl = document.getElementById("catChips");
+      catEl.innerHTML = "";
+      [["Wszystkie", null], ...Object.entries(CAT_LABEL).map(([k, v]) => [v, k])].forEach(([label, val]) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip" + (cat === val ? " on" : "");
+        b.textContent = label;
+        b.onclick = () => { cat = val; render(); };
+        catEl.appendChild(b);
+      });
+
+      const condEl = document.getElementById("condChips");
+      condEl.innerHTML = "";
+      [["Wszystkie", null], ...Object.entries(COND_LABEL).map(([k, v]) => [v, k])].forEach(([label, val]) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip" + (cond === val ? " on" : "");
+        b.textContent = label;
+        b.onclick = () => { cond = val; render(); };
+        condEl.appendChild(b);
+      });
+    }
+
+    function renderGrid() {
+      const list = filterProducts();
+      const grid = document.getElementById("grid");
+      const empty = document.getElementById("empty");
+      grid.innerHTML = "";
+      empty.hidden = list.length > 0;
+      grid.hidden = list.length === 0;
+      for (const p of list) {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="img-wrap">
+            <img src="${p.imageUrl}" alt="" loading="lazy" />
+            <span class="pill">${COND_LABEL[p.condition]}</span>
+          </div>
+          <div class="card-body">
+            <h3>${p.name}</h3>
+            <div class="price">${p.pricePln} zł</div>
+            <button type="button" class="btn" data-id="${p.id}">Do koszyka</button>
+          </div>`;
+        card.querySelector("button").onclick = () => addCart(p.id);
+        grid.appendChild(card);
+      }
+    }
+
+    function addCart(id) {
+      cart[id] = (cart[id] || 0) + 1;
+      renderCart();
+    }
+
+    function cartCount() {
+      return Object.values(cart).reduce((a, b) => a + b, 0);
+    }
+
+    function renderCart() {
+      const lines = document.getElementById("cartLines");
+      const totalEl = document.getElementById("total");
+      const buy = document.getElementById("buyBtn");
+      const sumEl = document.getElementById("cartSummary");
+      lines.innerHTML = "";
+      let sum = 0;
+      for (const [id, qty] of Object.entries(cart)) {
+        if (qty < 1) continue;
+        const p = PRODUCTS.find((x) => x.id === id);
+        if (!p) continue;
+        sum += p.pricePln * qty;
+        const row = document.createElement("div");
+        row.className = "cart-line";
+        row.innerHTML = `<img src="${p.imageUrl}" alt="" /><div class="meta"><strong>${p.name}</strong><br/>${p.pricePln} zł × ${qty}</div>`;
+        lines.appendChild(row);
+      }
+      totalEl.textContent = sum > 0 ? `Razem: ${sum} zł` : "";
+      buy.disabled = sum === 0;
+      const n = cartCount();
+      sumEl.innerHTML = n ? `<span class="cart-badge">${n}</span>` : "";
+    }
+
+    function render() {
+      renderChips();
+      renderGrid();
+      renderCart();
+    }
+
+    document.getElementById("buyBtn").onclick = () => {
+      document.getElementById("dlgMsg").textContent =
+        "Czekamy na potwierdzenie dostępności ze sklepu stacjonarnego";
+      document.getElementById("dlg").showModal();
+    };
+    document.getElementById("dlgClose").onclick = () => document.getElementById("dlg").close();
+
+    render();
+  </script>
+</body>
+</html>
