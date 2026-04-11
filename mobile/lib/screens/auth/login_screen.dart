@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
+import '../../providers/auth_session.dart';
 import '../../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,6 +13,11 @@ class LoginScreen extends StatefulWidget {
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
+}
+
+void _popIfModal(BuildContext context) {
+  final nav = Navigator.of(context);
+  if (nav.canPop()) nav.pop();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -28,6 +35,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (AppConfig.useDevMockAuth) {
+      final login = _email.text.trim().toLowerCase();
+      final pass = _password.text;
+      String? token;
+      if (login == 'admin' && pass == 'admin') {
+        token = 'dev-mock:OWNER';
+      } else if (login == 'user' && pass == 'user') {
+        token = 'dev-mock:STAFF';
+      } else if (login == 'client' && pass == 'client') {
+        token = 'dev-mock:CUSTOMER';
+      }
+      if (token == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Błędne dane. Użyj: admin/admin (właściciel), user/user (personel), '
+              'client/client (klient).',
+            ),
+          ),
+        );
+        return;
+      }
+      setState(() => _loading = true);
+      try {
+        await context.read<AuthSession>().setAccessToken(token);
+        _popIfModal(context);
+      } finally {
+        if (mounted) setState(() => _loading = false);
+      }
+      return;
+    }
+
     if (!AppConfig.hasSupabase) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,6 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
+      if (!mounted) return;
+      _popIfModal(context);
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,23 +125,44 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Logowanie',
+                  AppConfig.useDevMockAuth
+                      ? 'Logowanie (tryb dev-mock — bez Supabase)'
+                      : 'Logowanie',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: const Color(0xFF6B6B6B),
                       ),
                 ),
+                if (AppConfig.useDevMockAuth) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Konta testowe: admin/admin · user/user · client/client',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF6B6B6B),
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
                 const SizedBox(height: 28),
                 TextFormField(
                   controller: _email,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: AppConfig.useDevMockAuth
+                      ? TextInputType.text
+                      : TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppConfig.useDevMockAuth ? 'Login' : 'E-mail',
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Podaj e-mail';
-                    if (!v.contains('@')) return 'Nieprawidłowy e-mail';
+                    if (v == null || v.trim().isEmpty) {
+                      return AppConfig.useDevMockAuth
+                          ? 'Podaj login'
+                          : 'Podaj e-mail';
+                    }
+                    if (!AppConfig.useDevMockAuth && !v.contains('@')) {
+                      return 'Nieprawidłowy e-mail';
+                    }
                     return null;
                   },
                 ),
@@ -132,10 +196,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('Zaloguj się'),
                 ),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: widget.onGoToRegister,
-                  child: const Text('Nie masz konta? Zarejestruj się'),
-                ),
+                if (!AppConfig.useDevMockAuth)
+                  TextButton(
+                    onPressed: widget.onGoToRegister,
+                    child: const Text('Nie masz konta? Zarejestruj się'),
+                  ),
               ],
             ),
           ),

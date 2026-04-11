@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'main_sidebar.dart';
+import 'admin_dashboard/admin_dashboard.dart';
 import 'main_store.dart';
 import 'providers/auth_session.dart';
 import 'theme/app_theme.dart';
-import 'widgets/auth_shell.dart';
 import 'widgets/supabase_auth_sync.dart';
 
 class SellektywniApp extends StatelessWidget {
@@ -25,12 +24,10 @@ class SellektywniApp extends StatelessWidget {
                 body: Center(child: CircularProgressIndicator()),
               );
             }
-            if (!auth.isAuthenticated) {
-              return const AuthShell();
+            if (auth.isAuthenticated && auth.isAdminDashboardRole) {
+              return const AdminDashboard();
             }
-            if (auth.isStaff) {
-              return const MainSidebar();
-            }
+            // Gość i klient: sklep (konto → logowanie z zakładki „Konto”).
             return const MainStore();
           },
         ),

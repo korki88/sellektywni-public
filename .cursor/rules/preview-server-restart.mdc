@@ -1,0 +1,14 @@
+---
+description: Po zmianach kodu restartuj serwer podglądu, żeby użytkownik widział efekt.
+alwaysApply: true
+---
+
+# Podgląd — restart serwera
+
+Po **każdej zmianie** wpływającej na to, co widać w przeglądarce lub w API:
+
+1. **NestJS (API)** — jeśli działa `npm run start` (bez watch), zatrzymaj proces i uruchom ponownie. Przy `npm run start:dev` / `--watch` zwykle wystarczy potwierdzić, że hot-reload zadziałał; jeśli użytkownik nie widzi zmian, zrestartuj serwer ręcznie.
+2. **Flutter web w `www/app`** — po zmianach w `mobile/` wykonaj build web i skopiuj do `www/app` (jak w istniejącym workflow), potem **odśwież przeglądarkę** (najlepiej twarde odświeżenie). Jeśli użytkownik serwuje statyki przez `python -m http.server` w `www`, po podmianie plików można **zrestartować ten serwer** na życzenie (albo wystarczy odświeżenie — ale użytkownik preferuje widzieć efekt po restarcie serwera, więc przy wątpliwości zrestartuj).
+3. Na końcu sesji zmian krótko napisz, **co zrestartowałeś** (albo że watch wystarczył).
+
+Celem jest, żeby użytkownik mógł od razu zobaczyć podgląd bez zgadywania.

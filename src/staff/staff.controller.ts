@@ -1,10 +1,10 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ProfileRole } from '@prisma/client';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { MinimumRole } from '../auth/decorators/minimum-role.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
 @UseGuards(RolesGuard)
-@Roles(ProfileRole.STAFF)
+@MinimumRole(ProfileRole.STAFF)
 @Controller('staff')
 export class StaffController {
   @Get('ping')

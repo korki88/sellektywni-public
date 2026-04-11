@@ -23,7 +23,7 @@ class _SupabaseAuthSyncState extends State<SupabaseAuthSync> {
   @override
   void initState() {
     super.initState();
-    if (!AppConfig.hasSupabase) return;
+    if (!AppConfig.shouldUseSupabaseClient) return;
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (!mounted) return;
       final token = data.session?.accessToken;

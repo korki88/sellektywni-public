@@ -38,6 +38,9 @@ class AuthSession extends ChangeNotifier {
   bool get isOwner => _role == 'OWNER';
   bool get isCustomer => _role == 'CUSTOMER';
 
+  /// Panel AdminDashboard (OWNER pełny, STAFF operacje sklepowe).
+  bool get isAdminDashboardRole => isStaff || isOwner;
+
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();

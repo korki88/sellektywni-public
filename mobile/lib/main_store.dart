@@ -7,7 +7,7 @@ import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/user_account_screen.dart';
 
-/// Sklep dla klienta (CUSTOMER, OWNER lub brak sesji).
+/// Sklep dla klienta i gościa (brak logowania). OWNER/STAFF po zalogowaniu widzą [AdminDashboard].
 class MainStore extends StatefulWidget {
   const MainStore({super.key});
 

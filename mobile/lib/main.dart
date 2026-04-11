@@ -11,6 +11,7 @@ import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/catalog_filter_notifier.dart';
 import 'services/push_service.dart';
+import 'overlay_main.dart' show runStaffOverlayApp;
 
 /// Musi być funkcją top-level (Firebase Messaging w tle; tylko iOS/Android).
 @pragma('vm:entry-point')
@@ -26,7 +27,7 @@ Future<void> main() async {
   }
   await _initFirebaseSafely();
 
-  if (AppConfig.hasSupabase) {
+  if (AppConfig.shouldUseSupabaseClient) {
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
       anonKey: AppConfig.supabaseAnonKey,
@@ -45,7 +46,7 @@ Future<void> main() async {
     ),
   );
   await auth.init();
-  if (AppConfig.hasSupabase) {
+  if (AppConfig.shouldUseSupabaseClient) {
     final s = Supabase.instance.client.auth.currentSession;
     if (s != null) {
       await auth.syncFromSupabaseAccessToken(s.accessToken);
@@ -66,4 +67,10 @@ Future<void> _initFirebaseSafely() async {
   } catch (e, st) {
     debugPrint('Firebase niedostępny (dodaj konfigurację projektu): $e\n$st');
   }
+}
+
+/// Punkt wejścia okna overlay (Android — [flutter_overlay_window]).
+@pragma('vm:entry-point')
+void overlayMain() {
+  runStaffOverlayApp();
 }

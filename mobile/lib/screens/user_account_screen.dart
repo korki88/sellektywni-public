@@ -4,8 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../providers/auth_session.dart';
+import '../widgets/auth_shell.dart';
 
-/// Panel użytkownika: rola, punkty, ranga, wylogowanie.
+/// Panel użytkownika: rola, punkty, ranga, wylogowanie. Gość widzi zaproszenie do logowania.
 class UserAccountScreen extends StatelessWidget {
   const UserAccountScreen({super.key});
 
@@ -25,8 +26,53 @@ class UserAccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthSession>();
+
+    if (!auth.isAuthenticated) {
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(
+            'Twoje konto',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Przeglądasz sklep jako gość. Zaloguj się, aby zapisać konto, '
+            'zobaczyć punkty lojalnościowe i rangę.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF6B6B6B),
+                ),
+          ),
+          const SizedBox(height: 28),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (ctx) => Scaffold(
+                    appBar: AppBar(
+                      title: const Text('Logowanie'),
+                    ),
+                    body: const AuthShell(),
+                  ),
+                ),
+              );
+            },
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text('Zaloguj się lub zarejestruj'),
+          ),
+        ],
+      );
+    }
+
     final supaEmail =
-        AppConfig.hasSupabase ? Supabase.instance.client.auth.currentUser?.email : null;
+        AppConfig.shouldUseSupabaseClient
+            ? Supabase.instance.client.auth.currentUser?.email
+            : null;
     final email = supaEmail ?? auth.profileEmail ?? '—';
 
     return ListView(
@@ -107,7 +153,7 @@ class UserAccountScreen extends StatelessWidget {
         FilledButton.tonal(
           onPressed: () async {
             final sess = context.read<AuthSession>();
-            if (AppConfig.hasSupabase) {
+            if (AppConfig.shouldUseSupabaseClient) {
               await Supabase.instance.client.auth.signOut();
             }
             if (!context.mounted) return;
