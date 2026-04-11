@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../layout/web_app_frame.dart';
+import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
 import '../screens/user_account_screen.dart';
 import '../staff/staff_api.dart';
@@ -111,6 +112,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestScanFocus();
     });
@@ -125,6 +127,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _requestScanFocus() {
+    if (kIsWeb) return;
     Future<void>.delayed(const Duration(milliseconds: 50), () {
       if (mounted) _scanFocus.requestFocus();
     });
@@ -589,11 +592,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _railIndex < 0 ? 0 : (_railIndex >= menu.length ? menu.length - 1 : _railIndex);
     final current = menu[safeIndex];
 
+    // WWW: pełne etykiety w NavigationRail potrafią wywołać niestabilny układ tekstu
+    // w silniku (stack z KV/WY/RenderParagraph). Ikony + tooltip wystarczą.
+    final railLabelType = kIsWeb
+        ? NavigationRailLabelType.none
+        : (widget.presentation == AdminDashboardPresentation.overlaySidebar
+            ? NavigationRailLabelType.selected
+            : NavigationRailLabelType.all);
+
     final rail = NavigationRail(
       selectedIndex: safeIndex,
-      labelType: widget.presentation == AdminDashboardPresentation.overlaySidebar
-          ? NavigationRailLabelType.selected
-          : NavigationRailLabelType.all,
+      labelType: railLabelType,
       minWidth: widget.presentation == AdminDashboardPresentation.overlaySidebar ? 56 : 72,
       onDestinationSelected: (i) => setState(() => _railIndex = i),
       destinations: [
@@ -612,6 +621,59 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final title = widget.presentation == AdminDashboardPresentation.overlaySidebar
         ? 'Panel'
         : (auth.isOwner ? 'Panel — właściciel' : 'Panel — pracownik');
+
+    final mainPanel = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        rail,
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: Column(
+            children: [
+              Material(
+                color: const Color(0xFFF8F8F8),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'API: ${auth.apiBase}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF6B6B6B),
+                            ),
+                      ),
+                      if (current == _MenuId.reservations) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            FilledButton.tonal(
+                              onPressed: _loadQueue,
+                              child: const Text('Odśwież kolejkę'),
+                            ),
+                            const SizedBox(width: 12),
+                            if (_error != null)
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: const TextStyle(color: Colors.red),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(child: _bodyForMenu(current, auth.role)),
+            ],
+          ),
+        ),
+      ],
+    );
 
     final scaffold = Scaffold(
       appBar: AppBar(
@@ -639,6 +701,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 );
               },
+            ),
+          if (widget.presentation != AdminDashboardPresentation.overlaySidebar)
+            IconButton(
+              tooltip: 'Sklep',
+              icon: const Icon(Icons.storefront_outlined),
+              onPressed: () => context.read<AppNavigation>().openShop(),
             ),
           IconButton(
             tooltip: 'Moje konto',
@@ -682,67 +750,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              rail,
-              const VerticalDivider(width: 1),
-              Expanded(
-                child: Column(
-                  children: [
-                    Material(
-                      color: const Color(0xFFF8F8F8),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'API: ${auth.apiBase}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: const Color(0xFF6B6B6B),
-                                  ),
-                            ),
-                            if (current == _MenuId.reservations) ...[
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  FilledButton.tonal(
-                                    onPressed: _loadQueue,
-                                    child: const Text('Odśwież kolejkę'),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  if (_error != null)
-                                    Expanded(
-                                      child: Text(
-                                        _error!,
-                                        style: const TextStyle(color: Colors.red),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    Expanded(child: _bodyForMenu(current, auth.role)),
-                  ],
+      // WWW: [Stack] z jednym [Row] potrafi dać dziecku luźne maxHeight → ∞ i wywalić
+      // wewnętrzny Column+Expanded (Uncaught Error w JS). Bez Stacku jest OK.
+      // Mobile/overlay: Stack + Positioned.fill żeby Row miał pełną wysokość + warstwa HID.
+      body: kIsWeb
+          ? mainPanel
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(child: mainPanel),
+                HidQrScannerLayer(
+                  focusNode: _scanFocus,
+                  controller: _scanController,
+                  onSubmitted: _openCustomer,
                 ),
-              ),
-            ],
-          ),
-          HidQrScannerLayer(
-            focusNode: _scanFocus,
-            controller: _scanController,
-            onSubmitted: _openCustomer,
-          ),
-        ],
-      ),
+              ],
+            ),
     );
 
     if (widget.presentation == AdminDashboardPresentation.fullscreen) {

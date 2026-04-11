@@ -3,7 +3,10 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../config/app_config.dart';
+import 'auth_storage.dart';
+import '../config/dev_mock_accounts.dart';
 
 /// Sesja: token API (Supabase JWT), profil RBAC z Nest `/auth/me`.
 class AuthSession extends ChangeNotifier {
@@ -26,9 +29,6 @@ class AuthSession extends ChangeNotifier {
     }
     return 'http://localhost:3000';
   }
-
-  static const _kToken = 'auth_access_token';
-  static const _kApiBase = 'auth_api_base';
 
   String? _accessToken;
   String? _role;
@@ -56,24 +56,35 @@ class AuthSession extends ChangeNotifier {
   /// Panel AdminDashboard (OWNER pełny, STAFF operacje sklepowe).
   bool get isAdminDashboardRole => isStaff || isOwner;
 
+  /// DevMode: token `dev-mock:*` — profil tylko lokalnie (bez Nest / Postgres).
+  bool _applyDevMockProfileIfNeeded() {
+    final fields = devMockProfileFieldsForToken(_accessToken);
+    if (fields == null) return false;
+    _role = fields.role;
+    _profileEmail = fields.email;
+    _points = fields.points;
+    _rank = fields.rank;
+    return true;
+  }
+
   Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _accessToken = prefs.getString(_kToken);
-      var base = prefs.getString(_kApiBase) ?? defaultApiBase;
+      _accessToken = await authStorageGetToken();
+      var base = await authStorageGetApiBase() ?? defaultApiBase;
       if (kIsWeb) {
         final pageHost = Uri.base.host;
         if (pageHost == '127.0.0.1' &&
             base.contains('localhost') &&
             base.contains(':3000')) {
           base = 'http://127.0.0.1:3000';
-          await prefs.setString(_kApiBase, base);
+          await authStorageSetApiBase(base);
         }
       }
       _apiBase = base;
     } catch (_) {
       _apiBase = AuthSession.defaultApiBase;
     }
+    _applyPreviewRoleFromUrlIfAny();
     _ready = true;
     notifyListeners();
     if (hasToken) {
@@ -81,28 +92,44 @@ class AuthSession extends ChangeNotifier {
     }
   }
 
+  /// Localhost: `?previewAs=OWNER|STAFF|CUSTOMER` — podgląd UI bez formularza logowania.
+  void _applyPreviewRoleFromUrlIfAny() {
+    final role = AppConfig.previewAsRole;
+    if (role == null) return;
+    final token = devMockTokenForPreviewRole(role);
+    if (token == null) return;
+    _accessToken = token;
+    _applyDevMockProfileIfNeeded();
+    unawaited(_persistTokenForPreview(token));
+  }
+
+  Future<void> _persistTokenForPreview(String token) async {
+    try {
+      await authStorageSetToken(token);
+    } catch (_) {}
+  }
+
   Future<void> setApiBase(String value) async {
     final v = value.trim();
     if (v.isEmpty) return;
     _apiBase = v.endsWith('/') ? v.substring(0, v.length - 1) : v;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kApiBase, _apiBase);
+    await authStorageSetApiBase(_apiBase);
     notifyListeners();
   }
 
   Future<void> setAccessToken(String? token) async {
     final t = token?.trim();
     _accessToken = (t == null || t.isEmpty) ? null : t;
-    final prefs = await SharedPreferences.getInstance();
     if (_accessToken == null) {
-      await prefs.remove(_kToken);
+      await authStorageSetToken(null);
       _role = null;
       _profileEmail = null;
       _points = null;
       _rank = null;
     } else {
-      await prefs.setString(_kToken, _accessToken!);
-      await refreshProfile();
+      await authStorageSetToken(_accessToken!);
+      // Jak przy Supabase: najpierw ensure profilu w Postgres, potem /auth/me (rola, punkty).
+      await afterSignIn();
     }
     notifyListeners();
   }
@@ -115,15 +142,18 @@ class AuthSession extends ChangeNotifier {
       return;
     }
     _accessToken = t;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kToken, _accessToken!);
+    await authStorageSetToken(_accessToken!);
     notifyListeners();
     await afterSignIn();
   }
 
-  /// Po zalogowaniu: profil w Postgres + pełne `/auth/me`.
+  /// Po zalogowaniu: profil w Postgres + pełne `/auth/me` (albo dummy przy `dev-mock:*`).
   Future<void> afterSignIn() async {
     if (!hasToken) return;
+    if (_applyDevMockProfileIfNeeded()) {
+      notifyListeners();
+      return;
+    }
     try {
       final uri = Uri.parse('$_apiBase/auth/profile/ensure');
       await http
@@ -145,6 +175,10 @@ class AuthSession extends ChangeNotifier {
       _profileEmail = null;
       _points = null;
       _rank = null;
+      notifyListeners();
+      return;
+    }
+    if (_applyDevMockProfileIfNeeded()) {
       notifyListeners();
       return;
     }

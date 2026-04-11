@@ -3,6 +3,7 @@ import { ProfileRole } from '@prisma/client';
 /**
  * Stałe UUID i e-maile dla trybu AUTH_DEV_MOCK (bez Supabase).
  * Muszą być zsynchronizowane z prisma/seed.js.
+ * Dostępne loginy/hasła w kliencie: mobile/lib/config/dev_mock_accounts.dart
  */
 export const DEV_MOCK_PROFILES: Record<
   ProfileRole,

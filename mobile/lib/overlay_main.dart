@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_dashboard/admin_dashboard.dart';
 import 'config/app_config.dart';
+import 'providers/app_navigation.dart';
 import 'providers/auth_session.dart';
 import 'theme/app_theme.dart';
 
@@ -49,8 +50,11 @@ class _StaffOverlayAppState extends State<_StaffOverlayApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _auth,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: _auth),
+        ChangeNotifierProvider(create: (_) => AppNavigation()),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,

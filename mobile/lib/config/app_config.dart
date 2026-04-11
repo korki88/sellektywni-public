@@ -19,7 +19,8 @@ class AppConfig {
     defaultValue: false,
   );
 
-  /// Logowanie dev-mock (bez Supabase): wymaga API z `AUTH_DEV_MOCK=true`.
+  /// Logowanie dev-mock (bez Supabase): profil i rola z dummy danych w aplikacji;
+  /// opcjonalnie backend z `AUTH_DEV_MOCK=true` gdy API jest uruchomione.
   ///
   /// Włączone gdy: `--dart-define=USE_DEV_MOCK_AUTH=true`, albo na **localhost / 127.0.0.1**
   /// w przeglądarce przy buildzie **bez** SUPABASE_URL+ANON_KEY (typowy podgląd z `www`).
@@ -40,4 +41,17 @@ class AppConfig {
 
   /// Supabase Flutter — wyłączony przy mocku (inaczej brak init → błąd).
   static bool get shouldUseSupabaseClient => hasSupabase && !useDevMockAuth;
+
+  /// Tylko **localhost / 127.0.0.1**: wymusza sesję dev-mock z daną rolą (bez logowania).
+  /// Przykład: `.../app/?previewAs=OWNER` albo `?previewAs=STAFF`, `?previewAs=CUSTOMER`.
+  /// Na produkcji ignorowane (inny host).
+  static String? get previewAsRole {
+    if (!kIsWeb) return null;
+    final host = Uri.base.host;
+    if (host != 'localhost' && host != '127.0.0.1') return null;
+    final raw = Uri.base.queryParameters['previewAs']?.trim().toUpperCase();
+    if (raw == null || raw.isEmpty) return null;
+    if (raw == 'OWNER' || raw == 'STAFF' || raw == 'CUSTOMER') return raw;
+    return null;
+  }
 }

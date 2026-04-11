@@ -55,13 +55,15 @@ class HomeScreen extends StatelessWidget {
                   _CategoryChip(
                     label: 'Wszystkie',
                     selected: filter.category == null,
-                    onSelected: (_) => context.read<CatalogFilterNotifier>().setCategory(null),
+                    onSelected: (_) =>
+                        context.read<CatalogFilterNotifier>().setCategory(null),
                   ),
                   ...ProductCategory.values.map(
                     (c) => _CategoryChip(
                       label: c.label,
                       selected: filter.category == c,
-                      onSelected: (_) => context.read<CatalogFilterNotifier>().setCategory(c),
+                      onSelected: (_) =>
+                          context.read<CatalogFilterNotifier>().setCategory(c),
                     ),
                   ),
                 ],
@@ -88,13 +90,16 @@ class HomeScreen extends StatelessWidget {
                   _CategoryChip(
                     label: 'Wszystkie',
                     selected: filter.condition == null,
-                    onSelected: (_) => context.read<CatalogFilterNotifier>().setCondition(null),
+                    onSelected: (_) => context
+                        .read<CatalogFilterNotifier>()
+                        .setCondition(null),
                   ),
                   ...ProductCondition.values.map(
                     (c) => _CategoryChip(
                       label: c.label,
                       selected: filter.condition == c,
-                      onSelected: (_) => context.read<CatalogFilterNotifier>().setCondition(c),
+                      onSelected: (_) =>
+                          context.read<CatalogFilterNotifier>().setCondition(c),
                     ),
                   ),
                 ],
@@ -110,7 +115,8 @@ class HomeScreen extends StatelessWidget {
           else
             SliverLayoutBuilder(
               builder: (context, constraints) {
-                final columns = catalogGridColumnCount(constraints.crossAxisExtent);
+                final columns =
+                    catalogGridColumnCount(constraints.crossAxisExtent);
                 return SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   sliver: SliverGrid(
@@ -159,7 +165,8 @@ class _CategoryChip extends StatelessWidget {
         fontSize: 13,
       ),
       backgroundColor: const Color(0xFFF4F4F4),
-      side: BorderSide(color: selected ? Colors.transparent : const Color(0x11000000)),
+      side: BorderSide(
+          color: selected ? Colors.transparent : const Color(0x11000000)),
     );
   }
 }
@@ -175,7 +182,8 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off_rounded, size: 44, color: Colors.black.withOpacity(0.35)),
+            Icon(Icons.search_off_rounded,
+                size: 44, color: Colors.black.withValues(alpha: 0.35)),
             const SizedBox(height: 12),
             Text(
               'Brak produktów dla wybranych filtrów',
@@ -186,7 +194,10 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Zmień kategorię lub stan, aby zobaczyć więcej modeli.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: const Color(0xFF6B6B6B)),
             ),
           ],
         ),
@@ -206,11 +217,15 @@ class _PushInfoSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Powiadomienia o zamówieniu', style: Theme.of(context).textTheme.titleMedium),
+          Text('Powiadomienia o zamówieniu',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           Text(
             'Status zamówienia (np. akceptacja, gotowość do odbioru) otrzymasz jako wiadomość push z Firebase Cloud Messaging.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: const Color(0xFF6B6B6B)),
           ),
           const SizedBox(height: 16),
           FilledButton(

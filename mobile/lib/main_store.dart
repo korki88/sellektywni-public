@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'layout/web_app_frame.dart';
+import 'providers/app_navigation.dart';
+import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
@@ -20,8 +22,21 @@ class _MainStoreState extends State<MainStore> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthSession>();
+    final nav = context.watch<AppNavigation>();
+    final showBackToPanel =
+        auth.isAuthenticated && auth.isAdminDashboardRole && nav.staffViewingShop;
+
     return WebAppFrame(
       child: Scaffold(
+        floatingActionButton: showBackToPanel
+            ? FloatingActionButton.extended(
+                onPressed: () =>
+                    context.read<AppNavigation>().openAdminPanel(),
+                icon: const Icon(Icons.admin_panel_settings_outlined),
+                label: const Text('Panel'),
+              )
+            : null,
         body: IndexedStack(
           index: _index,
           children: const [
@@ -33,18 +48,18 @@ class _MainStoreState extends State<MainStore> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
           onDestinationSelected: (i) => setState(() => _index = i),
-          destinations: [
-            const NavigationDestination(
+          destinations: const [
+            NavigationDestination(
               icon: Icon(Icons.grid_view_outlined),
               selectedIcon: Icon(Icons.grid_view_rounded),
               label: 'Sklep',
             ),
             NavigationDestination(
-              icon: const _CartNavIcon(selected: false),
-              selectedIcon: const _CartNavIcon(selected: true),
+              icon: _CartNavIcon(selected: false),
+              selectedIcon: _CartNavIcon(selected: true),
               label: 'Koszyk',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
               label: 'Konto',
@@ -64,7 +79,8 @@ class _CartNavIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final realCount = context.watch<CartNotifier>().itemCount;
-    final icon = selected ? Icons.shopping_bag_rounded : Icons.shopping_bag_outlined;
+    final icon =
+        selected ? Icons.shopping_bag_rounded : Icons.shopping_bag_outlined;
     if (realCount <= 0) {
       return Icon(icon);
     }

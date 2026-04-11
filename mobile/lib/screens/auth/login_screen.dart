@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -17,13 +18,24 @@ class LoginScreen extends StatefulWidget {
 }
 
 void _popIfModal(BuildContext context) {
-  final nav = Navigator.of(context, rootNavigator: true);
-  if (nav.canPop()) nav.pop();
+  try {
+    final root = Navigator.of(context, rootNavigator: true);
+    if (root.canPop()) {
+      root.pop();
+      return;
+    }
+    final nav = Navigator.maybeOf(context);
+    if (nav != null && nav.canPop()) nav.pop();
+  } catch (_) {
+    // Route mogła zostać zdjęta w tej samej klatce co przełączenie home (OWNER → AdminDashboard).
+  }
 }
 
 class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
 
@@ -31,10 +43,26 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
+  void _onEnterKey() {
+    if (!mounted || _loading) return;
+    if (_passwordFocus.hasFocus) {
+      _submit();
+      return;
+    }
+    if (_emailFocus.hasFocus) {
+      _passwordFocus.requestFocus();
+      return;
+    }
+    _submit();
+  }
+
   Future<void> _submit() async {
+    if (_loading) return;
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       if (!mounted) return;
@@ -46,29 +74,33 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (AppConfig.useDevMockAuth) {
-      final token = resolveDevMockBearerToken(
-        _email.text,
-        _password.text,
-      );
-      if (token == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Błędne dane — użyj jednej z par z listy powyżej (tryb dev-mock).',
-            ),
-          ),
-        );
-        return;
-      }
+    // Para z listy dev-mock — zawsze token offline (nie zależy od dart-define Supabase ani ?devMock=1).
+    final devToken = resolveDevMockBearerToken(_email.text, _password.text);
+    if (devToken != null) {
       setState(() => _loading = true);
       try {
-        await context.read<AuthSession>().setAccessToken(token);
-        _popIfModal(context);
+        await context.read<AuthSession>().setAccessToken(devToken);
+        if (!mounted) return;
+        // Po notifyListeners przełączenie home może być w tej samej klatce — pop poza build/sync.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          _popIfModal(context);
+        });
       } finally {
         if (mounted) setState(() => _loading = false);
       }
+      return;
+    }
+
+    if (AppConfig.useDevMockAuth) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Błędne dane — użyj jednej z par z listy powyżej (tryb dev-mock).',
+          ),
+        ),
+      );
       return;
     }
 
@@ -90,7 +122,10 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _password.text,
       );
       if (!mounted) return;
-      _popIfModal(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        _popIfModal(context);
+      });
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +149,12 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
-          child: Form(
+          child: CallbackShortcuts(
+            bindings: <ShortcutActivator, VoidCallback>{
+              const SingleActivator(LogicalKeyboardKey.enter): _onEnterKey,
+              const SingleActivator(LogicalKeyboardKey.numpadEnter): _onEnterKey,
+            },
+            child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -150,9 +190,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 28),
                 TextFormField(
                   controller: _email,
+                  focusNode: _emailFocus,
                   keyboardType: AppConfig.useDevMockAuth
                       ? TextInputType.text
                       : TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) =>
+                      FocusScope.of(context).requestFocus(_passwordFocus),
                   autofillHints: const [AutofillHints.email],
                   decoration: InputDecoration(
                     labelText:
@@ -174,7 +218,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _password,
+                  focusNode: _passwordFocus,
                   obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _submit(),
                   autofillHints: const [AutofillHints.password],
                   decoration: const InputDecoration(
                     labelText: 'Hasło',
@@ -205,13 +252,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('Zaloguj się'),
                 ),
                 const SizedBox(height: 16),
-                if (!AppConfig.useDevMockAuth)
-                  TextButton(
-                    onPressed: widget.onGoToRegister,
-                    child: const Text('Nie masz konta? Zarejestruj się'),
-                  ),
+                TextButton(
+                  onPressed: () {
+                    if (AppConfig.useDevMockAuth) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Rejestracja jest wyłączona w trybie podglądu (dev-mock).',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    widget.onGoToRegister();
+                  },
+                  child: const Text('Nie masz konta? Zarejestruj się'),
+                ),
               ],
             ),
+          ),
           ),
         ),
       ),

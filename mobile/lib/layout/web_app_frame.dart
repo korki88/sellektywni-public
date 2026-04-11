@@ -16,6 +16,12 @@ class WebAppFrame extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Gdy rodzic daje nieograniczoną wysokość (np. przejścia tras na webie),
+        // samo minHeight: constraints.maxHeight → ∞ psuje Column+Expanded w dziecku.
+        var h = constraints.maxHeight;
+        if (!h.isFinite || h <= 0) {
+          h = MediaQuery.sizeOf(context).height;
+        }
         return ColoredBox(
           color: const Color(0xFFF0F0F0),
           child: Align(
@@ -23,7 +29,8 @@ class WebAppFrame extends StatelessWidget {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: maxContentWidth,
-                minHeight: constraints.maxHeight,
+                minHeight: h,
+                maxHeight: h,
               ),
               child: Material(
                 color: Colors.white,

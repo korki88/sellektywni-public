@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Niewidoczne pole tekstowe nasłuchujące skanera HID (klawiatura).
@@ -27,7 +28,9 @@ class HidQrScannerLayer extends StatelessWidget {
         child: TextField(
           focusNode: focusNode,
           controller: controller,
-          autofocus: true,
+          // Na webie autofocus + ukryte pole przy wejściu na panel powoduje
+          // konflikty fokusu / Uncaught Error; fokus i tak ustawia AdminDashboard.
+          autofocus: !kIsWeb,
           keyboardType: TextInputType.text,
           enableInteractiveSelection: false,
           decoration: const InputDecoration(border: InputBorder.none),

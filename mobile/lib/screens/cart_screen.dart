@@ -6,7 +6,8 @@ import '../providers/cart_notifier.dart';
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
-  static const _purchaseMessage = 'Czekamy na potwierdzenie dostępności ze sklepu stacjonarnego';
+  static const _purchaseMessage =
+      'Czekamy na potwierdzenie dostępności ze sklepu stacjonarnego';
 
   Future<void> _onPurchase(BuildContext context) async {
     final cart = context.read<CartNotifier>();
@@ -41,7 +42,8 @@ class CartScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.shopping_bag_outlined, size: 48, color: Colors.black.withOpacity(0.25)),
+                    Icon(Icons.shopping_bag_outlined,
+                        size: 48, color: Colors.black.withValues(alpha: 0.25)),
                     const SizedBox(height: 14),
                     Text(
                       'Koszyk jest pusty',
@@ -51,7 +53,10 @@ class CartScreen extends StatelessWidget {
                     Text(
                       'Dodaj produkty ze strony Sklep.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: const Color(0xFF6B6B6B)),
                     ),
                   ],
                 ),
@@ -81,7 +86,9 @@ class CartScreen extends StatelessWidget {
                                 height: 98,
                                 color: const Color(0xFFF4F4F4),
                                 alignment: Alignment.center,
-                                child: const Icon(Icons.image_not_supported_outlined, size: 22),
+                                child: const Icon(
+                                    Icons.image_not_supported_outlined,
+                                    size: 22),
                               ),
                             ),
                           ),
@@ -94,12 +101,16 @@ class CartScreen extends StatelessWidget {
                                   line.product.name,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   '${line.product.pricePln.toStringAsFixed(0)} zł × ${line.qty}',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
                                         color: const Color(0xFF6B6B6B),
                                       ),
                                 ),
@@ -107,19 +118,30 @@ class CartScreen extends StatelessWidget {
                                 Row(
                                   children: [
                                     IconButton(
-                                      onPressed: () => context.read<CartNotifier>().decrement(line.product.id),
-                                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                                      onPressed: () => context
+                                          .read<CartNotifier>()
+                                          .decrement(line.product.id),
+                                      icon: const Icon(
+                                          Icons.remove_circle_outline_rounded),
                                       visualDensity: VisualDensity.compact,
                                     ),
-                                    Text('${line.qty}', style: Theme.of(context).textTheme.titleMedium),
+                                    Text('${line.qty}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium),
                                     IconButton(
-                                      onPressed: () => context.read<CartNotifier>().add(line.product),
-                                      icon: const Icon(Icons.add_circle_outline_rounded),
+                                      onPressed: () => context
+                                          .read<CartNotifier>()
+                                          .add(line.product),
+                                      icon: const Icon(
+                                          Icons.add_circle_outline_rounded),
                                       visualDensity: VisualDensity.compact,
                                     ),
                                     const Spacer(),
                                     TextButton(
-                                      onPressed: () => context.read<CartNotifier>().removeLine(line.product.id),
+                                      onPressed: () => context
+                                          .read<CartNotifier>()
+                                          .removeLine(line.product.id),
                                       child: const Text('Usuń'),
                                     ),
                                   ],
@@ -144,7 +166,8 @@ class CartScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text('Razem', style: Theme.of(context).textTheme.titleMedium),
+                            Text('Razem',
+                                style: Theme.of(context).textTheme.titleMedium),
                             const Spacer(),
                             Text(
                               '${cart.subtotalPln.toStringAsFixed(0)} zł',
@@ -157,7 +180,9 @@ class CartScreen extends StatelessWidget {
                           width: double.infinity,
                           child: FilledButton(
                             onPressed: () => _onPurchase(context),
-                            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                            style: FilledButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14)),
                             child: const Text('Kupuję'),
                           ),
                         ),

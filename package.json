@@ -23,7 +23,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:set-role": "node scripts/set-profile-role.js",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "rerun": "node scripts/rerun.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import '../models/product.dart';
 import '../models/product_category.dart';
-import '../models/product_condition.dart';
 import '../data/mock_catalog.dart';
 
 class CatalogFilterNotifier extends ChangeNotifier {

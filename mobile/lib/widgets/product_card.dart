@@ -86,8 +86,11 @@ class ProductCard extends StatelessWidget {
                     },
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      backgroundColor: inCart ? const Color(0xFF111111) : const Color(0xFFF4F4F4),
-                      foregroundColor: inCart ? Colors.white : const Color(0xFF111111),
+                      backgroundColor: inCart
+                          ? const Color(0xFF111111)
+                          : const Color(0xFFF4F4F4),
+                      foregroundColor:
+                          inCart ? Colors.white : const Color(0xFF111111),
                     ),
                     child: Text(inCart ? 'Dodaj kolejny' : 'Do koszyka'),
                   ),
@@ -110,7 +113,7 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: const Color(0x11000000)),
       ),

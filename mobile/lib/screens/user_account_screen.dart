@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
 import '../widgets/auth_shell.dart';
 
@@ -26,44 +27,31 @@ class UserAccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthSession>();
+    final nav = context.watch<AppNavigation>();
 
     if (!auth.isAuthenticated) {
-      return ListView(
-        padding: const EdgeInsets.all(24),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Twoje konto',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Przeglądasz sklep jako gość. Zaloguj się, aby zapisać konto, '
-            'zobaczyć punkty lojalnościowe i rangę.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6B6B),
-                ),
-          ),
-          const SizedBox(height: 28),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context, rootNavigator: true).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (ctx) => Scaffold(
-                    appBar: AppBar(
-                      title: const Text('Logowanie'),
-                    ),
-                    body: const AuthShell(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Text(
+              'Twoje konto',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: const Text('Zaloguj się lub zarejestruj'),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'Zaloguj się, aby zapisać konto i korzystać z programu lojalnościowego.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF6B6B6B),
+                  ),
+            ),
+          ),
+          const Expanded(child: AuthShell(embedded: true)),
         ],
       );
     }
@@ -83,6 +71,17 @@ class UserAccountScreen extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
         ),
+        if (auth.isAdminDashboardRole && nav.staffViewingShop) ...[
+          const SizedBox(height: 16),
+          FilledButton.tonal(
+            onPressed: () =>
+                context.read<AppNavigation>().openAdminPanel(),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text('Przejdź do panelu administracyjnego'),
+          ),
+        ],
         const SizedBox(height: 20),
         Card(
           child: Padding(
@@ -156,6 +155,7 @@ class UserAccountScreen extends StatelessWidget {
               await Supabase.instance.client.auth.signOut();
             }
             if (!context.mounted) return;
+            context.read<AppNavigation>().resetAfterLogout();
             await sess.setAccessToken(null);
           },
           style: FilledButton.styleFrom(
