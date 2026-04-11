@@ -1,6 +1,11 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { ProfileRole } from '@prisma/client';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { StaffProductsService } from './staff-products.service';
 
+@UseGuards(RolesGuard)
+@Roles(ProfileRole.STAFF)
 @Controller('staff/products')
 export class StaffProductsController {
   constructor(private readonly staffProducts: StaffProductsService) {}

@@ -2,23 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../layout/web_app_frame.dart';
-import '../theme/app_theme.dart';
-import 'staff_api.dart';
-import 'staff_models.dart';
-import 'staff_session.dart';
+import 'layout/web_app_frame.dart';
+import 'providers/auth_session.dart';
+import 'staff/staff_api.dart';
+import 'staff/staff_models.dart';
+import 'theme/app_theme.dart';
 
-/// Panel pracownika (Flutter Web): kolejka PENDING, skan QR klienta, profil + punkty.
-class StaffDashboardScreen extends StatefulWidget {
-  const StaffDashboardScreen({super.key});
+/// Panel pracownika (STAFF): sidebar + kolejka, skan, profil klienta.
+class MainSidebar extends StatefulWidget {
+  const MainSidebar({super.key});
 
   @override
-  State<StaffDashboardScreen> createState() => _StaffDashboardScreenState();
+  State<MainSidebar> createState() => _MainSidebarState();
 }
 
-class _StaffDashboardScreenState extends State<StaffDashboardScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+class _MainSidebarState extends State<MainSidebar> {
+  int _railIndex = 0;
   final _scanFocus = FocusNode();
   final _scanController = TextEditingController();
   final _tokenController = TextEditingController();
@@ -33,17 +32,15 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final s = context.read<StaffSession>();
-      _tokenController.text = s.accessToken ?? '';
+      final auth = context.read<AuthSession>();
+      _tokenController.text = auth.accessToken ?? '';
       _requestScanFocus();
     });
   }
 
   @override
   void dispose() {
-    _tabs.dispose();
     _scanFocus.dispose();
     _scanController.dispose();
     _tokenController.dispose();
@@ -57,11 +54,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen>
     });
   }
 
-  StaffApi get _api => StaffApi(context.read<StaffSession>());
+  StaffApi get _api => StaffApi(context.read<AuthSession>());
 
   Future<void> _loadQueue() async {
-    final session = context.read<StaffSession>();
-    if (!session.hasToken) {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasToken) {
       setState(() => _error = 'Ustaw token Bearer (Supabase access token).');
       return;
     }
@@ -136,8 +133,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen>
   }
 
   Future<void> _loadCustomer(String userId) async {
-    final session = context.read<StaffSession>();
-    if (!session.hasToken) {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasToken) {
       setState(() => _error = 'Ustaw token Bearer.');
       return;
     }
@@ -151,8 +148,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen>
       setState(() {
         _customer = c;
         _loadingCustomer = false;
+        _railIndex = 1;
       });
-      _tabs.animateTo(1);
     } on StaffApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -203,83 +200,100 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<StaffSession>();
+    final auth = context.watch<AuthSession>();
 
     return WebAppFrame(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Panel pracownika'),
-          bottom: TabBar(
-            controller: _tabs,
-            tabs: const [
-              Tab(text: 'Kolejka rezerwacji'),
-              Tab(text: 'Profil klienta'),
-            ],
-          ),
         ),
         body: Stack(
           children: [
-            Column(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Material(
-                  color: const Color(0xFFF8F8F8),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'API: ${session.apiBase}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: const Color(0xFF6B6B6B),
+                NavigationRail(
+                  selectedIndex: _railIndex,
+                  labelType: NavigationRailLabelType.all,
+                  onDestinationSelected: (i) => setState(() => _railIndex = i),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.list_alt_outlined),
+                      selectedIcon: Icon(Icons.list_alt),
+                      label: Text('Kolejka'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: Text('Profil klienta'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Material(
+                        color: const Color(0xFFF8F8F8),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'API: ${auth.apiBase}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: const Color(0xFF6B6B6B),
+                                    ),
                               ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _tokenController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Access token (JWT Supabase)',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          onChanged: (v) => session.setAccessToken(v),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            FilledButton.tonal(
-                              onPressed: _loadQueue,
-                              child: const Text('Odśwież kolejkę'),
-                            ),
-                            const SizedBox(width: 12),
-                            if (_error != null)
-                              Expanded(
-                                child: Text(
-                                  _error!,
-                                  style: const TextStyle(color: Colors.red),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _tokenController,
+                                obscureText: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'Access token (JWT Supabase)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
                                 ),
+                                onChanged: (v) => auth.setAccessToken(v),
                               ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  FilledButton.tonal(
+                                    onPressed: _loadQueue,
+                                    child: const Text('Odśwież kolejkę'),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  if (_error != null)
+                                    Expanded(
+                                      child: Text(
+                                        _error!,
+                                        style: const TextStyle(color: Colors.red),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: IndexedStack(
+                          index: _railIndex,
+                          children: [
+                            _buildQueueTab(),
+                            _buildCustomerTab(),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-                      _buildQueueTab(),
-                      _buildCustomerTab(),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
-            // Quick Scan: ukryte pole nasłuchujące klawiatury (skaner jako HID).
             Positioned(
               left: 0,
               top: 0,

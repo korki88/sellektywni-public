@@ -5,8 +5,6 @@ import { AdminModule } from './admin/admin.module';
 import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { LoadProfileMiddleware } from './auth/middleware/load-profile.middleware';
-import { OwnerRoleMiddleware } from './auth/middleware/owner-role.middleware';
-import { StaffRoleMiddleware } from './auth/middleware/staff-role.middleware';
 import { SupabaseJwtMiddleware } from './auth/middleware/supabase-jwt.middleware';
 import { OrderModule } from './order/order.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -26,21 +24,16 @@ import { StaffProductsController } from './staff/staff-products.controller';
     StaffModule,
     OrderModule,
   ],
-  providers: [
-    SupabaseJwtMiddleware,
-    LoadProfileMiddleware,
-    OwnerRoleMiddleware,
-    StaffRoleMiddleware,
-  ],
+  providers: [SupabaseJwtMiddleware, LoadProfileMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(SupabaseJwtMiddleware, LoadProfileMiddleware, OwnerRoleMiddleware)
+      .apply(SupabaseJwtMiddleware, LoadProfileMiddleware)
       .forRoutes(AdminController);
 
     consumer
-      .apply(SupabaseJwtMiddleware, LoadProfileMiddleware, StaffRoleMiddleware)
+      .apply(SupabaseJwtMiddleware, LoadProfileMiddleware)
       .forRoutes(StaffController, StaffProductsController, StaffCustomersController);
 
     consumer.apply(SupabaseJwtMiddleware).forRoutes(AuthController);

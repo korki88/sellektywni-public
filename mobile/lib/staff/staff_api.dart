@@ -2,13 +2,13 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../providers/auth_session.dart';
 import 'staff_models.dart';
-import 'staff_session.dart';
 
 class StaffApi {
   StaffApi(this._session);
 
-  final StaffSession _session;
+  final AuthSession _session;
 
   Map<String, String> _headers() {
     final t = _session.accessToken;

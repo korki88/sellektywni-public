@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/catalog_filter_notifier.dart';
 import 'services/push_service.dart';
-import 'staff/staff_session.dart';
 
 /// Musi być funkcją top-level (Firebase Messaging w tle; tylko iOS/Android).
 @pragma('vm:entry-point')
@@ -24,12 +24,15 @@ Future<void> main() async {
   }
   await _initFirebaseSafely();
 
+  final auth = AuthSession();
+  await auth.init();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CatalogFilterNotifier()),
         ChangeNotifierProvider(create: (_) => CartNotifier()),
-        ChangeNotifierProvider(create: (_) => StaffSession()),
+        ChangeNotifierProvider<AuthSession>.value(value: auth),
       ],
       child: const SellektywniApp(),
     ),
