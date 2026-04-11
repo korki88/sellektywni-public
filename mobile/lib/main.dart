@@ -3,8 +3,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
+import 'config/app_config.dart';
 import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/catalog_filter_notifier.dart';
@@ -24,6 +26,13 @@ Future<void> main() async {
   }
   await _initFirebaseSafely();
 
+  if (AppConfig.hasSupabase) {
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      anonKey: AppConfig.supabaseAnonKey,
+    );
+  }
+
   final auth = AuthSession();
   runApp(
     MultiProvider(
@@ -36,6 +45,12 @@ Future<void> main() async {
     ),
   );
   await auth.init();
+  if (AppConfig.hasSupabase) {
+    final s = Supabase.instance.client.auth.currentSession;
+    if (s != null) {
+      await auth.syncFromSupabaseAccessToken(s.accessToken);
+    }
+  }
 }
 
 Future<void> _initFirebaseSafely() async {

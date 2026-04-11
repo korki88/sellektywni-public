@@ -18,6 +18,31 @@ export class ProfilesService {
   }
 
   /**
+   * Rejestracja e-mail / dowolny provider: tworzy profil CUSTOMER jeśli go brak.
+   */
+  async ensureCustomerProfileIfMissing(
+    jwtPayload: SupabaseJwtPayload,
+  ): Promise<Profile> {
+    const existing = await this.prisma.profile.findUnique({
+      where: { userId: jwtPayload.sub },
+    });
+    if (existing) {
+      return existing;
+    }
+    const created = await this.prisma.profile.create({
+      data: {
+        userId: jwtPayload.sub,
+        email: jwtPayload.email ?? null,
+        role: ProfileRole.CUSTOMER,
+        points: 0,
+        rank: ProfileRank.BRONZE,
+      },
+    });
+    this.log.log(`Utworzono profil (ensure) dla ${jwtPayload.sub}`);
+    return created;
+  }
+
+  /**
    * Pierwsze logowanie przez Google: tworzy profil CUSTOMER / BRONZE / 0 pkt.
    * Idempotentne — kolejne wywołania zwracają istniejący profil.
    */

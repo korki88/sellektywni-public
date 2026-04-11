@@ -36,4 +36,16 @@ export class AuthController {
     }
     return this.profiles.ensureBronzeCustomerOnGoogleSignup(jwtPayload);
   }
+
+  /**
+   * Po rejestracji/logowaniu e-mail: utwórz profil sklepu, jeśli nie istnieje (CUSTOMER / BRONZE).
+   */
+  @Post('profile/ensure')
+  async ensureProfile(@Req() req: Request) {
+    const jwtPayload = req.supabaseJwt;
+    if (!jwtPayload) {
+      throw new UnauthorizedException();
+    }
+    return this.profiles.ensureCustomerProfileIfMissing(jwtPayload);
+  }
 }

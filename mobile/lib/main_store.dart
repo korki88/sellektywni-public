@@ -5,6 +5,7 @@ import 'layout/web_app_frame.dart';
 import 'providers/cart_notifier.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/user_account_screen.dart';
 
 /// Sklep dla klienta (CUSTOMER, OWNER lub brak sesji).
 class MainStore extends StatefulWidget {
@@ -26,6 +27,7 @@ class _MainStoreState extends State<MainStore> {
           children: const [
             HomeScreen(),
             CartScreen(),
+            UserAccountScreen(),
           ],
         ),
         bottomNavigationBar: NavigationBar(
@@ -38,9 +40,14 @@ class _MainStoreState extends State<MainStore> {
               label: 'Sklep',
             ),
             NavigationDestination(
-              icon: _CartNavIcon(selected: false),
-              selectedIcon: _CartNavIcon(selected: true),
+              icon: const _CartNavIcon(selected: false),
+              selectedIcon: const _CartNavIcon(selected: true),
               label: 'Koszyk',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Konto',
             ),
           ],
         ),

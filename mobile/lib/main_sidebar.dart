@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/app_config.dart';
 import 'layout/web_app_frame.dart';
 import 'providers/auth_session.dart';
+import 'screens/user_account_screen.dart';
 import 'staff/staff_api.dart';
 import 'staff/staff_models.dart';
 import 'theme/app_theme.dart';
@@ -20,7 +23,6 @@ class _MainSidebarState extends State<MainSidebar> {
   int _railIndex = 0;
   final _scanFocus = FocusNode();
   final _scanController = TextEditingController();
-  final _tokenController = TextEditingController();
   final _manualIdController = TextEditingController();
 
   List<StaffProduct> _queue = [];
@@ -33,8 +35,6 @@ class _MainSidebarState extends State<MainSidebar> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthSession>();
-      _tokenController.text = auth.accessToken ?? '';
       _requestScanFocus();
     });
   }
@@ -43,7 +43,6 @@ class _MainSidebarState extends State<MainSidebar> {
   void dispose() {
     _scanFocus.dispose();
     _scanController.dispose();
-    _tokenController.dispose();
     _manualIdController.dispose();
     super.dispose();
   }
@@ -206,6 +205,34 @@ class _MainSidebarState extends State<MainSidebar> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Panel pracownika'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(
+                child: Text(
+                  AppConfig.hasSupabase
+                      ? (Supabase.instance.client.auth.currentUser?.email ??
+                          auth.profileEmail ??
+                          '')
+                      : (auth.profileEmail ?? ''),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Wyloguj',
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                final sess = context.read<AuthSession>();
+                if (AppConfig.hasSupabase) {
+                  await Supabase.instance.client.auth.signOut();
+                }
+                if (!context.mounted) return;
+                await sess.setAccessToken(null);
+              },
+            ),
+          ],
         ),
         body: Stack(
           children: [
@@ -227,6 +254,11 @@ class _MainSidebarState extends State<MainSidebar> {
                       selectedIcon: Icon(Icons.person),
                       label: Text('Profil klienta'),
                     ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.account_circle_outlined),
+                      selectedIcon: Icon(Icons.account_circle),
+                      label: Text('Moje konto'),
+                    ),
                   ],
                 ),
                 const VerticalDivider(width: 1),
@@ -245,17 +277,6 @@ class _MainSidebarState extends State<MainSidebar> {
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: const Color(0xFF6B6B6B),
                                     ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _tokenController,
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Access token (JWT Supabase)',
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
-                                ),
-                                onChanged: (v) => auth.setAccessToken(v),
                               ),
                               const SizedBox(height: 8),
                               Row(
@@ -286,6 +307,7 @@ class _MainSidebarState extends State<MainSidebar> {
                           children: [
                             _buildQueueTab(),
                             _buildCustomerTab(),
+                            const UserAccountScreen(),
                           ],
                         ),
                       ),
