@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
+import '../../config/dev_mock_accounts.dart';
 import '../../providers/auth_session.dart';
 import '../../theme/app_theme.dart';
 
@@ -16,7 +17,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 void _popIfModal(BuildContext context) {
-  final nav = Navigator.of(context);
+  final nav = Navigator.of(context, rootNavigator: true);
   if (nav.canPop()) nav.pop();
 }
 
@@ -34,26 +35,28 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Uzupełnij poprawnie login i hasło (patrz podpowiedzi pod polami).'),
+        ),
+      );
+      return;
+    }
 
     if (AppConfig.useDevMockAuth) {
-      final login = _email.text.trim().toLowerCase();
-      final pass = _password.text;
-      String? token;
-      if (login == 'admin' && pass == 'admin') {
-        token = 'dev-mock:OWNER';
-      } else if (login == 'user' && pass == 'user') {
-        token = 'dev-mock:STAFF';
-      } else if (login == 'client' && pass == 'client') {
-        token = 'dev-mock:CUSTOMER';
-      }
+      final token = resolveDevMockBearerToken(
+        _email.text,
+        _password.text,
+      );
       if (token == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Błędne dane. Użyj: admin/admin (właściciel), user/user (personel), '
-              'client/client (klient).',
+              'Błędne dane — użyj jednej z par z listy powyżej (tryb dev-mock).',
             ),
           ),
         );
@@ -105,15 +108,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
@@ -135,11 +139,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (AppConfig.useDevMockAuth) ...[
                   const SizedBox(height: 12),
                   Text(
-                    'Konta testowe: admin/admin · user/user · client/client',
+                    kDevMockAccountsHint,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: const Color(0xFF6B6B6B),
+                          height: 1.35,
                         ),
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
                   ),
                 ],
                 const SizedBox(height: 28),
@@ -182,7 +187,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: _loading ? null : _submit,
+                  onPressed: _loading
+                      ? null
+                      : () {
+                          _submit();
+                        },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: AppTheme.light.colorScheme.primary,

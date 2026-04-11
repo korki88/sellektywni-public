@@ -48,9 +48,8 @@ class UserAccountScreen extends StatelessWidget {
           const SizedBox(height: 28),
           FilledButton(
             onPressed: () {
-              Navigator.of(context).push(
+              Navigator.of(context, rootNavigator: true).push<void>(
                 MaterialPageRoute<void>(
-                  fullscreenDialog: true,
                   builder: (ctx) => Scaffold(
                     appBar: AppBar(
                       title: const Text('Logowanie'),
