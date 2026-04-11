@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sellektywni_shop/app.dart';
 import 'package:sellektywni_shop/providers/cart_notifier.dart';
 import 'package:sellektywni_shop/providers/catalog_filter_notifier.dart';
+import 'package:sellektywni_shop/staff/staff_session.dart';
 
 void main() {
   testWidgets('SELLEKTYWNI app smoke test', (WidgetTester tester) async {
@@ -11,6 +12,7 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => CatalogFilterNotifier()),
           ChangeNotifierProvider(create: (_) => CartNotifier()),
+          ChangeNotifierProvider(create: (_) => StaffSession()),
         ],
         child: const SellektywniApp(),
       ),

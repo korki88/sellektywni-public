@@ -8,6 +8,7 @@ import 'app.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/catalog_filter_notifier.dart';
 import 'services/push_service.dart';
+import 'staff/staff_session.dart';
 
 /// Musi być funkcją top-level (Firebase Messaging w tle; tylko iOS/Android).
 @pragma('vm:entry-point')
@@ -28,6 +29,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => CatalogFilterNotifier()),
         ChangeNotifierProvider(create: (_) => CartNotifier()),
+        ChangeNotifierProvider(create: (_) => StaffSession()),
       ],
       child: const SellektywniApp(),
     ),

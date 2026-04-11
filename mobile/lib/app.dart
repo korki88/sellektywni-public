@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,10 +6,18 @@ import 'layout/web_app_frame.dart';
 import 'providers/cart_notifier.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
+import 'staff/staff_dashboard_screen.dart';
 import 'theme/app_theme.dart';
 
 class SellektywniApp extends StatelessWidget {
   const SellektywniApp({super.key});
+
+  static bool _isStaffRoute() {
+    if (!kIsWeb) return false;
+    final path = Uri.base.path;
+    final frag = Uri.base.fragment;
+    return path.contains('staff') || frag.contains('staff');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +25,7 @@ class SellektywniApp extends StatelessWidget {
       title: 'SELLEKTYWNI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const _RootShell(),
+      home: _isStaffRoute() ? const StaffDashboardScreen() : const _RootShell(),
     );
   }
 }
