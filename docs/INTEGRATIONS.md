@@ -27,15 +27,18 @@ Gdy **jeszcze nie integrujesz** zewnętrznych dostawców, możesz uruchomić API
 |---------|------------|
 | **NestJS `.env`** | `AUTH_DEV_MOCK=true` — akceptuje nagłówek `Authorization: Bearer dev-mock:OWNER` (albo `STAFF`, `CUSTOMER`). `SUPABASE_JWT_SECRET` może być puste w tym trybie (tylko lokalnie). |
 | **Baza** | `npm run db:seed` — tworzy 3 profile o stałych UUID (OWNER / STAFF / CUSTOMER). **Wymagane przed logowaniem mock**, inaczej `/auth/profile/ensure` utworzy profil jako CUSTOMER. |
-| **Flutter build** | `--dart-define=USE_DEV_MOCK_AUTH=true` oraz `API_BASE_URL` na Twoje API. |
+| **Flutter build** | Opcjonalnie `--dart-define=USE_DEV_MOCK_AUTH=true`. Na **localhost / 127.0.0.1** tryb dev-mock włącza się **automatycznie**, jeśli w buildzie **nie** ma `SUPABASE_URL` + `SUPABASE_ANON_KEY` (typowy `flutter build web` do `www`). Przy zbudowanym Supabase: dopisz `?devMock=1` w URL. |
+| **Adres API** | Domyślnie `http://<ten_sam_host_co_strona>:3000` (np. `127.0.0.1:3000` gdy strona jest pod `127.0.0.1`). |
 
-**Logowanie w aplikacji (dev-mock):**
+**Logowanie w aplikacji (dev-mock)** — pełna lista w `mobile/lib/config/dev_mock_accounts.dart` (funkcja `resolveDevMockBearerToken`):
 
-| Login | Hasło | Rola |
-|-------|--------|------|
-| `admin` | `admin` | OWNER (panel właściciela) |
-| `user` | `user` | STAFF (panel personelu) |
-| `client` | `client` | CUSTOMER (sklep) |
+| Rola | Przykładowe loginy | Hasła |
+|------|-------------------|--------|
+| **OWNER** | `admin`, `owner`, `admin@dev.local`, `owner@dev.local` | `admin` |
+| **STAFF** | `user`, `staff`, `user@dev.local`, `staff@dev.local` | `user` lub `staff` |
+| **CUSTOMER** | `client`, `customer`, `client@dev.local`, `customer@dev.local` | `client` lub `customer` |
+
+Najkrócej: `admin/admin` · `user/user` · `client/client`.
 
 **Nigdy nie włączaj `AUTH_DEV_MOCK` na produkcji.**
 

@@ -7,10 +7,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Sesja: token API (Supabase JWT), profil RBAC z Nest `/auth/me`.
 class AuthSession extends ChangeNotifier {
-  static const String defaultApiBase = String.fromEnvironment(
+  static const String _apiBaseFromDefine = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:3000',
+    defaultValue: '',
   );
+
+  /// Domyślny URL API: z `--dart-define`, albo ten sam host co strona WWW + port 3000 (localhost vs 127.0.0.1).
+  static String get defaultApiBase {
+    var d = _apiBaseFromDefine.trim();
+    if (d.isNotEmpty) {
+      return d.endsWith('/') ? d.substring(0, d.length - 1) : d;
+    }
+    if (kIsWeb) {
+      final h = Uri.base.host;
+      if (h == 'localhost' || h == '127.0.0.1') {
+        return 'http://$h:3000';
+      }
+    }
+    return 'http://localhost:3000';
+  }
 
   static const _kToken = 'auth_access_token';
   static const _kApiBase = 'auth_api_base';
@@ -45,9 +60,19 @@ class AuthSession extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _accessToken = prefs.getString(_kToken);
-      _apiBase = prefs.getString(_kApiBase) ?? defaultApiBase;
+      var base = prefs.getString(_kApiBase) ?? defaultApiBase;
+      if (kIsWeb) {
+        final pageHost = Uri.base.host;
+        if (pageHost == '127.0.0.1' &&
+            base.contains('localhost') &&
+            base.contains(':3000')) {
+          base = 'http://127.0.0.1:3000';
+          await prefs.setString(_kApiBase, base);
+        }
+      }
+      _apiBase = base;
     } catch (_) {
-      _apiBase = defaultApiBase;
+      _apiBase = AuthSession.defaultApiBase;
     }
     _ready = true;
     notifyListeners();
