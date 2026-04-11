@@ -25,8 +25,6 @@ Future<void> main() async {
   await _initFirebaseSafely();
 
   final auth = AuthSession();
-  await auth.init();
-
   runApp(
     MultiProvider(
       providers: [
@@ -37,6 +35,7 @@ Future<void> main() async {
       child: const SellektywniApp(),
     ),
   );
+  await auth.init();
 }
 
 Future<void> _initFirebaseSafely() async {

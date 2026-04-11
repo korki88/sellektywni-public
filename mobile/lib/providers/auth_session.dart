@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -28,15 +29,22 @@ class AuthSession extends ChangeNotifier {
   /// Tylko rola STAFF uruchamia panel (main_sidebar); OWNER/ CUSTOMER / null → sklep.
   bool get isStaff => _role == 'STAFF';
 
+  /// Ładuje tylko lokalne prefs + ustawia [isReady]. Odświeżenie roli z API jest
+  /// poza ścieżką blokującą [runApp] — inaczej przy wyłączonym backendzie żądanie
+  /// do `/auth/me` może wisieć i zostawiać biały ekran (Canvas się nie uruchamia).
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _accessToken = prefs.getString(_kToken);
-    _apiBase = prefs.getString(_kApiBase) ?? defaultApiBase;
-    if (hasToken) {
-      await refreshProfile();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _accessToken = prefs.getString(_kToken);
+      _apiBase = prefs.getString(_kApiBase) ?? defaultApiBase;
+    } catch (_) {
+      _apiBase = defaultApiBase;
     }
     _ready = true;
     notifyListeners();
+    if (hasToken) {
+      unawaited(refreshProfile());
+    }
   }
 
   Future<void> setApiBase(String value) async {
@@ -70,10 +78,12 @@ class AuthSession extends ChangeNotifier {
     }
     try {
       final uri = Uri.parse('$_apiBase/auth/me');
-      final r = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $_accessToken'},
-      );
+      final r = await http
+          .get(
+            uri,
+            headers: {'Authorization': 'Bearer $_accessToken'},
+          )
+          .timeout(const Duration(seconds: 12));
       if (r.statusCode != 200) {
         _role = null;
         notifyListeners();
