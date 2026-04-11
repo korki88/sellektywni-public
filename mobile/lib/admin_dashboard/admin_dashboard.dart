@@ -629,7 +629,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               defaultTargetPlatform == TargetPlatform.android)
             IconButton(
               tooltip: 'Panel pływający (overlay)',
-              icon: const Icon(Icons.dock_to_right_outlined),
+              icon: const Icon(Icons.view_sidebar_outlined),
               onPressed: () async {
                 await openStaffSidebarOverlay();
                 if (!context.mounted) return;
