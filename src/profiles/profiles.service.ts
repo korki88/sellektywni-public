@@ -13,6 +13,10 @@ export class ProfilesService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  findByUserId(userId: string) {
+    return this.prisma.profile.findUnique({ where: { userId } });
+  }
+
   /**
    * Pierwsze logowanie przez Google: tworzy profil CUSTOMER / BRONZE / 0 pkt.
    * Idempotentne — kolejne wywołania zwracają istniejący profil.
