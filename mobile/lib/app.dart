@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'layout/web_app_frame.dart';
 import 'providers/cart_notifier.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
@@ -34,29 +35,31 @@ class _RootShellState extends State<_RootShell> {
   Widget build(BuildContext context) {
     final cartCount = context.watch<CartNotifier>().itemCount;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: const [
-          HomeScreen(),
-          CartScreen(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'Sklep',
-          ),
-          NavigationDestination(
-            icon: _CartNavIcon(count: cartCount, selected: false),
-            selectedIcon: _CartNavIcon(count: cartCount, selected: true),
-            label: 'Koszyk',
-          ),
-        ],
+    return WebAppFrame(
+      child: Scaffold(
+        body: IndexedStack(
+          index: _index,
+          children: const [
+            HomeScreen(),
+            CartScreen(),
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: (i) => setState(() => _index = i),
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.grid_view_outlined),
+              selectedIcon: Icon(Icons.grid_view_rounded),
+              label: 'Sklep',
+            ),
+            NavigationDestination(
+              icon: _CartNavIcon(count: cartCount, selected: false),
+              selectedIcon: _CartNavIcon(count: cartCount, selected: true),
+              label: 'Koszyk',
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../layout/catalog_grid_layout.dart';
 import '../models/product_category.dart';
 import '../models/product_condition.dart';
 import '../providers/catalog_filter_notifier.dart';
@@ -107,20 +108,25 @@ class HomeScreen extends StatelessWidget {
               child: _EmptyState(),
             )
           else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.54,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => ProductCard(product: products[index]),
-                  childCount: products.length,
-                ),
-              ),
+            SliverLayoutBuilder(
+              builder: (context, constraints) {
+                final columns = catalogGridColumnCount(constraints.crossAxisExtent);
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
+                      childAspectRatio: 0.54,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => ProductCard(product: products[index]),
+                      childCount: products.length,
+                    ),
+                  ),
+                );
+              },
             ),
         ],
       ),
