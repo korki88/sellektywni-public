@@ -43,3 +43,7 @@ Skrypt dopisania (opcjonalnie):
 ---
 
 *(Starsze wpisy — skrót; szczegóły w historii commitów Git.)*
+
+## 2026-04-13 18:59:24 UTC (auto)
+
+- Reguła dedukcji kroków (Cursor + sync/RULES); ESLint naprawiony; npm run lint:ci; CI z lintem; scalarToString (Orlen, shipping, P24); void bootstrap; listProviders sync

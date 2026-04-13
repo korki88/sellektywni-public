@@ -27,7 +27,7 @@ W workflow odwołujesz się: `${{ secrets.DATABASE_URL }}` — **nigdy** nie log
 
 ### Minimalny CI (bez sekretów do buildu)
 
-Zobacz [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — `npm ci`, `prisma generate`, `npm run build` (bez bazy). Gdy dodasz testy z DB, wtedy dodaj **service** Postgres w jobie i **jeden** sekret `DATABASE_URL` tylko dla tego joba.
+Zobacz [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — `npm ci`, **`npm run lint:ci`**, `prisma generate`, `npm run build` (bez bazy). Gdy dodasz testy z DB, wtedy dodaj **service** Postgres w jobie i **jeden** sekret `DATABASE_URL` tylko dla tego joba.
 
 ---
 

@@ -1,4 +1,4 @@
-# CI bez sekretów: generuje Prisma Client i buduje Nest.
+# CI bez sekretów: lint, generuje Prisma Client, buduje Nest.
 # Sekrety (DATABASE_URL itd.) dodaj dopiero przy jobach z testami DB / deployem — patrz sync/SECRETS.md.
 
 name: CI
@@ -26,6 +26,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: ESLint
+        run: npm run lint:ci
 
       - name: Prisma generate
         run: npx prisma generate

@@ -27,7 +27,11 @@ async function bootstrap() {
 
   expressApp.use(
     '/app',
-    (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         next();
         return;
@@ -45,4 +49,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();

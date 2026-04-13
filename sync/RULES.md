@@ -35,6 +35,9 @@ Zasady wynikające z polecenia właściciela projektu oraz ustalenia techniczne.
 11. **Sekrety między komputerami**  
     Nie commituj plaintext `.env`. Stosuj [SECRETS.md](SECRETS.md): GitHub Encrypted Secrets (CI), opcjonalnie **SOPS + age** dla zaszyfrowanego pliku w repo, lub menedżer haseł.
 
+12. **Agent AI — domykanie kroków**  
+    Jeśli z polecenia wynika sensowne domknięcie (np. `lint:ci` po naprawie ESLint, commit i push po paczce zmian), wykonaj to **bez pytania o zgodę**, o ile użytkownik nie poprosi wyłącznie o plan albo wstrzymanie. W Cursor: reguła **`.cursor/rules/proactive-next-step-and-live-data.mdc`**.
+
 ## Aktualizacja tych zasad
 
 Zmiany w `RULES.md` commituj razem z uzasadnieniem w `WORKLOG.md`.

@@ -66,7 +66,8 @@ export class PaymentsService {
       this.config.get<string>('P24_POS_ID')?.trim() ?? p24MerchantId ?? '';
     const p24Crc = this.config.get<string>('P24_CRC')?.trim();
     const p24SandboxBase =
-      this.config.get<string>('P24_SANDBOX_BASE_URL') ?? 'https://sandbox.przelewy24.pl';
+      this.config.get<string>('P24_SANDBOX_BASE_URL') ??
+      'https://sandbox.przelewy24.pl';
     const base = p24SandboxBase.replace(/\/$/, '');
     const p24Configured = Boolean(p24MerchantId && p24Crc && p24PosId);
 
@@ -145,7 +146,9 @@ export class PaymentsService {
       description: string;
     },
   ): Promise<{ token: string; sessionUrl: string } | null> {
-    const sessionId = opts.sessionId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
+    const sessionId = opts.sessionId
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .slice(0, 100);
     if (!sessionId) return null;
     const amount = Math.round(opts.amountPln * 100);
     if (amount <= 0) return null;
@@ -175,18 +178,21 @@ export class PaymentsService {
     }
 
     try {
-      const { data } = await firstValueFrom(
+      const res = await firstValueFrom(
         this.http.post(`${baseUrl}/trnRegister`, body.toString(), {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           responseType: 'text',
         }),
       );
+      const data: unknown = res.data;
       const raw = typeof data === 'string' ? data : String(data);
       const parsed = this.parseP24FormBody(raw);
       const err = parsed['error'];
       const token = parsed['token'];
       if (err && err !== '0') {
-        this.logger.warn(`P24 trnRegister error=${err} body=${raw.slice(0, 500)}`);
+        this.logger.warn(
+          `P24 trnRegister error=${err} body=${raw.slice(0, 500)}`,
+        );
         return null;
       }
       if (!token) {

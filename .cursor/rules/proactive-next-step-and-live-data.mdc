@@ -5,6 +5,7 @@ alwaysApply: true
 
 # Proactive Execution + Live Data Policy
 
+- **Dedukcja kroków:** jeśli z polecenia lub kontekstu da się wywnioskować sensowne kolejne kroki (np. domknięcie CI po naprawie lintera, commit/push po zakończonej paczce, aktualizacja powiązanych plików), **wykonaj je bez pytania o zgodę**, chyba że użytkownik wyraźnie prosi o wstrzymanie lub samo „tylko zaproponuj”.
 - Always continue to the next logical implementation step without asking for additional approval, unless the user explicitly asks to pause.
 - Optimize for end-to-end delivery in one pass: implement, verify, restart preview if needed, and report outcome.
 - Integrations must be **live-first**:

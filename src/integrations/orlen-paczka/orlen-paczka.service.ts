@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as soap from 'soap';
 
+import { scalarToString } from '../../lib/scalar-string';
 import type { CarrierPoint } from '../../shipping/types/carrier-point';
+
+function rejectAsError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}
 
 /**
  * ORLEN Paczka — API SOAP (WSDL). Izolacja: błędy SOAP nie propagują na resztę aplikacji.
@@ -17,15 +22,20 @@ export class OrlenPaczkaService {
   private wsdlUrl(): string {
     const custom = this.config.get<string>('ORLEN_PACZKA_WSDL_URL')?.trim();
     if (custom) return custom;
-    const useTest = this.config.get<string>('ORLEN_PACZKA_USE_TEST') !== 'false';
+    const useTest =
+      this.config.get<string>('ORLEN_PACZKA_USE_TEST') !== 'false';
     return useTest
       ? 'https://api-test.orlenpaczka.pl/WebServicePwR/WebServicePwR.asmx?WSDL'
       : 'https://api.orlenpaczka.pl/WebServicePwRProd/WebServicePwR.asmx?wsdl';
   }
 
   private credentials(): { partnerId: string; partnerKey: string } | null {
-    const partnerId = this.config.get<string>('ORLEN_PACZKA_PARTNER_ID')?.trim();
-    const partnerKey = this.config.get<string>('ORLEN_PACZKA_PARTNER_KEY')?.trim();
+    const partnerId = this.config
+      .get<string>('ORLEN_PACZKA_PARTNER_ID')
+      ?.trim();
+    const partnerKey = this.config
+      .get<string>('ORLEN_PACZKA_PARTNER_KEY')
+      ?.trim();
     if (!partnerId || !partnerKey) return null;
     return { partnerId, partnerKey };
   }
@@ -53,7 +63,8 @@ export class OrlenPaczkaService {
       const result: unknown = await new Promise((resolve, reject) => {
         (fn as (a: unknown, cb: (e: unknown, r: unknown) => void) => void)(
           args,
-          (err: unknown, r: unknown) => (err ? reject(err) : resolve(r)),
+          (err: unknown, r: unknown) =>
+            err ? reject(rejectAsError(err)) : resolve(r),
         );
       });
       const raw = this.collectPointLikeObjects(result);
@@ -67,7 +78,10 @@ export class OrlenPaczkaService {
     }
   }
 
-  private buildSoapArgs(partnerId: string, partnerKey: string): Record<string, string> {
+  private buildSoapArgs(
+    partnerId: string,
+    partnerKey: string,
+  ): Record<string, string> {
     return {
       PartnerID: partnerId,
       PartnerKey: partnerKey,
@@ -76,10 +90,13 @@ export class OrlenPaczkaService {
 
   private createClient(): Promise<import('soap').Client> {
     return new Promise((resolve, reject) => {
-      soap.createClient(this.wsdlUrl(), (err: unknown, client: import('soap').Client) => {
-        if (err) reject(err);
-        else resolve(client);
-      });
+      soap.createClient(
+        this.wsdlUrl(),
+        (err: unknown, client: import('soap').Client) => {
+          if (err) reject(rejectAsError(err));
+          else resolve(client);
+        },
+      );
     });
   }
 
@@ -106,21 +123,25 @@ export class OrlenPaczkaService {
   }
 
   private normalizeOrlenRow(o: Record<string, unknown>): CarrierPoint | null {
-    const id = String(o['DestinationCode'] ?? o['destinationCode'] ?? '').trim();
+    const id = scalarToString(
+      o['DestinationCode'] ?? o['destinationCode'],
+    ).trim();
     const lat = Number(
-      String(o['Latitude'] ?? o['latitude'] ?? '')
+      scalarToString(o['Latitude'] ?? o['latitude'])
         .replace(',', '.')
         .trim(),
     );
     const lng = Number(
-      String(o['Longitude'] ?? o['longitude'] ?? '')
+      scalarToString(o['Longitude'] ?? o['longitude'])
         .replace(',', '.')
         .trim(),
     );
     if (!id || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    const street = String(o['StreetName'] ?? o['streetName'] ?? '');
-    const city = String(o['City'] ?? o['city'] ?? '');
-    const zip = String(o['ZipCode'] ?? o['PostalCode'] ?? o['postalCode'] ?? '');
+    const street = scalarToString(o['StreetName'] ?? o['streetName']);
+    const city = scalarToString(o['City'] ?? o['city']);
+    const zip = scalarToString(
+      o['ZipCode'] ?? o['PostalCode'] ?? o['postalCode'],
+    );
     return {
       id,
       name: id,
