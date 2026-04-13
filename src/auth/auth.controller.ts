@@ -1,12 +1,16 @@
 import {
+  Body,
   Controller,
   Get,
+  Patch,
   Post,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { ProfilesService } from '../profiles/profiles.service';
+import { NewsletterOptInDto } from './dto/newsletter-opt-in.dto';
+import { PreferredLocaleDto } from './dto/preferred-locale.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -47,5 +51,45 @@ export class AuthController {
       throw new UnauthorizedException();
     }
     return this.profiles.ensureCustomerProfileIfMissing(jwtPayload);
+  }
+
+  /** Zgoda marketingowa (newsletter / oferty). */
+  @Patch('me/newsletter')
+  async patchNewsletter(@Body() dto: NewsletterOptInDto, @Req() req: Request) {
+    const jwtPayload = req.supabaseJwt;
+    if (!jwtPayload) {
+      throw new UnauthorizedException();
+    }
+    await this.profiles.ensureCustomerProfileIfMissing(jwtPayload);
+    const profile = await this.profiles.updateNewsletterOptIn(
+      jwtPayload.sub,
+      dto.optIn,
+    );
+    return { profile };
+  }
+
+  /** Preferowany język UI (np. pl, en). */
+  @Patch('me/locale')
+  async patchLocale(@Body() dto: PreferredLocaleDto, @Req() req: Request) {
+    const jwtPayload = req.supabaseJwt;
+    if (!jwtPayload) {
+      throw new UnauthorizedException();
+    }
+    await this.profiles.ensureCustomerProfileIfMissing(jwtPayload);
+    const profile = await this.profiles.updatePreferredLocale(
+      jwtPayload.sub,
+      dto.locale,
+    );
+    return { profile };
+  }
+
+  /** Eksport danych osobowych (RODO) — JSON. */
+  @Get('me/data-export')
+  async dataExport(@Req() req: Request) {
+    const jwtPayload = req.supabaseJwt;
+    if (!jwtPayload) {
+      throw new UnauthorizedException();
+    }
+    return this.profiles.exportPersonalData(jwtPayload.sub);
   }
 }

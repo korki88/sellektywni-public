@@ -61,6 +61,26 @@ export class MarketService {
    * Komunikat przy niedozwolonym kraju — domyślnie PL (jeden kraj).
    * Przy wielu krajach zwracana jest lista dozwolonych kodów.
    */
+  /**
+   * Waluty pomocnicze do wyświetlania (kurs do waluty głównej), np. `SHOP_DISPLAY_CURRENCIES=EUR:4.25`.
+   * Format: `KOD:kurs` oddzielone przecinkami; kurs = ile jednostek głównej za 1 jednostkę obcą (np. 1 EUR = 4.25 PLN).
+   */
+  displayCurrencies(): Array<{ code: string; rateToPrimary: number }> {
+    const raw = this.config.get<string>('SHOP_DISPLAY_CURRENCIES')?.trim();
+    if (!raw) return [];
+    const out: Array<{ code: string; rateToPrimary: number }> = [];
+    for (const part of raw.split(',')) {
+      const s = part.trim();
+      const m = /^([A-Z]{3}):(\d+(\.\d+)?)$/i.exec(s);
+      if (!m) continue;
+      out.push({
+        code: m[1].toUpperCase(),
+        rateToPrimary: parseFloat(m[2]),
+      });
+    }
+    return out;
+  }
+
   unsupportedShippingCountryMessage(triedCountry: string): string {
     const list = this.supportedCountries();
     if (list.length === 1 && list[0] === 'PL') {

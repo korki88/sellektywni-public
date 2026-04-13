@@ -1,6 +1,12 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CmsModule } from './cms/cms.module';
 import { CoreModule } from './core/core.module';
+import { ExperimentsController } from './experiments/experiments.controller';
+import { ExperimentsModule } from './experiments/experiments.module';
+import { MailModule } from './mail/mail.module';
+import { ScheduledTasksModule } from './notifications/scheduled.module';
 import { AdminController } from './admin/admin.controller';
 import { AdminModule } from './admin/admin.module';
 import { AuthController } from './auth/auth.controller';
@@ -22,10 +28,20 @@ import { StaffModule } from './staff/staff.module';
 import { StaffPromoController } from './staff/staff-promo.controller';
 import { StaffProductsController } from './staff/staff-products.controller';
 import { StaffAnalyticsController } from './staff/staff-analytics.controller';
+import { StaffCmsController } from './staff/staff-cms.controller';
+import { StaffReturnsController } from './staff/staff-returns.controller';
+import { StaffSupportController } from './staff/staff-support.controller';
+import { StaffExperimentsController } from './staff/staff-experiments.controller';
+import { StaffGiftCardsController } from './staff/staff-gift-cards.controller';
+import { StaffReviewsController } from './staff/staff-reviews.controller';
+import { SupportController } from './support/support.controller';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
+    MailModule,
     CoreModule,
     PrismaModule,
     ProfilesModule,
@@ -34,6 +50,10 @@ import { StaffAnalyticsController } from './staff/staff-analytics.controller';
     StaffModule,
     OrderModule,
     ShippingModule,
+    CmsModule,
+    SupportModule,
+    ExperimentsModule,
+    ScheduledTasksModule,
   ],
   providers: [SupabaseJwtMiddleware, LoadProfileMiddleware],
 })
@@ -53,11 +73,23 @@ export class AppModule implements NestModule {
         StaffPermissionsController,
         StaffPromoController,
         StaffAnalyticsController,
+        StaffReturnsController,
+        StaffCmsController,
+        StaffSupportController,
+        StaffExperimentsController,
+        StaffGiftCardsController,
+        StaffReviewsController,
         DotykackaDevController,
         OrderController,
         ShippingController,
       );
 
-    consumer.apply(SupabaseJwtMiddleware).forRoutes(AuthController);
+    consumer
+      .apply(SupabaseJwtMiddleware)
+      .forRoutes(AuthController, ExperimentsController);
+
+    consumer
+      .apply(SupabaseJwtMiddleware, LoadProfileMiddleware)
+      .forRoutes(SupportController);
   }
 }

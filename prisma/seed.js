@@ -4,7 +4,13 @@
  */
 require('dotenv').config();
 
-const { PrismaClient, ProfileRole, ProfileRank, PromoDiscountType } = require('@prisma/client');
+const { randomUUID } = require('crypto');
+const {
+  PrismaClient,
+  ProfileRole,
+  ProfileRank,
+  PromoDiscountType,
+} = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
@@ -35,6 +41,12 @@ function defaultPermissions(role) {
       'manage.dotykacka',
       'manage.permissions',
       'view.analytics',
+      'manage.cms',
+      'manage.support',
+      'manage.experiments',
+      'manage.gift_cards',
+      'manage.catalog',
+      'manage.reviews',
     ];
   }
   if (role === ProfileRole.STAFF) {
@@ -43,6 +55,10 @@ function defaultPermissions(role) {
       'manage.customers',
       'manage.orders',
       'manage.dotykacka',
+      'manage.cms',
+      'manage.support',
+      'manage.catalog',
+      'manage.reviews',
     ];
   }
   return [];
@@ -127,6 +143,75 @@ async function main() {
     });
   }
 
+  const refByEmail = {
+    'admin@dev.local': 'DEVREF-OWNER',
+    'user@dev.local': 'DEVREF-STAFF',
+    'client@dev.local': 'DEVREF-CLIENT',
+  };
+  for (const r of profileRows) {
+    const code = refByEmail[r.email] ?? `DEV${r.userId.replace(/-/g, '').toUpperCase()}`;
+    await prisma.profile.update({
+      where: { userId: r.userId },
+      data: { referralCode: code },
+    });
+  }
+
+  const giftId = randomUUID();
+  await prisma.giftCard.upsert({
+    where: { code: 'GIFT-DEV-100' },
+    create: {
+      id: giftId,
+      code: 'GIFT-DEV-100',
+      balanceAmount: '100.00',
+      initialAmount: '100.00',
+      currency: 'PLN',
+      active: true,
+    },
+    update: {
+      balanceAmount: '100.00',
+      active: true,
+    },
+  });
+
+  await prisma.cmsPage.upsert({
+    where: { slug: 'regulamin' },
+    create: {
+      slug: 'regulamin',
+      title: 'Regulamin sklepu',
+      bodyMarkdown:
+        '# Regulamin\n\nTo treść demonstracyjna CMS. Edytuj w panelu STAFF (`POST /staff/cms/pages`).',
+      published: true,
+      seoTitle: 'Regulamin — SELLEKTYWNI',
+      seoDescription: 'Regulamin sklepu internetowego.',
+    },
+    update: { published: true },
+  });
+
+  await prisma.cmsPage.upsert({
+    where: { slug: 'o-nas' },
+    create: {
+      slug: 'o-nas',
+      title: 'O nas',
+      bodyMarkdown:
+        '# O nas\n\nSklep z wyselekcjonowaną odzieżą — treść przykładowa.',
+      published: true,
+      seoTitle: 'O nas — SELLEKTYWNI',
+      seoDescription: 'Poznaj SELLEKTYWNI.',
+    },
+    update: { published: true },
+  });
+
+  await prisma.experiment.upsert({
+    where: { key: 'checkout_cta' },
+    create: {
+      id: randomUUID(),
+      key: 'checkout_cta',
+      active: true,
+      variants: ['control', 'emphasize_free_shipping'],
+    },
+    update: { active: true },
+  });
+
   await prisma.promoCode.upsert({
     where: { code: 'WELCOME10' },
     create: {
@@ -150,7 +235,9 @@ async function main() {
     },
   });
 
-  console.log('Seed: profile dev-mock (OWNER, STAFF, CUSTOMER) + produkty + kod WELCOME10 OK.');
+  console.log(
+    'Seed: profile + referral + gift GIFT-DEV-100 + CMS + eksperyment + WELCOME10 OK.',
+  );
 }
 
 main()

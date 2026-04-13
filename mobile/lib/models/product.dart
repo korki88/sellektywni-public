@@ -14,6 +14,8 @@ class Product {
     this.stockQty = 1,
     this.reservedQty = 0,
     this.canAddToCart = true,
+    this.subtitle,
+    this.isFeatured = false,
   });
 
   final String id;
@@ -25,11 +27,16 @@ class Product {
   final int stockQty;
   final int reservedQty;
   final bool canAddToCart;
+  /// Krótki podtytuł z API (merchandising).
+  final String? subtitle;
+  final bool isFeatured;
 
   Product copyWith({
     int? stockQty,
     int? reservedQty,
     bool? canAddToCart,
+    String? subtitle,
+    bool? isFeatured,
   }) {
     return Product(
       id: id,
@@ -41,6 +48,8 @@ class Product {
       stockQty: stockQty ?? this.stockQty,
       reservedQty: reservedQty ?? this.reservedQty,
       canAddToCart: canAddToCart ?? this.canAddToCart,
+      subtitle: subtitle ?? this.subtitle,
+      isFeatured: isFeatured ?? this.isFeatured,
     );
   }
 }

@@ -26,6 +26,10 @@ export class DotykackaDevController {
       return { ok: false, message: 'Podaj idDotykacka' };
     }
     this.dotykacka.setDevStock(id, qty);
-    return { ok: true, idDotykacka: id, stockQty: Math.max(0, Math.trunc(qty)) };
+    return {
+      ok: true,
+      idDotykacka: id,
+      stockQty: Math.max(0, Math.trunc(qty)),
+    };
   }
 }

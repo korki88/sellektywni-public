@@ -1,6 +1,13 @@
 import { ProfileRank } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateStaffCustomerDto {
   @IsOptional()
@@ -20,4 +27,10 @@ export class UpdateStaffCustomerDto {
   @IsInt()
   @Min(0)
   addPoints?: number;
+
+  /** Segmentacja (DEFAULT, VIP, CHURN_RISK, …). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  customerSegment?: string;
 }

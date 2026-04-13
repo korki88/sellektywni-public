@@ -47,6 +47,11 @@ enum _MenuId {
   reservations,
   orders,
   shipping,
+  cms,
+  supportDesk,
+  experiments,
+  giftCards,
+  reviews,
   permissions,
   dotykackaDev,
   scanner,
@@ -63,6 +68,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   List<StaffProduct> _queue = [];
   List<StaffOrder> _orders = [];
+  List<Map<String, dynamic>> _returnRequests = [];
   final Set<String> _expandedOrderIds = {};
   List<StaffPermissionUser> _permissionUsers = [];
   List<String> _availablePermissions = [];
@@ -85,6 +91,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _loadingAnalytics = false;
   String? _analyticsError;
   String? _orderStatusFilter;
+  List<Map<String, dynamic>> _cmsPagesStaff = [];
+  bool _loadingCmsStaff = false;
+  List<Map<String, dynamic>> _supportTicketsStaff = [];
+  bool _loadingSupportStaff = false;
+  List<Map<String, dynamic>> _experimentsStaff = [];
+  bool _loadingExperimentsStaff = false;
+  List<Map<String, dynamic>> _giftCardsStaff = [];
+  bool _loadingGiftCardsStaff = false;
+  List<Map<String, dynamic>> _reviewRows = [];
+  bool _loadingReviews = false;
 
   List<_MenuId> _menuForRole(AuthSession auth) {
     final menu = <_MenuId>[];
@@ -102,6 +118,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
     if (auth.hasPermission('manage.orders')) {
       menu.add(_MenuId.shipping);
+    }
+    if (auth.hasPermission('manage.cms')) {
+      menu.add(_MenuId.cms);
+    }
+    if (auth.hasPermission('manage.support')) {
+      menu.add(_MenuId.supportDesk);
+    }
+    if (auth.hasPermission('manage.experiments')) {
+      menu.add(_MenuId.experiments);
+    }
+    if (auth.hasPermission('manage.gift_cards')) {
+      menu.add(_MenuId.giftCards);
+    }
+    if (auth.hasPermission('manage.reviews')) {
+      menu.add(_MenuId.reviews);
     }
     if (auth.hasPermission('manage.permissions')) {
       menu.add(_MenuId.permissions);
@@ -133,6 +164,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return 'Uprawnienia';
       case _MenuId.shipping:
         return 'Dostawy';
+      case _MenuId.cms:
+        return 'CMS';
+      case _MenuId.supportDesk:
+        return 'Zgłoszenia';
+      case _MenuId.experiments:
+        return 'A/B';
+      case _MenuId.giftCards:
+        return 'Karty';
+      case _MenuId.reviews:
+        return 'Opinie';
       case _MenuId.dotykackaDev:
         return 'Dotykačka DEV';
       case _MenuId.scanner:
@@ -160,6 +201,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return selected ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined;
       case _MenuId.shipping:
         return selected ? Icons.local_shipping : Icons.local_shipping_outlined;
+      case _MenuId.cms:
+        return selected ? Icons.article : Icons.article_outlined;
+      case _MenuId.supportDesk:
+        return selected ? Icons.support_agent : Icons.support_agent_outlined;
+      case _MenuId.experiments:
+        return selected ? Icons.science : Icons.science_outlined;
+      case _MenuId.giftCards:
+        return selected ? Icons.redeem : Icons.redeem_outlined;
+      case _MenuId.reviews:
+        return selected ? Icons.rate_review : Icons.rate_review_outlined;
       case _MenuId.dotykackaDev:
         return selected ? Icons.sync_alt : Icons.sync_alt_outlined;
       case _MenuId.scanner:
@@ -211,6 +262,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _loadDotykackaDev();
       case _MenuId.stats:
         _loadAnalytics();
+      case _MenuId.cms:
+        _loadCmsStaff();
+      case _MenuId.supportDesk:
+        _loadSupportStaff();
+      case _MenuId.experiments:
+        _loadExperimentsStaff();
+      case _MenuId.giftCards:
+        _loadGiftCardsStaff();
+      case _MenuId.reviews:
+        _loadReviews();
       default:
         break;
     }
@@ -305,9 +366,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
     });
     try {
       final rows = await _api.fetchOrders(status: _orderStatusFilter);
+      var returns = <Map<String, dynamic>>[];
+      try {
+        returns = await _api.fetchReturnRequests();
+      } on StaffApiException {
+        returns = [];
+      }
       if (!mounted) return;
       setState(() {
         _orders = rows;
+        _returnRequests = returns;
         _loadingOrders = false;
       });
     } on StaffApiException catch (e) {
@@ -398,6 +466,274 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _error = e.toString();
       });
     }
+  }
+
+  Future<void> _loadCmsStaff() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.cms')) return;
+    setState(() {
+      _loadingCmsStaff = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchCmsPagesStaff();
+      if (!mounted) return;
+      setState(() {
+        _cmsPagesStaff = rows;
+        _loadingCmsStaff = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingCmsStaff = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadSupportStaff() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.support')) return;
+    setState(() {
+      _loadingSupportStaff = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchSupportTicketsStaff();
+      if (!mounted) return;
+      setState(() {
+        _supportTicketsStaff = rows;
+        _loadingSupportStaff = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSupportStaff = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadExperimentsStaff() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.experiments')) return;
+    setState(() {
+      _loadingExperimentsStaff = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchExperimentsStaff();
+      if (!mounted) return;
+      setState(() {
+        _experimentsStaff = rows;
+        _loadingExperimentsStaff = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingExperimentsStaff = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadGiftCardsStaff() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.gift_cards')) return;
+    setState(() {
+      _loadingGiftCardsStaff = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchGiftCardsStaff();
+      if (!mounted) return;
+      setState(() {
+        _giftCardsStaff = rows;
+        _loadingGiftCardsStaff = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingGiftCardsStaff = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadReviews() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.reviews')) return;
+    setState(() {
+      _loadingReviews = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchReviewsModeration();
+      if (!mounted) return;
+      setState(() {
+        _reviewRows = rows;
+        _loadingReviews = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingReviews = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _showMerchandisingDialog(StaffProduct p) async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.catalog')) return;
+    final subCtrl = TextEditingController(text: p.subtitle ?? '');
+    var feat = p.isFeatured;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text('Witryna: ${p.name}'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Pokaż w „Polecane” na stronie głównej'),
+                  value: feat,
+                  onChanged: (v) => setLocal(() => feat = v),
+                ),
+                TextField(
+                  controller: subCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Podtytuł na kafelku (opcjonalnie)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+          ],
+        ),
+      ),
+    );
+    final trimmed = subCtrl.text.trim();
+    subCtrl.dispose();
+    if (ok != true || !mounted) return;
+    try {
+      await _api.patchProductMerchandising(
+        p.id,
+        isFeatured: feat,
+        subtitle: trimmed.isEmpty ? null : trimmed,
+      );
+      await _loadQueue();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Zapisano ustawienia witryny.')),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _showOrderStaffNotesDialog(StaffOrder o) async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.orders')) return;
+    Map<String, dynamic>? detail;
+    try {
+      detail = await _api.fetchOrderDetail(o.id);
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      return;
+    }
+    if (!mounted) return;
+    final noteCtrl = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final notesRaw = detail?['staffNotes'];
+        final staffNotes = notesRaw is List
+            ? notesRaw.whereType<Map<String, dynamic>>().toList()
+            : <Map<String, dynamic>>[];
+        final cn = detail?['customerNote']?.toString();
+        return AlertDialog(
+          title: Text('Zamówienie ${o.id.length > 8 ? '${o.id.substring(0, 8)}…' : o.id}'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (cn != null && cn.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Uwagi klienta:\n$cn',
+                        style: Theme.of(ctx).textTheme.bodyMedium,
+                      ),
+                    ),
+                  Text('Notatki zespołu', style: Theme.of(ctx).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  if (staffNotes.isEmpty)
+                    Text(
+                      'Brak notatek.',
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF6B6B6B),
+                          ),
+                    )
+                  else
+                    ...staffNotes.map(
+                      (n) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          '${n['authorEmail'] ?? n['authorUserId'] ?? '—'}: ${n['body']}',
+                          style: Theme.of(ctx).textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Nowa notatka (tylko personel)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij')),
+            FilledButton(
+              onPressed: () async {
+                final t = noteCtrl.text.trim();
+                if (t.isEmpty) return;
+                try {
+                  await _api.postStaffOrderNote(o.id, t);
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx);
+                  await _loadOrders();
+                } on StaffApiException catch (e) {
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              },
+              child: const Text('Dodaj notatkę'),
+            ),
+          ],
+        );
+      },
+    );
+    noteCtrl.dispose();
   }
 
   Future<void> _togglePermission(
@@ -591,30 +927,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _requestScanFocus();
   }
 
-  Widget _buildPlaceholder(String title, String body) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.construction_outlined, size: 48, color: Colors.grey.shade600),
-            const SizedBox(height: 16),
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF6B6B6B),
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   bool _devIntegrationSimulation(BuildContext context) {
     final t = context.read<AuthSession>().accessToken ?? '';
     return AppConfig.useDevMockAuth || t.startsWith(kDevMockTokenPrefix);
@@ -689,8 +1001,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          ...((s['revenueByPaymentMethod'] as List<dynamic>? ?? const [])
-              .map((row) {
+          ...(s['revenueByPaymentMethod'] as List<dynamic>? ?? const [])
+              .map<Widget>((row) {
                 if (row is! Map) return const SizedBox.shrink();
                 final pm = row['paymentMethod']?.toString() ?? '';
                 final tot = row['total']?.toString() ?? '0';
@@ -864,18 +1176,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
           title: 'Role w sklepie',
           lines: const [
             'OWNER — pełny dostęp: analityka, finanse, uprawnienia STAFF, promocje (API staff).',
-            'STAFF — rezerwacje, zamówienia, klienci, Dotykačka dev, wysyłka (wg permissions z bazy).',
+            'STAFF — domyślnie: rezerwacje, zamówienia, klienci, Dotykačka dev, wysyłka, CMS, zgłoszenia. '
+            'OWNER może nadać też A/B, karty podarunkowe i inne uprawnienia (zakładka Uprawnienia).',
             'CUSTOMER — sklep, konto, zamówienia własne (bez panelu staff).',
           ],
         ),
         const SizedBox(height: 12),
         if (auth.isOwner)
-          Card(
-            color: const Color(0xFFE8F0FE),
+          const Card(
+            color: Color(0xFFE8F0FE),
             child: ListTile(
-              leading: const Icon(Icons.admin_panel_settings_outlined),
-              title: const Text('Uprawnienia STAFF'),
-              subtitle: const Text('Edytuj zakładkę „Uprawnienia” w tym panelu — lista permissions z /staff/permissions/users.'),
+              leading: Icon(Icons.admin_panel_settings_outlined),
+              title: Text('Uprawnienia STAFF'),
+              subtitle: Text(
+                'Edytuj zakładkę „Uprawnienia” w tym panelu — lista permissions z /staff/permissions/users.',
+              ),
             ),
           ),
       ],
@@ -937,6 +1252,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
         final p = _queue[i];
+        final auth = context.read<AuthSession>();
+        final canMerch = auth.hasPermission('manage.catalog');
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -972,7 +1289,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         color: const Color(0xFF6B6B6B),
                       ),
                 ),
+                if (p.subtitle != null && p.subtitle!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    p.subtitle!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF6B6B6B),
+                        ),
+                  ),
+                ],
+                if (p.isFeatured) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '· Oznaczone jako „Polecane”',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF795548),
+                        ),
+                  ),
+                ],
                 const SizedBox(height: 12),
+                if (canMerch) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showMerchandisingDialog(p),
+                      icon: const Icon(Icons.storefront_outlined, size: 18),
+                      label: const Text('Merchandising (witryna)'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -1161,6 +1508,60 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_returnRequests.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Wnioski o zwrot (RMA)',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                ..._returnRequests.map((r) {
+                  final id = r['id']?.toString() ?? '';
+                  final st = r['status']?.toString() ?? '';
+                  final reason = r['reason']?.toString() ?? '';
+                  final order = r['order'] as Map<String, dynamic>?;
+                  final oid = order?['id']?.toString() ?? '';
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text('Zamówienie $oid · $st'),
+                      subtitle: Text(reason),
+                      isThreeLine: true,
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (v) async {
+                          try {
+                            await _api.patchReturnRequest(id, status: v);
+                            await _loadOrders();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Status zwrotu: $v')),
+                            );
+                          } on StaffApiException catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())),
+                            );
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'APPROVED', child: Text('Zatwierdź')),
+                          PopupMenuItem(value: 'REJECTED', child: Text('Odrzuć')),
+                          PopupMenuItem(value: 'RECEIVED', child: Text('Przyjęto towar')),
+                          PopupMenuItem(value: 'PENDING', child: Text('Oczekuje')),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Wrap(
@@ -1249,6 +1650,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           color: const Color(0xFF6B6B6B),
                         ),
                   ),
+                  if (o.customerNote != null && o.customerNote!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Uwagi klienta: ${o.customerNote}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF3D4A5C),
+                          ),
+                    ),
+                  ],
+                  if (o.staffNotePreview != null && o.staffNotePreview!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ostatnia notatka: ${o.staffNotePreview}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF6B6B6B),
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     'Płatność: ${paymentMethodLabelPl(o.paymentMethod)} · '
@@ -1319,6 +1740,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _showOrderStaffNotesDialog(o),
+                              icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
+                              label: const Text('Notatki zespołu'),
+                            ),
                             OutlinedButton.icon(
                               onPressed: () => _showDotykackaReceiptDialog(o),
                               icon: const Icon(Icons.receipt_long_outlined, size: 18),
@@ -1400,6 +1826,613 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openCmsEditorDialog({Map<String, dynamic>? existing}) async {
+    final slugCtrl = TextEditingController(text: existing?['slug']?.toString() ?? '');
+    final titleCtrl = TextEditingController(text: existing?['title']?.toString() ?? '');
+    final bodyCtrl = TextEditingController(text: existing?['bodyMarkdown']?.toString() ?? '');
+    final seoTitleCtrl = TextEditingController(text: existing?['seoTitle']?.toString() ?? '');
+    final seoDescCtrl = TextEditingController(text: existing?['seoDescription']?.toString() ?? '');
+    var published = existing?['published'] == true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(existing == null ? 'Nowa strona CMS' : 'Edycja strony CMS'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: slugCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Slug (URL)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Tytuł',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: bodyCtrl,
+                  maxLines: 12,
+                  decoration: const InputDecoration(
+                    labelText: 'Treść (Markdown)',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: const Text('Opublikowana'),
+                  value: published,
+                  onChanged: (v) => setLocal(() => published = v),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: seoTitleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'SEO title (opcj.)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: seoDescCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'SEO description (opcj.)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+          ],
+        ),
+      ),
+    );
+    final slug = slugCtrl.text.trim();
+    final title = titleCtrl.text.trim();
+    final body = bodyCtrl.text.trim();
+    final seoTitle = seoTitleCtrl.text.trim();
+    final seoDesc = seoDescCtrl.text.trim();
+    slugCtrl.dispose();
+    titleCtrl.dispose();
+    bodyCtrl.dispose();
+    seoTitleCtrl.dispose();
+    seoDescCtrl.dispose();
+    if (ok != true || !mounted) return;
+    if (slug.isEmpty || title.isEmpty || body.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Slug, tytuł i treść są wymagane.')),
+      );
+      return;
+    }
+    try {
+      await _api.upsertCmsPage({
+        'slug': slug,
+        'title': title,
+        'bodyMarkdown': body,
+        'published': published,
+        if (seoTitle.isNotEmpty) 'seoTitle': seoTitle,
+        if (seoDesc.isNotEmpty) 'seoDescription': seoDesc,
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Zapisano stronę CMS.')),
+    );
+    await _loadCmsStaff();
+  }
+
+  Future<void> _openExperimentStaffDialog({Map<String, dynamic>? existing}) async {
+    final keyCtrl = TextEditingController(text: existing?['key']?.toString() ?? '');
+    final rawV = existing?['variants'];
+    final initialV = rawV is List
+        ? rawV.map((e) => e.toString()).join(', ')
+        : 'control, variant_b';
+    final varCtrl = TextEditingController(text: initialV);
+    var active = existing?['active'] != false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(existing == null ? 'Nowy eksperyment A/B' : 'Eksperyment A/B'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: keyCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Klucz (np. checkout_cta)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: const Text('Aktywny'),
+                  value: active,
+                  onChanged: (v) => setLocal(() => active = v),
+                ),
+                TextField(
+                  controller: varCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Warianty (po przecinku)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+          ],
+        ),
+      ),
+    );
+    final key = keyCtrl.text.trim();
+    final parts = varCtrl.text
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    keyCtrl.dispose();
+    varCtrl.dispose();
+    if (ok != true || !mounted) return;
+    if (key.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Podaj klucz eksperymentu.')),
+      );
+      return;
+    }
+    try {
+      await _api.upsertExperimentStaff({
+        'key': key,
+        'active': active,
+        'variants': parts,
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Zapisano eksperyment.')),
+    );
+    await _loadExperimentsStaff();
+  }
+
+  Future<void> _openGiftCardCreateDialog() async {
+    final codeCtrl = TextEditingController();
+    final amountCtrl = TextEditingController(text: '100');
+    final expiryCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nowa karta podarunkowa'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: codeCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Kod (puste = automatyczny)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Kwota (PLN)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: expiryCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Wygasa (ISO, opcj.)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Utwórz')),
+        ],
+      ),
+    );
+    final amt = double.tryParse(amountCtrl.text.replaceAll(',', '.')) ?? 0;
+    final code = codeCtrl.text.trim();
+    final exp = expiryCtrl.text.trim();
+    codeCtrl.dispose();
+    amountCtrl.dispose();
+    expiryCtrl.dispose();
+    if (ok != true || !mounted) return;
+    if (amt <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Podaj prawidłową kwotę.')),
+      );
+      return;
+    }
+    try {
+      await _api.createGiftCardStaff({
+        'initialAmount': amt,
+        if (code.isNotEmpty) 'code': code,
+        if (exp.isNotEmpty) 'expiresAtIso': exp,
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Utworzono kartę.')),
+    );
+    await _loadGiftCardsStaff();
+  }
+
+  Widget _buildCmsStaffTab() {
+    if (_loadingCmsStaff) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Treści widoczne w sklepie (regulamin, „O nas” itd.).',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonal(
+            onPressed: () => _openCmsEditorDialog(),
+            child: const Text('Nowa strona'),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_cmsPagesStaff.isEmpty)
+          Text('Brak stron.', style: Theme.of(context).textTheme.bodyMedium)
+        else
+          ..._cmsPagesStaff.map((p) {
+            final slug = p['slug']?.toString() ?? '';
+            final title = p['title']?.toString() ?? slug;
+            final pub = p['published'] == true;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(title),
+                subtitle: Text('$slug · ${pub ? "opublikowana" : "szkic"}'),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: () => _openCmsEditorDialog(existing: p),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildSupportStaffTab() {
+    if (_loadingSupportStaff) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Zgłoszenia od klientów — odpowiedź ustawia status na „odpowiedziano”.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+        const SizedBox(height: 12),
+        if (_supportTicketsStaff.isEmpty)
+          Text('Brak zgłoszeń.', style: Theme.of(context).textTheme.bodyMedium)
+        else
+          ..._supportTicketsStaff.map((t) {
+            final id = t['id']?.toString() ?? '';
+            final subj = t['subject']?.toString() ?? '';
+            final st = t['status']?.toString() ?? '';
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(subj),
+                subtitle: Text('Status: $st · $id'),
+                trailing: const Icon(Icons.reply_outlined),
+                onTap: () => _openSupportReplyDialog(id, subj),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Future<void> _openSupportReplyDialog(String ticketId, String subject) async {
+    final detail = await _api.fetchSupportTicketDetail(ticketId);
+    if (!mounted) return;
+    final replyCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(subject),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (detail != null && detail['messages'] is List) ...[
+                  ...(detail['messages'] as List<dynamic>).map((m) {
+                    if (m is! Map<String, dynamic>) return const SizedBox.shrink();
+                    final body = m['body']?.toString() ?? '';
+                    final staff = m['isStaff'] == true;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Align(
+                        alignment: staff ? Alignment.centerRight : Alignment.centerLeft,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: staff ? const Color(0xFFE3F2FD) : const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(body),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+                const SizedBox(height: 8),
+                TextField(
+                  controller: replyCtrl,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Odpowiedź',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Zamknij')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Wyślij')),
+        ],
+      ),
+    );
+    final text = replyCtrl.text.trim();
+    replyCtrl.dispose();
+    if (ok != true || text.isEmpty || !mounted) return;
+    try {
+      await _api.postSupportStaffReply(ticketId, text);
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Wysłano odpowiedź.')),
+    );
+    await _loadSupportStaff();
+  }
+
+  Widget _buildExperimentsStaffTab() {
+    if (_loadingExperimentsStaff) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Aktywne eksperymenty przydzielają wariant przy pierwszym wejściu użytkownika.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonal(
+            onPressed: () => _openExperimentStaffDialog(),
+            child: const Text('Dodaj / nadpisz eksperyment'),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_experimentsStaff.isEmpty)
+          Text('Brak rekordów.', style: Theme.of(context).textTheme.bodyMedium)
+        else
+          ..._experimentsStaff.map((e) {
+            final key = e['key']?.toString() ?? '';
+            final active = e['active'] == true;
+            final rawV = e['variants'];
+            final vLabel = rawV is List ? rawV.join(', ') : '$rawV';
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            key,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                        Switch(
+                          value: active,
+                          onChanged: (v) async {
+                            try {
+                              await _api.patchExperimentActive(key, v);
+                              await _loadExperimentsStaff();
+                            } on StaffApiException catch (err) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(err.toString())),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Warianty: $vLabel', style: Theme.of(context).textTheme.bodySmall),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => _openExperimentStaffDialog(existing: e),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Edytuj listę wariantów'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildGiftCardsStaffTab() {
+    if (_loadingGiftCardsStaff) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Karty podarunkowe — saldo pomniejszane przy realizacji zamówienia.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonal(
+            onPressed: _openGiftCardCreateDialog,
+            child: const Text('Nowa karta'),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_giftCardsStaff.isEmpty)
+          Text('Brak kart.', style: Theme.of(context).textTheme.bodyMedium)
+        else
+          ..._giftCardsStaff.map((g) {
+            final code = g['code']?.toString() ?? '';
+            final bal = g['balanceAmount']?.toString() ?? '';
+            final act = g['active'] == true;
+            final id = g['id']?.toString() ?? '';
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(code),
+                subtitle: Text('Saldo: $bal PLN'),
+                trailing: Switch(
+                  value: act,
+                  onChanged: (v) async {
+                    try {
+                      await _api.patchGiftCardActive(id, v);
+                      await _loadGiftCardsStaff();
+                    } on StaffApiException catch (err) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(err.toString())),
+                      );
+                    }
+                  },
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildReviewsStaffTab() {
+    if (_loadingReviews) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_reviewRows.isEmpty) {
+      return Center(
+        child: Text(
+          'Brak opinii do wyświetlenia.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: const Color(0xFF6B6B6B),
+              ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _reviewRows.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final r = _reviewRows[i];
+        final id = r['id']?.toString() ?? '';
+        final prod = r['product'];
+        final pname = prod is Map ? prod['name']?.toString() ?? '' : '';
+        final comment = r['comment']?.toString() ?? '';
+        final rating = (r['rating'] as num?)?.toInt() ?? 0;
+        final visible = r['isVisible'] == true;
+        return Card(
+          child: ListTile(
+            title: Text(pname.isEmpty ? 'Produkt' : pname),
+            subtitle: Text(
+              '${'★' * rating.clamp(0, 5).toInt()}  $comment',
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Tooltip(
+              message: 'Widoczna na stronie produktu',
+              child: Switch(
+                value: visible,
+                onChanged: (v) async {
+                  try {
+                    await _api.patchReviewVisibility(id, v);
+                    await _loadReviews();
+                  } on StaffApiException catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString())),
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1777,6 +2810,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return _buildOrdersTab();
       case _MenuId.shipping:
         return _buildShippingTab();
+      case _MenuId.cms:
+        return _buildCmsStaffTab();
+      case _MenuId.supportDesk:
+        return _buildSupportStaffTab();
+      case _MenuId.experiments:
+        return _buildExperimentsStaffTab();
+      case _MenuId.giftCards:
+        return _buildGiftCardsStaffTab();
+      case _MenuId.reviews:
+        return _buildReviewsStaffTab();
       case _MenuId.permissions:
         return _buildPermissionsTab();
       case _MenuId.dotykackaDev:
@@ -1913,6 +2956,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 ),
                               ),
                           ],
+                        ),
+                      ],
+                      if (current == _MenuId.cms) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadCmsStaff,
+                          child: const Text('Odśwież CMS'),
+                        ),
+                      ],
+                      if (current == _MenuId.supportDesk) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadSupportStaff,
+                          child: const Text('Odśwież zgłoszenia'),
+                        ),
+                      ],
+                      if (current == _MenuId.experiments) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadExperimentsStaff,
+                          child: const Text('Odśwież A/B'),
+                        ),
+                      ],
+                      if (current == _MenuId.giftCards) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadGiftCardsStaff,
+                          child: const Text('Odśwież karty'),
+                        ),
+                      ],
+                      if (current == _MenuId.reviews) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadReviews,
+                          child: const Text('Odśwież opinie'),
                         ),
                       ],
                       if (current == _MenuId.permissions) ...[

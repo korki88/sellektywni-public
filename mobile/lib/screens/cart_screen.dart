@@ -100,6 +100,9 @@ class _CartScreenState extends State<CartScreen> {
       shippingTarget: checkout.shippingTarget,
       saveToAddressBook: checkout.saveToAddressBook,
       promoCode: checkout.promoCode,
+      giftCardCode: checkout.giftCardCode,
+      referralCode: checkout.referralCode,
+      customerNote: checkout.customerNote,
     );
     final apiError = order?['_error']?.toString();
     if (order == null || (apiError != null && apiError.isNotEmpty)) {
@@ -135,6 +138,9 @@ class _CartScreenState extends State<CartScreen> {
         Map<String, dynamic> shippingTarget,
         bool saveToAddressBook,
         String? promoCode,
+        String? giftCardCode,
+        String? referralCode,
+        String? customerNote,
       })?> _openCheckoutDialog(BuildContext context, CartNotifier cart) async {
     final options = await cart.fetchCheckoutOptions();
     if (options == null) {
@@ -167,6 +173,9 @@ class _CartScreenState extends State<CartScreen> {
           Map<String, dynamic> shippingTarget,
           bool saveToAddressBook,
           String? promoCode,
+          String? giftCardCode,
+          String? referralCode,
+          String? customerNote,
         })>(
       context: context,
       builder: (ctx) {
@@ -194,6 +203,9 @@ class _CartScreenState extends State<CartScreen> {
         final lockerIdCtrl = TextEditingController();
         final lockerLabelCtrl = TextEditingController();
         final promoCtrl = TextEditingController();
+        final giftCardCtrl = TextEditingController();
+        final referralCtrl = TextEditingController();
+        final customerNoteCtrl = TextEditingController();
         String? selectedSuggestedLockerId;
         final formKey = GlobalKey<FormState>();
         var triedSubmit = false;
@@ -243,6 +255,35 @@ class _CartScreenState extends State<CartScreen> {
                           hintText: 'np. WELCOME10',
                         ),
                         textCapitalization: TextCapitalization.characters,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: giftCardCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Karta podarunkowa (opcjonalnie)',
+                          hintText: 'np. GIFT-DEV-100',
+                        ),
+                        textCapitalization: TextCapitalization.characters,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: referralCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Kod polecający (pierwsze zamówienie)',
+                          hintText: 'np. DEVREF-CLIENT',
+                        ),
+                        textCapitalization: TextCapitalization.characters,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: customerNoteCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Uwagi do zamówienia (opcjonalnie)',
+                          hintText: 'np. dopisek na prezent, informacje o dostawie',
+                          alignLabelWithHint: true,
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       if (addressBook.isNotEmpty) ...[
@@ -474,6 +515,15 @@ class _CartScreenState extends State<CartScreen> {
                     promoCode: promoCtrl.text.trim().isEmpty
                         ? null
                         : promoCtrl.text.trim(),
+                    giftCardCode: giftCardCtrl.text.trim().isEmpty
+                        ? null
+                        : giftCardCtrl.text.trim(),
+                    referralCode: referralCtrl.text.trim().isEmpty
+                        ? null
+                        : referralCtrl.text.trim(),
+                    customerNote: customerNoteCtrl.text.trim().isEmpty
+                        ? null
+                        : customerNoteCtrl.text.trim(),
                   ));
                 },
                 child: const Text('Finalizuj'),

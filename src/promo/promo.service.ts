@@ -26,11 +26,15 @@ export class PromoService {
     if (!code) return null;
     const promo = await this.prisma.promoCode.findUnique({ where: { code } });
     if (!promo || !promo.active) {
-      throw new BadRequestException('Nieprawidłowy lub nieaktywny kod promocyjny.');
+      throw new BadRequestException(
+        'Nieprawidłowy lub nieaktywny kod promocyjny.',
+      );
     }
     const now = new Date();
     if (promo.validFrom && now < promo.validFrom) {
-      throw new BadRequestException('Ten kod promocyjny nie jest jeszcze aktywny.');
+      throw new BadRequestException(
+        'Ten kod promocyjny nie jest jeszcze aktywny.',
+      );
     }
     if (promo.validTo && now > promo.validTo) {
       throw new BadRequestException('Ten kod promocyjny wygasł.');
@@ -41,26 +45,34 @@ export class PromoService {
       );
     }
     if (promo.maxUses != null && promo.usesCount >= promo.maxUses) {
-      throw new BadRequestException('Wykorzystano limit użyć tego kodu promocyjnego.');
+      throw new BadRequestException(
+        'Wykorzystano limit użyć tego kodu promocyjnego.',
+      );
     }
     const userRedemptions = await this.prisma.promoRedemption.count({
       where: { userId, promoCodeId: promo.id },
     });
     if (userRedemptions >= promo.maxUsesPerUser) {
-      throw new BadRequestException('Wykorzystałeś już ten kod przy wcześniejszym zamówieniu.');
+      throw new BadRequestException(
+        'Wykorzystałeś już ten kod przy wcześniejszym zamówieniu.',
+      );
     }
 
     let discount = 0;
     if (promo.discountType === PromoDiscountType.PERCENT) {
       const p = promo.percentOff ? Number(promo.percentOff) : 0;
       if (p <= 0 || p > 100) {
-        throw new BadRequestException('Błędna konfiguracja kodu rabatowego (procent).');
+        throw new BadRequestException(
+          'Błędna konfiguracja kodu rabatowego (procent).',
+        );
       }
       discount = Math.round(subtotal * (p / 100) * 100) / 100;
     } else {
       const f = promo.fixedOff ? Number(promo.fixedOff) : 0;
       if (f <= 0) {
-        throw new BadRequestException('Błędna konfiguracja kodu rabatowego (kwota).');
+        throw new BadRequestException(
+          'Błędna konfiguracja kodu rabatowego (kwota).',
+        );
       }
       discount = Math.min(f, subtotal);
     }

@@ -1,5 +1,12 @@
 import { AddressBookEntryType } from '@prisma/client';
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class UpsertAddressBookEntryDto {
   @IsOptional()

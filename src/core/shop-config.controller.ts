@@ -14,6 +14,7 @@ export class ShopConfigController {
       currency: this.shopMarket.primaryCurrency(),
       locale: this.shopMarket.primaryLocale(),
       supportedCountries: this.shopMarket.supportedCountries(),
+      displayCurrencies: this.shopMarket.displayCurrencies(),
     };
   }
 }

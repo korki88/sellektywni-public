@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CustomerOrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22,7 +26,10 @@ export class StaffOrdersService {
     const status = this.parseOrderStatusFilter(statusFilter);
     const orders = await this.prisma.customerOrder.findMany({
       where: status ? { status } : undefined,
-      include: { items: true },
+      include: {
+        items: true,
+        staffNotes: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -44,6 +51,11 @@ export class StaffOrdersService {
       paymentProvider: o.paymentProvider,
       paymentStatus: o.paymentStatus,
       paymentReference: o.paymentReference,
+      customerNote: o.customerNote,
+      staffNotePreview:
+        o.staffNotes[0]?.body != null
+          ? String(o.staffNotes[0].body).slice(0, 160)
+          : null,
       itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
       items: o.items.map((i) => ({
         productId: i.productId,
@@ -53,6 +65,81 @@ export class StaffOrdersService {
         lineTotal: i.lineTotal,
       })),
     }));
+  }
+
+  async getOrderDetail(orderId: string) {
+    const o = await this.prisma.customerOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        staffNotes: { orderBy: { createdAt: 'asc' } },
+        promoCode: { select: { code: true, label: true } },
+      },
+    });
+    if (!o) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    const authorIds = [...new Set(o.staffNotes.map((n) => n.authorUserId))];
+    const profs = await this.prisma.profile.findMany({
+      where: { userId: { in: authorIds } },
+      select: { userId: true, email: true },
+    });
+    const byUid = new Map(profs.map((p) => [p.userId, p.email]));
+    const cust = await this.prisma.profile.findUnique({
+      where: { userId: o.userId },
+      select: { email: true, userId: true },
+    });
+    return {
+      id: o.id,
+      userId: o.userId,
+      customerEmail: cust?.email ?? null,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      status: o.status,
+      customerNote: o.customerNote,
+      subtotalAmount: o.subtotalAmount,
+      discountAmount: o.discountAmount,
+      totalAmount: o.totalAmount,
+      giftCardDiscountAmount: o.giftCardDiscountAmount,
+      referralDiscountAmount: o.referralDiscountAmount,
+      promoCode: o.promoCode?.code ?? null,
+      paymentMethod: o.paymentMethod,
+      paymentProvider: o.paymentProvider,
+      paymentStatus: o.paymentStatus,
+      paymentReference: o.paymentReference,
+      paymentSessionUrl: o.paymentSessionUrl,
+      shippingMethod: o.shippingMethod,
+      shippingSnapshot: o.shippingSnapshot,
+      items: o.items,
+      staffNotes: o.staffNotes.map((n) => ({
+        id: n.id,
+        body: n.body,
+        createdAt: n.createdAt,
+        authorUserId: n.authorUserId,
+        authorEmail: byUid.get(n.authorUserId) ?? null,
+      })),
+    };
+  }
+
+  async addStaffNote(orderId: string, authorUserId: string, body: string) {
+    const b = body.trim();
+    if (b.length === 0) {
+      throw new BadRequestException('Treść notatki jest wymagana');
+    }
+    const o = await this.prisma.customerOrder.findUnique({
+      where: { id: orderId },
+      select: { id: true },
+    });
+    if (!o) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    return this.prisma.orderStaffNote.create({
+      data: {
+        orderId,
+        authorUserId,
+        body: b.slice(0, 4000),
+      },
+    });
   }
 
   async updateOrderStatus(orderId: string, status: CustomerOrderStatus) {

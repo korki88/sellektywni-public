@@ -4,12 +4,15 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Req,
+  Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import type { Request } from 'express';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { FinalizeOrderDto } from './dto/finalize-order.dto';
@@ -18,6 +21,8 @@ import { UpdateCheckoutPreferencesDto } from './dto/update-checkout-preferences.
 import { UpsertAddressBookEntryDto } from './dto/upsert-address-book-entry.dto';
 import { ProductService } from '../product/product.service';
 import { UpsertProductReviewDto } from './dto/upsert-product-review.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { InvoicePdfService } from './invoice-pdf.service';
 import { OrderService } from './order.service';
 
 @Controller('order')
@@ -25,6 +30,7 @@ export class OrderController {
   constructor(
     private readonly orderService: OrderService,
     private readonly products: ProductService,
+    private readonly invoicePdf: InvoicePdfService,
   ) {}
 
   private userIdFromReq(req: Request): string {
@@ -76,6 +82,47 @@ export class OrderController {
   @Get('my-orders/:orderId')
   myOrderById(@Param('orderId') orderId: string, @Req() req: Request) {
     return this.orderService.getMyOrderById(this.userIdFromReq(req), orderId);
+  }
+
+  @Post('my-orders/:orderId/cancel')
+  cancelMyOrder(@Param('orderId') orderId: string, @Req() req: Request) {
+    return this.orderService.cancelMyOrder(this.userIdFromReq(req), orderId);
+  }
+
+  @Get('my-orders/:orderId/invoice.pdf')
+  @Header('Content-Type', 'application/pdf')
+  async orderInvoicePdf(
+    @Param('orderId') orderId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const buf = await this.invoicePdf.buildOrderInvoicePdf(
+      this.userIdFromReq(req),
+      orderId,
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="zamowienie-${orderId}.pdf"`,
+    );
+    res.send(buf);
+  }
+
+  @Post('my-orders/:orderId/reorder')
+  reorderPayload(@Param('orderId') orderId: string, @Req() req: Request) {
+    return this.orderService.getReorderPayload(
+      this.userIdFromReq(req),
+      orderId,
+    );
+  }
+
+  @Post('returns')
+  createReturn(@Body() dto: CreateReturnRequestDto, @Req() req: Request) {
+    return this.orderService.createReturnRequest(this.userIdFromReq(req), dto);
+  }
+
+  @Get('my-returns')
+  myReturns(@Req() req: Request) {
+    return this.orderService.listMyReturns(this.userIdFromReq(req));
   }
 
   @Get('payments/:orderId')

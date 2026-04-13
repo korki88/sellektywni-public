@@ -6,6 +6,8 @@ class StaffProduct {
     required this.priceRaw,
     required this.status,
     required this.pendingQuantity,
+    this.subtitle,
+    this.isFeatured = false,
   });
 
   final String id;
@@ -14,6 +16,8 @@ class StaffProduct {
   final String priceRaw;
   final String status;
   final int pendingQuantity;
+  final String? subtitle;
+  final bool isFeatured;
 
   factory StaffProduct.fromJson(Map<String, dynamic> j) {
     return StaffProduct(
@@ -23,6 +27,8 @@ class StaffProduct {
       priceRaw: j['price']?.toString() ?? '0',
       status: j['status'] as String? ?? '',
       pendingQuantity: (j['pendingQuantity'] as num?)?.toInt() ?? 1,
+      subtitle: j['subtitle'] as String?,
+      isFeatured: j['isFeatured'] == true,
     );
   }
 }
@@ -73,6 +79,8 @@ class StaffOrder {
     required this.paymentReference,
     required this.itemCount,
     required this.items,
+    this.customerNote,
+    this.staffNotePreview,
   });
 
   final String id;
@@ -88,6 +96,8 @@ class StaffOrder {
   final String? paymentReference;
   final int itemCount;
   final List<StaffOrderItem> items;
+  final String? customerNote;
+  final String? staffNotePreview;
 
   factory StaffOrder.fromJson(Map<String, dynamic> j) {
     return StaffOrder(
@@ -103,6 +113,8 @@ class StaffOrder {
       paymentStatus: j['paymentStatus'] as String? ?? '',
       paymentReference: j['paymentReference'] as String?,
       itemCount: (j['itemCount'] as num?)?.toInt() ?? 0,
+      customerNote: j['customerNote'] as String?,
+      staffNotePreview: j['staffNotePreview'] as String?,
       items: (j['items'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(StaffOrderItem.fromJson)

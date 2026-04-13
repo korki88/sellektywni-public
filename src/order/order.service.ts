@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import {
   AddressBookEntryType,
+  CustomerOrderStatus,
   PaymentMethod,
   PaymentStatus,
   Prisma,
@@ -29,6 +30,7 @@ import { FinalizeOrderDto } from './dto/finalize-order.dto';
 import { SubmitCartDto } from './dto/submit-cart.dto';
 import { UpdateCheckoutPreferencesDto } from './dto/update-checkout-preferences.dto';
 import { UpsertAddressBookEntryDto } from './dto/upsert-address-book-entry.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 
 @Injectable()
 export class OrderService implements OnModuleInit, OnModuleDestroy {
@@ -1000,7 +1002,61 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         promoCodeDisplay = pr.code;
       }
     }
-    const total = Math.round((subtotal - Number(discountAmount)) * 100) / 100;
+
+    let referralDiscount = 0;
+    let referralCodeApplied: string | null = null;
+    if (dto.referralCode?.trim()) {
+      const code = dto.referralCode.trim().toUpperCase();
+      const refProfile = await this.prisma.profile.findUnique({
+        where: { referralCode: code },
+      });
+      if (refProfile && refProfile.userId !== userId) {
+        const prior = await this.prisma.customerOrder.count({
+          where: { userId },
+        });
+        if (prior === 0) {
+          const afterPromo = subtotal - Number(discountAmount);
+          referralDiscount = Math.min(
+            10,
+            Math.round(afterPromo * 0.05 * 100) / 100,
+          );
+          referralCodeApplied = code;
+        }
+      }
+    }
+
+    let giftCardDiscount = 0;
+    let giftCardId: string | null = null;
+    if (dto.giftCardCode?.trim()) {
+      const gc = await this.prisma.giftCard.findFirst({
+        where: {
+          code: dto.giftCardCode.trim().toUpperCase(),
+          active: true,
+        },
+      });
+      if (
+        gc &&
+        (!gc.expiresAt || gc.expiresAt > new Date()) &&
+        Number(gc.balanceAmount) > 0
+      ) {
+        const afterPromoRef =
+          subtotal - Number(discountAmount) - referralDiscount;
+        giftCardDiscount = Math.min(
+          Number(gc.balanceAmount),
+          Math.max(0, afterPromoRef),
+        );
+        giftCardId = gc.id;
+      }
+    }
+
+    const total =
+      Math.round(
+        (subtotal -
+          Number(discountAmount) -
+          referralDiscount -
+          giftCardDiscount) *
+          100,
+      ) / 100;
     if (total < 0) {
       throw new BadRequestException('Kwota zamówienia jest nieprawidłowa.');
     }
@@ -1072,13 +1128,23 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           savedAddressId = createdAddress.id;
         }
       }
+      const note = dto.customerNote?.trim().slice(0, 2000);
       const created = await tx.customerOrder.create({
         data: {
           userId,
           subtotalAmount: new Prisma.Decimal(subtotal.toFixed(2)),
           discountAmount,
           totalAmount: new Prisma.Decimal(total.toFixed(2)),
+          giftCardDiscountAmount: new Prisma.Decimal(
+            giftCardDiscount.toFixed(2),
+          ),
+          referralDiscountAmount: new Prisma.Decimal(
+            referralDiscount.toFixed(2),
+          ),
+          giftCardId: giftCardId ?? undefined,
+          referralCodeApplied: referralCodeApplied ?? undefined,
           promoCodeId: promoId,
+          customerNote: note && note.length > 0 ? note : undefined,
           paymentMethod: dto.paymentMethod,
           paymentProvider: paymentInit.paymentProvider,
           paymentStatus: paymentInit.paymentStatus,
@@ -1116,6 +1182,21 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           where: { id: promoId },
           data: { usesCount: { increment: 1 } },
         });
+      }
+
+      if (giftCardId && giftCardDiscount > 0) {
+        const gcRow = await tx.giftCard.findUnique({
+          where: { id: giftCardId },
+        });
+        if (gcRow) {
+          const newBal = Number(gcRow.balanceAmount) - giftCardDiscount;
+          await tx.giftCard.update({
+            where: { id: giftCardId },
+            data: {
+              balanceAmount: new Prisma.Decimal(Math.max(0, newBal).toFixed(2)),
+            },
+          });
+        }
       }
 
       for (const item of items) {
@@ -1356,8 +1437,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
       status: o.status,
+      customerNote: o.customerNote,
       subtotalAmount: o.subtotalAmount.toString(),
       discountAmount: o.discountAmount.toString(),
+      giftCardDiscountAmount: o.giftCardDiscountAmount.toString(),
+      referralDiscountAmount: o.referralDiscountAmount.toString(),
       totalAmount: o.totalAmount.toString(),
       promoCode: o.promoCode?.code ?? null,
       paymentMethod: o.paymentMethod,
@@ -1394,8 +1478,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
       status: o.status,
+      customerNote: o.customerNote,
       subtotalAmount: o.subtotalAmount.toString(),
       discountAmount: o.discountAmount.toString(),
+      giftCardDiscountAmount: o.giftCardDiscountAmount.toString(),
+      referralDiscountAmount: o.referralDiscountAmount.toString(),
       totalAmount: o.totalAmount.toString(),
       promoCode: o.promoCode?.code ?? null,
       paymentMethod: o.paymentMethod,
@@ -1416,6 +1503,80 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         lineTotal: i.lineTotal,
       })),
     }));
+  }
+
+  /**
+   * Anulowanie przez klienta: wyłącznie przed opłaceniem (jak w Shopify „cancel unpaid”).
+   * Przywraca stan magazynowy i ewentualnie saldo karty / użycie kodu promocyjnego.
+   */
+  async cancelMyOrder(userId: string, orderId: string) {
+    const order = await this.prisma.customerOrder.findFirst({
+      where: { id: orderId, userId },
+      include: {
+        items: true,
+        promoRedemption: true,
+      },
+    });
+    if (!order) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    if (order.status === CustomerOrderStatus.CANCELED) {
+      throw new BadRequestException('Zamówienie jest już anulowane');
+    }
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException(
+        'Nie można anulować opłaconego zamówienia — napisz na obsługę klienta.',
+      );
+    }
+    if (order.status !== CustomerOrderStatus.PLACED) {
+      throw new BadRequestException(
+        'Anulowanie nie jest już dostępne w tym etapie realizacji.',
+      );
+    }
+    await this.prisma.$transaction(async (tx) => {
+      for (const line of order.items) {
+        await tx.product.update({
+          where: { id: line.productId },
+          data: { stockQty: { increment: line.quantity } },
+        });
+      }
+      if (order.giftCardId && Number(order.giftCardDiscountAmount) > 0) {
+        const gc = await tx.giftCard.findUnique({
+          where: { id: order.giftCardId },
+        });
+        if (gc) {
+          const add = Number(order.giftCardDiscountAmount);
+          const next = Number(gc.balanceAmount) + add;
+          await tx.giftCard.update({
+            where: { id: order.giftCardId },
+            data: {
+              balanceAmount: new Prisma.Decimal(next.toFixed(2)),
+            },
+          });
+        }
+      }
+      if (order.promoRedemption) {
+        const pcId = order.promoRedemption.promoCodeId;
+        await tx.promoRedemption.delete({
+          where: { orderId: order.id },
+        });
+        const pc = await tx.promoCode.findUnique({ where: { id: pcId } });
+        if (pc && pc.usesCount > 0) {
+          await tx.promoCode.update({
+            where: { id: pcId },
+            data: { usesCount: { decrement: 1 } },
+          });
+        }
+      }
+      await tx.customerOrder.update({
+        where: { id: order.id },
+        data: {
+          status: CustomerOrderStatus.CANCELED,
+          paymentStatus: PaymentStatus.CANCELED,
+        },
+      });
+    });
+    return { ok: true as const, orderId: order.id };
   }
 
   async listWishlist(userId: string) {
@@ -1458,5 +1619,133 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       where: { userId, productId },
     });
     return { ok: true };
+  }
+
+  /**
+   * Ponowne zamówienie: bieżące ceny i dostępność wg stanu magazynu.
+   */
+  async getReorderPayload(userId: string, orderId: string) {
+    const order = await this.prisma.customerOrder.findFirst({
+      where: { id: orderId, userId },
+      include: { items: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    if (order.status === CustomerOrderStatus.CANCELED) {
+      throw new BadRequestException('Nie można ponowić anulowanego zamówienia');
+    }
+    const lines: Array<{
+      productId: string;
+      name: string;
+      quantityOrdered: number;
+      unitPricePln: string;
+      maxQuantityCanAdd: number;
+      canAddToCart: boolean;
+      skipReason?: string;
+    }> = [];
+    for (const item of order.items) {
+      const snap = await this.productService.getOfferSnapshot(item.productId);
+      if (!snap) {
+        lines.push({
+          productId: item.productId,
+          name: item.name,
+          quantityOrdered: item.quantity,
+          unitPricePln: item.price.toString(),
+          maxQuantityCanAdd: 0,
+          canAddToCart: false,
+          skipReason: 'Produkt został usunięty z oferty',
+        });
+        continue;
+      }
+      const maxQty = snap.canAddToCart ? snap.availableQty : 0;
+      lines.push({
+        productId: snap.id,
+        name: snap.name,
+        quantityOrdered: item.quantity,
+        unitPricePln: snap.price.toString(),
+        maxQuantityCanAdd: maxQty,
+        canAddToCart: snap.canAddToCart && maxQty > 0,
+        skipReason:
+          snap.canAddToCart && maxQty > 0
+            ? undefined
+            : 'Brak dostępności lub produkt zarezerwowany',
+      });
+    }
+    return { orderId: order.id, lines };
+  }
+
+  async createReturnRequest(userId: string, dto: CreateReturnRequestDto) {
+    const order = await this.prisma.customerOrder.findFirst({
+      where: { id: dto.orderId, userId },
+    });
+    if (!order) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    if (order.status === CustomerOrderStatus.CANCELED) {
+      throw new BadRequestException('Zwrot nie dotyczy anulowanych zamówień');
+    }
+    if (order.paymentStatus !== PaymentStatus.PAID) {
+      throw new BadRequestException(
+        'Zwrot możliwy po zaksięgowaniu płatności (status PAID)',
+      );
+    }
+    const allowedStatus: CustomerOrderStatus[] = [
+      CustomerOrderStatus.PROCESSING,
+      CustomerOrderStatus.READY,
+      CustomerOrderStatus.COMPLETED,
+    ];
+    if (!allowedStatus.includes(order.status)) {
+      throw new BadRequestException(
+        'Zwrot możliwy po rozpoczęciu realizacji zamówienia',
+      );
+    }
+    const existing = await this.prisma.returnRequest.findUnique({
+      where: { orderId: order.id },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'Dla tego zamówienia złożono już wniosek o zwrot',
+      );
+    }
+    return this.prisma.returnRequest.create({
+      data: {
+        userId,
+        orderId: order.id,
+        reason: dto.reason.trim(),
+      },
+    });
+  }
+
+  async listMyReturns(userId: string) {
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        order: {
+          select: {
+            id: true,
+            createdAt: true,
+            totalAmount: true,
+            status: true,
+          },
+        },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      orderId: r.orderId,
+      reason: r.reason,
+      status: r.status,
+      staffNote: r.staffNote,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      order: {
+        id: r.order.id,
+        createdAt: r.order.createdAt,
+        status: r.order.status,
+        totalAmount: r.order.totalAmount.toString(),
+      },
+    }));
   }
 }

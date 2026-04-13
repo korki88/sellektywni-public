@@ -10,6 +10,12 @@ Skrypt dopisania (opcjonalnie):
 
 ---
 
+## 2026-04-14 — E-commerce: merchandising, staff, opinie, WWW (`www/app`)
+
+- **API / Prisma:** `customerNote`, `OrderStaffNote`, `Product.subtitle` / `isFeatured`; anulowanie zamówień (nieopłacone); endpointy `staff/orders/:id`, `staff/orders/:id/notes`, `staff/reviews`; uprawnienia `manage.catalog`, `manage.reviews`.
+- **Flutter:** konto (uwagi do zamówienia, anuluj), koszyk (uwagi), strona główna „Polecane”, panel STAFF (opinie, merchandising w kolejce, notatki do zamówień). Statyczny podgląd: `npm run rerun` → `www/app/`.
+- **Sync:** ten wpis + aktualny `sync/`; gałąź **`main-home`** (pisownia „mani-home” = to samo co `main-home`).
+
 ## 2026-04-13 — Sekrety: SECRETS.md, CI, SOPS/age, katalog secrets/
 
 - Dodano **`sync/SECRETS.md`** — GitHub Encrypted Secrets, workflow **SOPS + age**, menedżery haseł; bez commitu plaintext `.env`.

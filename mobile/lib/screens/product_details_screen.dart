@@ -6,7 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../data/product_details.dart';
 import '../models/product.dart';
+import '../platform/document_title.dart';
 import '../providers/auth_session.dart';
+import '../providers/recently_viewed_notifier.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   const ProductDetailsScreen({super.key, required this.product});
@@ -25,6 +27,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
   @override
   void dispose() {
+    setBrowserDocumentTitle('SELLEKTYWNI');
     _commentCtrl.dispose();
     super.dispose();
   }
@@ -32,7 +35,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchReviews());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setBrowserDocumentTitle('${widget.product.name} | SELLEKTYWNI');
+      context.read<RecentlyViewedNotifier>().recordView(widget.product.id);
+      _fetchReviews();
+    });
   }
 
   Future<void> _fetchReviews() async {

@@ -13,14 +13,32 @@ import { StaffPromoController } from './staff-promo.controller';
 import { StaffPromoService } from './staff-promo.service';
 import { StaffAnalyticsController } from './staff-analytics.controller';
 import { StaffAnalyticsService } from './staff-analytics.service';
+import { StaffReturnsController } from './staff-returns.controller';
+import { StaffReturnsService } from './staff-returns.service';
+import { StaffReviewsController } from './staff-reviews.controller';
+import { StaffReviewsService } from './staff-reviews.service';
+import { StaffCmsController } from './staff-cms.controller';
+import { StaffSupportController } from './staff-support.controller';
+import { StaffExperimentsController } from './staff-experiments.controller';
+import { StaffGiftCardsController } from './staff-gift-cards.controller';
+import { StaffGiftCardsService } from './staff-gift-cards.service';
+import { CmsModule } from '../cms/cms.module';
+import { SupportModule } from '../support/support.module';
+import { ExperimentsModule } from '../experiments/experiments.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CmsModule, SupportModule, ExperimentsModule],
   controllers: [
     StaffController,
     StaffProductsController,
     StaffCustomersController,
     StaffOrdersController,
+    StaffReturnsController,
+    StaffCmsController,
+    StaffSupportController,
+    StaffExperimentsController,
+    StaffGiftCardsController,
+    StaffReviewsController,
     StaffPermissionsController,
     StaffPromoController,
     StaffAnalyticsController,
@@ -29,9 +47,12 @@ import { StaffAnalyticsService } from './staff-analytics.service';
     StaffProductsService,
     StaffCustomersService,
     StaffOrdersService,
+    StaffReturnsService,
     StaffPermissionsService,
     StaffPromoService,
     StaffAnalyticsService,
+    StaffGiftCardsService,
+    StaffReviewsService,
   ],
 })
 export class StaffModule {}

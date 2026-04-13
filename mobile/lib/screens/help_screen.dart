@@ -1,11 +1,48 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../config/app_config.dart';
+import '../providers/auth_session.dart';
+import 'cms_page_screen.dart';
 
-/// Pomoc, kontakt, podstawowe zasady (jak w dużych sklepach — jasna ścieżka dla klienta).
-class HelpScreen extends StatelessWidget {
+/// Pomoc, kontakt, podstawowe zasady oraz linki do stron CMS (regulamin, o nas).
+class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
+
+  @override
+  State<HelpScreen> createState() => _HelpScreenState();
+}
+
+class _HelpScreenState extends State<HelpScreen> {
+  String? _apiBaseCached;
+  Future<List<Map<String, dynamic>>>? _cmsFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final b = context.read<AuthSession>().apiBase;
+    if (_apiBaseCached != b) {
+      _apiBaseCached = b;
+      _cmsFuture = _fetchCmsPages(b);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchCmsPages(String apiBase) async {
+    final uri = Uri.parse('$apiBase/cms/pages');
+    try {
+      final r = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (r.statusCode != 200) return const [];
+      final j = jsonDecode(r.body);
+      if (j is! List) return const [];
+      return j.whereType<Map<String, dynamic>>().toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 
   Future<void> _copyEmail(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: AppConfig.shopSupportEmail));
@@ -18,6 +55,7 @@ class HelpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final apiBase = context.watch<AuthSession>().apiBase;
     return Scaffold(
       appBar: AppBar(title: const Text('Pomoc i informacje')),
       body: ListView(
@@ -48,6 +86,61 @@ class HelpScreen extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           Text(
+            'Strony informacyjne',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _cmsFuture ?? _fetchCmsPages(apiBase),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: LinearProgressIndicator(minHeight: 2),
+                );
+              }
+              final pages = snap.data ?? const <Map<String, dynamic>>[];
+              if (pages.isEmpty) {
+                return Text(
+                  'Brak opublikowanych stron CMS (skonfiguruj w panelu).',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF6B6B6B),
+                      ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: pages.map((p) {
+                  final slug = p['slug']?.toString() ?? '';
+                  final title = p['title']?.toString() ?? slug;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: OutlinedButton(
+                      onPressed: slug.isEmpty
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => CmsPageScreen(
+                                    apiBase: apiBase,
+                                    slug: slug,
+                                    titleFallback: title,
+                                  ),
+                                ),
+                              );
+                            },
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(title),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 28),
+          Text(
             'Dostawa i płatności',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
@@ -69,7 +162,7 @@ class HelpScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Konto i logowanie są obsługiwane przez bezpieczny dostawcę uwierzytelniania (Supabase). '
+            'Konto i logowanie są obsługiwane przez bezpiecznego dostawcę uwierzytelniania (Supabase). '
             'Dane zamówień przechowuje sklep w celu realizacji sprzedaży.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF4A4A4A)),
           ),
@@ -91,7 +184,7 @@ class _Bullet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('•  '),
+          Text('• ', style: Theme.of(context).textTheme.bodyLarge),
           Expanded(
             child: Text(
               text,

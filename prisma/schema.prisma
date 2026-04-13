@@ -83,18 +83,131 @@ enum PromoDiscountType {
   FIXED_AMOUNT
 }
 
+enum ReturnRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RECEIVED
+}
+
+enum SupportTicketStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
 /// Profil aplikacji — `userId` = `sub` z JWT Supabase (UUID użytkownika).
 model Profile {
-  userId    String      @id @map("user_id") @db.Uuid
-  email     String?
-  role      ProfileRole @default(CUSTOMER)
-  permissions String[]  @default([])
-  points    Int         @default(0)
-  rank      ProfileRank @default(BRONZE)
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  userId            String      @id @map("user_id") @db.Uuid
+  email             String?
+  role              ProfileRole @default(CUSTOMER)
+  permissions       String[]    @default([])
+  points            Int         @default(0)
+  rank              ProfileRank @default(BRONZE)
+  /// Zgoda marketingowa (newsletter / oferty) — osobno od konta sklepowego.
+  newsletterOptIn   Boolean     @default(false) @map("newsletter_opt_in")
+  /// Preferowany język UI (np. pl, en).
+  preferredLocale   String      @default("pl") @map("preferred_locale")
+  /// Unikalny kod polecający (np. do linku ?ref=).
+  referralCode      String?     @unique @map("referral_code")
+  referredByUserId  String?     @map("referred_by_user_id") @db.Uuid
+  /// Segment marketingowy (DEFAULT, VIP, CHURN_RISK, …).
+  customerSegment   String      @default("DEFAULT") @map("customer_segment")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  referredBy        Profile?    @relation("ProfileReferrals", fields: [referredByUserId], references: [userId], onDelete: SetNull)
+  referrals         Profile[]   @relation("ProfileReferrals")
 
   @@map("profiles")
+}
+
+/// Karta podarunkowa (saldo w PLN).
+model GiftCard {
+  id             String   @id @default(uuid())
+  code           String   @unique
+  balanceAmount  Decimal  @map("balance_amount") @db.Decimal(12, 2)
+  initialAmount  Decimal  @map("initial_amount") @db.Decimal(12, 2)
+  currency       String   @default("PLN")
+  active         Boolean  @default(true)
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  orders         CustomerOrder[]
+
+  @@map("gift_cards")
+}
+
+/// Strona CMS (regulamin, o nas, blog — treść Markdown).
+model CmsPage {
+  id             String   @id @default(uuid())
+  slug           String   @unique
+  title          String
+  bodyMarkdown   String   @map("body_markdown") @db.Text
+  published      Boolean  @default(false)
+  seoTitle       String?  @map("seo_title")
+  seoDescription String?  @map("seo_description") @db.Text
+  seoKeywords    String?  @map("seo_keywords")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("cms_pages")
+}
+
+model SupportTicket {
+  id        String              @id @default(uuid())
+  userId    String              @map("user_id") @db.Uuid
+  subject   String
+  status    SupportTicketStatus @default(OPEN)
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+  messages  SupportMessage[]
+
+  @@index([userId, createdAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id             String        @id @default(uuid())
+  ticketId       String        @map("ticket_id")
+  authorUserId   String?       @map("author_user_id") @db.Uuid
+  body           String        @db.Text
+  isStaff        Boolean       @default(false) @map("is_staff")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  ticket         SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
+}
+
+/// Wysłane przypomnienie o porzuconym koszyku (anty-spam: jedno / user / dzień).
+model AbandonedCartReminder {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id") @db.Uuid
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  @@index([userId, sentAt])
+  @@map("abandoned_cart_reminders")
+}
+
+/// Eksperyment A/B (np. układ koszyka).
+model Experiment {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  active    Boolean  @default(true)
+  variants  Json     @default("[\"control\", \"variant_b\"]")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("experiments")
+}
+
+model ExperimentAssignment {
+  id             String @id @default(uuid())
+  userId         String @map("user_id") @db.Uuid
+  experimentKey  String @map("experiment_key")
+  variant        String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, experimentKey])
+  @@map("experiment_assignments")
 }
 
 /// Produkt zsynchronizowany z Dotykačką (id_dotykacka = identyfikator w chmurze Dotykačka).
@@ -102,9 +215,13 @@ model Product {
   id          String        @id @default(uuid())
   idDotykacka String        @unique @map("id_dotykacka")
   name        String
+  /// Krótki podtytuł na kafelku (jak w Shopify/Woo).
+  subtitle    String?       @db.VarChar(512)
   price       Decimal       @db.Decimal(12, 2)
   stockQty    Int           @default(1) @map("stock_qty")
   status      ProductStatus @default(AVAILABLE)
+  /// Sekcja „Polecane” na stronie głównej.
+  isFeatured  Boolean       @default(false) @map("is_featured")
   reservations ProductReservation[]
   orderItems   CustomerOrderItem[]
   availabilityWatches AvailabilityWatch[]
@@ -154,13 +271,54 @@ model CustomerOrder {
   shippingMethod ShippingMethod   @default(COURIER) @map("shipping_method")
   shippingSnapshot Json           @map("shipping_snapshot")
   saveToAddressBook Boolean       @default(true) @map("save_to_address_book")
+  /// Rabat z karty podarunkowej (w PLN).
+  giftCardDiscountAmount Decimal   @default(0) @map("gift_card_discount_amount") @db.Decimal(12, 2)
+  /// Rabat z programu poleceń (pierwsze zamówienie).
+  referralDiscountAmount Decimal  @default(0) @map("referral_discount_amount") @db.Decimal(12, 2)
+  giftCardId String?              @map("gift_card_id")
+  referralCodeApplied String?      @map("referral_code_applied")
   createdAt   DateTime            @default(now()) @map("created_at")
   updatedAt   DateTime            @updatedAt @map("updated_at")
   items       CustomerOrderItem[]
+  returnRequest ReturnRequest?
+  giftCard    GiftCard?           @relation(fields: [giftCardId], references: [id], onDelete: SetNull)
+  /// Uwagi klienta przy składaniu zamówienia (dostawa, prezent itd.).
+  customerNote String?           @map("customer_note") @db.Text
+  staffNotes   OrderStaffNote[]
 
   @@index([userId, createdAt])
   @@index([promoCodeId])
   @@map("customer_orders")
+}
+
+/// Notatki wewnętrzne personelu (widoczne tylko w panelu staff).
+model OrderStaffNote {
+  id           String          @id @default(uuid())
+  orderId      String          @map("order_id")
+  authorUserId String          @map("author_user_id") @db.Uuid
+  body         String          @db.Text
+  createdAt    DateTime        @default(now()) @map("created_at")
+  order        CustomerOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_staff_notes")
+}
+
+/// Wniosek klienta o zwrot (RMA) — jeden aktywny na zamówienie.
+model ReturnRequest {
+  id        String              @id @default(uuid())
+  userId    String              @map("user_id") @db.Uuid
+  orderId   String              @unique @map("order_id")
+  reason    String              @db.Text
+  status    ReturnRequestStatus @default(PENDING)
+  staffNote String?             @map("staff_note") @db.Text
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+  order     CustomerOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("return_requests")
 }
 
 /// Kody rabatowe — konfiguracja w panelu (staff).

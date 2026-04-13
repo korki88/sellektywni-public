@@ -141,6 +141,83 @@ class StaffApi {
         .toList();
   }
 
+  Future<Map<String, dynamic>> fetchOrderDetail(String orderId) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/orders/${Uri.encodeComponent(orderId)}',
+    );
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is Map<String, dynamic>) return j;
+    return const {};
+  }
+
+  Future<Map<String, dynamic>> postStaffOrderNote(String orderId, String body) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/orders/${Uri.encodeComponent(orderId)}/notes',
+    );
+    final r = await http.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({'body': body}),
+    );
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    return j is Map<String, dynamic> ? j : const {};
+  }
+
+  Future<Map<String, dynamic>> patchProductMerchandising(
+    String productId, {
+    required bool isFeatured,
+    String? subtitle,
+  }) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/products/${Uri.encodeComponent(productId)}/merchandising',
+    );
+    final r = await http.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({
+        'isFeatured': isFeatured,
+        'subtitle': subtitle,
+      }),
+    );
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchReviewsModeration() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/reviews');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>> patchReviewVisibility(String reviewId, bool isVisible) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/reviews/${Uri.encodeComponent(reviewId)}',
+    );
+    final r = await http.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({'isVisible': isVisible}),
+    );
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
   Future<StaffOrder> patchOrderStatus(String orderId, String status) async {
     final uri = Uri.parse('${_session.apiBase}/staff/orders/$orderId/status');
     final r = await http.patch(
@@ -265,6 +342,36 @@ class StaffApi {
     return (availablePermissions: available, users: users);
   }
 
+  Future<List<Map<String, dynamic>>> fetchReturnRequests() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/returns');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final rows = jsonDecode(r.body);
+    if (rows is! List) return const [];
+    return rows.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>> patchReturnRequest(
+    String id, {
+    required String status,
+    String? staffNote,
+  }) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/returns/$id');
+    final body = <String, dynamic>{'status': status};
+    if (staffNote != null) body['staffNote'] = staffNote;
+    final r = await http.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(body),
+    );
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
   Future<StaffPermissionUser> updatePermissions(
     String userId,
     List<String> permissions,
@@ -279,5 +386,140 @@ class StaffApi {
       throw StaffApiException(r.statusCode, r.body);
     }
     return StaffPermissionUser.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+  }
+
+  // --- CMS / support / experiments / gift cards (uprawnienia manage.*) ---
+
+  Future<List<Map<String, dynamic>>> fetchCmsPagesStaff() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/cms/pages');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>> upsertCmsPage(Map<String, dynamic> body) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/cms/pages');
+    final r = await http.post(uri, headers: _headers(), body: jsonEncode(body));
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchSupportTicketsStaff() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/support/tickets');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>?> fetchSupportTicketDetail(String ticketId) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/support/tickets/${Uri.encodeComponent(ticketId)}',
+    );
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode == 404) return null;
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is Map<String, dynamic>) return j;
+    return null;
+  }
+
+  Future<Map<String, dynamic>> postSupportStaffReply(
+    String ticketId,
+    String message,
+  ) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/support/tickets/${Uri.encodeComponent(ticketId)}/messages',
+    );
+    final r = await http.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({'body': message}),
+    );
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchExperimentsStaff() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/experiments');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>> upsertExperimentStaff(Map<String, dynamic> body) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/experiments');
+    final r = await http.post(uri, headers: _headers(), body: jsonEncode(body));
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> patchExperimentActive(String key, bool active) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/experiments/${Uri.encodeComponent(key)}/active',
+    );
+    final r = await http.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({'active': active}),
+    );
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGiftCardsStaff() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/gift-cards');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>> createGiftCardStaff(Map<String, dynamic> body) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/gift-cards');
+    final r = await http.post(uri, headers: _headers(), body: jsonEncode(body));
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> patchGiftCardActive(String id, bool active) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/gift-cards/${Uri.encodeComponent(id)}/active',
+    );
+    final r = await http.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({'active': active}),
+    );
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
   }
 }

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, PromoDiscountType } from '@prisma/client';
 import { normalizePromoCode } from '../promo/promo-code.util';
 import { PrismaService } from '../prisma/prisma.service';
@@ -28,7 +32,9 @@ export class StaffPromoService {
     } else {
       const f = dto.fixedOff ?? 0;
       if (f <= 0) {
-        throw new BadRequestException('fixedOff musi być > 0 dla rabatu kwotowego.');
+        throw new BadRequestException(
+          'fixedOff musi być > 0 dla rabatu kwotowego.',
+        );
       }
     }
     return this.prisma.promoCode.create({
@@ -44,7 +50,9 @@ export class StaffPromoService {
           dto.discountType === PromoDiscountType.FIXED_AMOUNT
             ? new Prisma.Decimal((dto.fixedOff ?? 0).toFixed(2))
             : null,
-        minOrderAmount: new Prisma.Decimal((dto.minOrderAmount ?? 0).toFixed(2)),
+        minOrderAmount: new Prisma.Decimal(
+          (dto.minOrderAmount ?? 0).toFixed(2),
+        ),
         maxUses: dto.maxUses ?? null,
         maxUsesPerUser: dto.maxUsesPerUser ?? 1,
         validFrom: dto.validFrom ? new Date(dto.validFrom) : null,
@@ -69,9 +77,12 @@ export class StaffPromoService {
       data.minOrderAmount = new Prisma.Decimal(dto.minOrderAmount.toFixed(2));
     }
     if (dto.maxUses !== undefined) data.maxUses = dto.maxUses;
-    if (dto.maxUsesPerUser !== undefined) data.maxUsesPerUser = dto.maxUsesPerUser;
-    if (dto.validFrom !== undefined) data.validFrom = dto.validFrom ? new Date(dto.validFrom) : null;
-    if (dto.validTo !== undefined) data.validTo = dto.validTo ? new Date(dto.validTo) : null;
+    if (dto.maxUsesPerUser !== undefined)
+      data.maxUsesPerUser = dto.maxUsesPerUser;
+    if (dto.validFrom !== undefined)
+      data.validFrom = dto.validFrom ? new Date(dto.validFrom) : null;
+    if (dto.validTo !== undefined)
+      data.validTo = dto.validTo ? new Date(dto.validTo) : null;
     if (dto.active !== undefined) data.active = dto.active;
     return this.prisma.promoCode.update({
       where: { id },

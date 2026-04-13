@@ -16,11 +16,47 @@ export class ProductService {
     return Promise.resolve(null);
   }
 
-  async listOffer(opts?: { search?: string }) {
+  /**
+   * Stan oferty dla jednego produktu (jak w listOffer) — używane m.in. przy „ponów zamówienie”.
+   */
+  async getOfferSnapshot(productId: string) {
+    const row = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        reservations: {
+          where: {
+            status: {
+              in: [ReservationStatus.IN_CART, ReservationStatus.PENDING],
+            },
+          },
+          select: { quantity: true },
+        },
+      },
+    });
+    if (!row) return null;
+    const reservedQty = row.reservations.reduce((s, r) => s + r.quantity, 0);
+    const availableQty = Math.max(0, row.stockQty - reservedQty);
+    const forcedReserved =
+      row.status === ProductStatus.RESERVED && availableQty > 0;
+    const canAddToCart = availableQty > 0 && !forcedReserved;
+    return {
+      id: row.id,
+      name: row.name,
+      price: row.price,
+      status: row.status,
+      availableQty,
+      canAddToCart,
+    };
+  }
+
+  async listOffer(opts?: { search?: string; featuredOnly?: boolean }) {
     const q = opts?.search?.trim();
     const where: Prisma.ProductWhereInput = {
       stockQty: { gt: 0 },
     };
+    if (opts?.featuredOnly) {
+      where.isFeatured = true;
+    }
     if (q) {
       where.name = { contains: q, mode: 'insensitive' };
     }
@@ -30,7 +66,9 @@ export class ProductService {
       include: {
         reservations: {
           where: {
-            status: { in: [ReservationStatus.IN_CART, ReservationStatus.PENDING] },
+            status: {
+              in: [ReservationStatus.IN_CART, ReservationStatus.PENDING],
+            },
           },
           select: { quantity: true },
         },
@@ -39,9 +77,12 @@ export class ProductService {
     return products.map(({ reservations, ...p }) => {
       const reservedQty = reservations.reduce((sum, r) => sum + r.quantity, 0);
       const availableQty = Math.max(0, p.stockQty - reservedQty);
-      const forcedReserved = p.status === ProductStatus.RESERVED && availableQty > 0;
+      const forcedReserved =
+        p.status === ProductStatus.RESERVED && availableQty > 0;
       const canAddToCart = availableQty > 0 && !forcedReserved;
-      const visualStatus = canAddToCart ? ProductStatus.AVAILABLE : ProductStatus.RESERVED;
+      const visualStatus = canAddToCart
+        ? ProductStatus.AVAILABLE
+        : ProductStatus.RESERVED;
       return {
         ...p,
         reservedQty,
@@ -86,7 +127,9 @@ export class ProductService {
     rating: number,
     comment?: string,
   ) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
     if (!product) throw new NotFoundException('Produkt nie istnieje');
     const row = await this.prisma.productReview.upsert({
       where: {
