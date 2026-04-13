@@ -23,7 +23,14 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**SELLEKTYWNI.PL** — sklep: backend **NestJS** + **Prisma** + PostgreSQL, klient **Flutter** (`mobile/`), Flutter Web w **`www/app`**, serwowane pod **`/app/`** (patrz `src/main.ts`).
+
+- **Synchronizacja między komputerami, setup, agent AI, dziennik prac:** katalog **[sync/](sync/)** (`AGENT.md`, `RULES.md`, `WORKLOG.md`, szablony `.env`).
+- Po sklonowaniu: skopiuj `.env.example` → `.env`, potem `npm install`, Docker, migracje i seed — szczegóły w [sync/MACHINE_SETUP.md](sync/MACHINE_SETUP.md).
+
+---
+
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository (szablon bazowy CLI).
 
 ## Project setup
 

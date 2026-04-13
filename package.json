@@ -30,7 +30,10 @@
     "dev:reset-db": "docker compose -f docker-compose.local.yml down -v && docker compose -f docker-compose.local.yml up -d postgres",
     "dev:clean": "node scripts/dev-clean.js",
     "dev:bootstrap": "npm run dev:up && npm run prisma:migrate && npm run db:seed",
-    "rerun": "node scripts/rerun.js"
+    "rerun": "node scripts/rerun.js",
+    "sync:log": "node sync/scripts/append-worklog.cjs",
+    "sync:bootstrap:win": "powershell -ExecutionPolicy Bypass -File sync/scripts/bootstrap.ps1",
+    "sync:bootstrap:unix": "bash sync/scripts/bootstrap.sh"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

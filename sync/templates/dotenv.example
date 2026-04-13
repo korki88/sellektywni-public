@@ -1,0 +1,103 @@
+# --- Kopiuj do pliku .env (nie commituj .env) ---
+
+# Postgres lokalny z docker-compose.local.yml
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sellektywni?schema=public"
+PORT=3000
+
+# Frontend Flutter Web (build w www/app, base /app/) — ten sam serwer co API:
+# GET / → przekierowanie na /app/ | statyczne pliki pod /app/
+# Pełny build: w katalogu mobile → npm run rerun (skrypt w repo) albo flutter build web --base-href=/app/ + kopiuj do www/app
+# Przeglądarka: http://localhost:3000/app/ — przy AUTH_DEV_MOCK=true + db:seed działa bez Supabase (Bearer dev-mock:* z API lub preview w app_config)
+
+# ========== WYMAGANE: Supabase (logowanie + JWT) ==========
+# Konto: https://supabase.com — nowy projekt → Settings → API
+# JWT Secret = ten sam sekret, którym Supabase podpisuje tokeny użytkownika (nie anon key!)
+# Przy AUTH_DEV_MOCK może pozostać puste — wtedy działają tylko tokeny dev-mock:* (nie produkcja!)
+SUPABASE_JWT_SECRET=
+
+# Tryb deweloperski: Bearer dev-mock:OWNER | STAFF | CUSTOMER (wymaga npm run db:seed)
+AUTH_DEV_MOCK=true
+
+# Flutter (web / mobile): --dart-define SUPABASE_URL=... SUPABASE_ANON_KEY=... API_BASE_URL=...
+# SUPABASE_URL=https://xxxx.supabase.co
+# SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# API_BASE_URL=http://localhost:3000
+
+# ========== OPCJONALNE: Dotykačka (weryfikacja produktu przy zamówieniu) ==========
+# Bez CLOUD_ID + ACCESS_TOKEN API działa, ale pomija zapytanie do chmury.
+# https://docs.api.dotykacka.cz/
+DOTYKACKA_BASE_URL=https://api.dotykacka.cz/v2
+DOTYKACKA_CLOUD_ID=
+DOTYKACKA_ACCESS_TOKEN=
+
+# ========== OPCJONALNE: powiadomienia (webhook JSON) ==========
+ADMIN_WEBHOOK_URL=
+
+# ========== OPCJONALNE: Przelewy24 (sandbox) ==========
+# https://developers.przelewy24.pl/
+# Przy ustawionych MERCHANT_ID + POS_ID + CRC wywoływany jest POST /trnRegister (prawdziwy token).
+P24_SANDBOX_BASE_URL=https://sandbox.przelewy24.pl
+P24_MERCHANT_ID=
+P24_POS_ID=
+P24_CRC=
+P24_URL_RETURN=http://127.0.0.1:3000/
+P24_URL_STATUS=
+P24_CHECKOUT_EMAIL=checkout@example.com
+
+# ========== OPCJONALNE: Integracje przewoźników ==========
+# InPost / DHL / DPD / Poczta Polska — live-first: najpierw HTTP z API (Bearer), potem fallback.
+INPOST_API_KEY=
+INPOST_ORG_ID=
+INPOST_API_BASE_URL=https://api-shipx-pl.easypack24.net/v1
+# DPD (np. umowny endpoint + GET /lockers wg dokumentacji DPD)
+DPD_API_BASE_URL=
+DPD_API_KEY=
+DPD_LOCKERS_PATH=/lockers
+# DHL
+DHL_API_BASE_URL=
+DHL_API_KEY=
+DHL_PICKUP_PATH=/locations
+# Poczta Polska
+POCZTA_API_BASE_URL=
+POCZTA_POLSKA_API_KEY=
+POCZTA_PICKUP_PATH=/points
+# ORLEN Paczka (SOAP WSDL — dokumentacja: orlenpaczka.pl)
+ORLEN_PACZKA_PARTNER_ID=
+ORLEN_PACZKA_PARTNER_KEY=
+ORLEN_PACZKA_USE_TEST=true
+ORLEN_PACZKA_WSDL_URL=
+ORLEN_PACZKA_SOAP_METHOD=GiveMeAllRUCHWithFilled
+SHIPPING_PROVIDERS_CACHE_TTL_MS=21600000
+SHIPPING_POINTS_CACHE_TTL_MS=900000
+
+# ========== Feature flags (moduły — wyłącz bez zmiany kodu) ==========
+# false / 0 / off — wyłącza dany fragment; reszta aplikacji działa dalej.
+FEATURE_INTEGRATIONS_SHIPPING=true
+FEATURE_SHIPPING_INPOST=true
+FEATURE_ORLEN_PACZKA=true
+FEATURE_SHIPPING_DPD=true
+FEATURE_SHIPPING_DHL=true
+FEATURE_SHIPPING_POCZTA=true
+
+# ========== Local-first (pod przyszłe integracje) ==========
+# Redis (kolejki/cache/rate limiting) — lokalnie: docker-compose.local.yml
+REDIS_URL=redis://localhost:6379
+# S3-compatible storage (np. zdjęcia) — lokalnie: MinIO
+S3_ENDPOINT=http://localhost:9000
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_BUCKET=sellektywni-dev
+# SMTP (mail testowy) — lokalnie: Mailpit UI http://localhost:8025
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASS=
+
+# Tryb dev-mock (Flutter: USE_DEV_MOCK_AUTH=true): konta w mobile/lib/config/dev_mock_accounts.dart
+# — npm run db:seed wypełnia profiles (OWNER/STAFF/CUSTOMER).
+
+# ========== Konto OWNER (tylko do skryptu npm run db:set-role) ==========
+# OWNER_USER_ID=uuid-z-Supabase-Authentication-Users
+# PROFILE_ROLE=OWNER
+# OWNER_EMAIL=twoj@email.pl
