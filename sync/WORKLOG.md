@@ -51,3 +51,7 @@ Skrypt dopisania (opcjonalnie):
 ## 2026-04-13 19:08:08 UTC (auto)
 
 - [agent:cursor-sellekt-7f3a91c2] API /staff/analytics/summary + low-stock; filtr GET /staff/orders?status=; GET /order/my-orders/:id; Flutter: statystyki na żywo, filtr zamówień, HelpScreen + kontakt; sync/AGENT_COORDINATION.md + reguła Cursor
+
+## 2026-04-13 19:12:32 UTC (auto)
+
+- [agent:cursor-sellekt-7f3a91c2] Rynek PL: MarketService, GET /config/market, SHOP_* w .env; Flutter ShopMarketHolder; walidacja krajów

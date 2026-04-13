@@ -268,6 +268,7 @@ model AddressBookEntry {
   recipientName     String?              @map("recipient_name")
   phone             String?
   email             String?
+  /// Domyślny kraj sklepu (PL); pełna lista dozwolonych — `SHOP_SUPPORTED_COUNTRIES` / walidacja w OrderService.
   country           String               @default("PL")
   postalCode        String?              @map("postal_code")
   city              String?

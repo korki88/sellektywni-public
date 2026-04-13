@@ -40,6 +40,10 @@ npm run start:dev
 | Konfiguracja dev-mock | `mobile/lib/config/dev_mock_accounts.dart`, `mobile/lib/config/app_config.dart` |
 | Docker lokalny | `docker-compose.local.yml` |
 
+## Rynek (PL → rozszerzenie)
+
+Domyślnie **Polska** (`SHOP_*` w `.env`, `GET /config/market`). Modułowe dodawanie krajów: [MARKET_AND_LOCALE.md](MARKET_AND_LOCALE.md).
+
 ## Integracje zewnętrzne
 
 - **Dotykačka** — opcjonalna; bez `DOTYKACKA_CLOUD_ID` używane są stany z bazy; dev: `/dotykacka/dev/stock`.

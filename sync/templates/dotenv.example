@@ -18,6 +18,13 @@ SUPABASE_JWT_SECRET=
 # Tryb deweloperski: Bearer dev-mock:OWNER | STAFF | CUSTOMER (wymaga npm run db:seed)
 AUTH_DEV_MOCK=true
 
+# ========== Rynek (domyślnie PL; rozszerzenie modułowe) ==========
+SHOP_MARKET_ID=PL
+SHOP_PRIMARY_COUNTRY=PL
+SHOP_PRIMARY_CURRENCY=PLN
+SHOP_PRIMARY_LOCALE=pl-PL
+# SHOP_SUPPORTED_COUNTRIES=PL,DE
+
 # Flutter (web / mobile): --dart-define SUPABASE_URL=... SUPABASE_ANON_KEY=... API_BASE_URL=...
 # SUPABASE_URL=https://xxxx.supabase.co
 # SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

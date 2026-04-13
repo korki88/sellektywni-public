@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/product_details.dart';
 import '../config/app_config.dart';
+import '../config/shop_market_holder.dart';
 import '../config/shop_catalog.dart';
 import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
@@ -551,7 +552,7 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                   'recipientName': recipientCtrl.text.trim(),
                   'phone': phoneCtrl.text.trim(),
                   'email': emailCtrl.text.trim(),
-                  'country': 'PL',
+                  'country': ShopMarketHolder.countryCode,
                   'postalCode': postalCtrl.text.trim(),
                   'city': cityCtrl.text.trim(),
                   'street': streetCtrl.text.trim(),

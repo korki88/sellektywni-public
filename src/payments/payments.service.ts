@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentMethod, PaymentProvider, PaymentStatus } from '@prisma/client';
 import { createHash } from 'crypto';
 import { firstValueFrom } from 'rxjs';
+import { MarketService } from '../core/market/market.service';
 
 type InitPaymentInput = {
   paymentMethod: PaymentMethod;
@@ -20,6 +21,7 @@ export class PaymentsService {
   constructor(
     private readonly config: ConfigService,
     private readonly http: HttpService,
+    private readonly market: MarketService,
   ) {}
 
   async initializePayment(input: InitPaymentInput): Promise<{
@@ -42,7 +44,7 @@ export class PaymentsService {
           accountHolder: 'SELLEKTYWNI.PL DEV PAYMENTS',
           title: `Zamówienie ${reference}`,
           amount: input.totalAmount.toFixed(2),
-          currency: 'PLN',
+          currency: this.market.primaryCurrency(),
           mode: 'dev-simulation',
         },
       };
@@ -56,7 +58,7 @@ export class PaymentsService {
         paymentBankAccount: null,
         paymentDetails: {
           note: 'Płatność przy odbiorze',
-          currency: 'PLN',
+          currency: this.market.primaryCurrency(),
         },
       };
     }
@@ -98,7 +100,7 @@ export class PaymentsService {
             provider: 'Przelewy24',
             providerMode: 'live-register',
             amount: input.totalAmount.toFixed(2),
-            currency: 'PLN',
+            currency: this.market.primaryCurrency(),
             customerId: input.userId,
           },
         };
@@ -122,7 +124,7 @@ export class PaymentsService {
           ? 'Sprawdź CRC, POS ID i URL zwrotu (P24_URL_RETURN).'
           : 'Ustaw P24_MERCHANT_ID, P24_POS_ID i P24_CRC aby włączyć rejestrację trnRegister.',
         amount: input.totalAmount.toFixed(2),
-        currency: 'PLN',
+        currency: this.market.primaryCurrency(),
         customerId: input.userId,
       },
     };
@@ -152,7 +154,7 @@ export class PaymentsService {
     if (!sessionId) return null;
     const amount = Math.round(opts.amountPln * 100);
     if (amount <= 0) return null;
-    const currency = 'PLN';
+    const currency = this.market.primaryCurrency();
     const sign = createHash('md5')
       .update(
         `${sessionId}|${opts.merchantId}|${amount}|${currency}|${opts.crc}`,
@@ -167,7 +169,7 @@ export class PaymentsService {
       p24_currency: currency,
       p24_description: opts.description.slice(0, 1024),
       p24_email: opts.email,
-      p24_country: 'PL',
+      p24_country: this.market.primaryCountryCode(),
       p24_url_return: opts.returnUrl,
       p24_api_version: '3.2',
       p24_sign: sign,

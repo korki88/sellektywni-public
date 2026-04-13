@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { catchError, firstValueFrom } from 'rxjs';
 
 import { FeatureFlagsService } from '../core/feature-flags.service';
+import { MarketService } from '../core/market/market.service';
 import { OrlenPaczkaService } from '../integrations/orlen-paczka/orlen-paczka.service';
 import { scalarToString } from '../lib/scalar-string';
 import type { CarrierPoint } from './types/carrier-point';
@@ -141,6 +142,7 @@ export class ShippingService {
     private readonly config: ConfigService,
     private readonly flags: FeatureFlagsService,
     private readonly orlenPaczka: OrlenPaczkaService,
+    private readonly market: MarketService,
   ) {}
 
   private providersCacheTtlMs() {
@@ -746,7 +748,7 @@ export class ShippingService {
     return {
       providerCode: input.providerCode,
       shipmentType: input.shipmentType,
-      currency: 'PLN',
+      currency: this.market.primaryCurrency(),
       price: freeShipping ? 0 : Number((base + surcharge).toFixed(2)),
       freeShippingThreshold: 350,
       estimatedDays: input.shipmentType === 'PARCEL_LOCKER' ? '1-2' : '1-3',

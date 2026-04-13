@@ -41,6 +41,9 @@ Zasady wynikające z polecenia właściciela projektu oraz ustalenia techniczne.
 13. **Wiele agentów — identyfikator i gałąź**  
     Każdy agent ustala **własny unikalny `AGENT_ID`** i preferowaną gałąź roboczą; wpisuje się w **[AGENT_COORDINATION.md](AGENT_COORDINATION.md)** i oznacza wpisy w **`WORKLOG.md`** (`[agent:…]`), żeby praca się nie nakładała. Reguła Cursor: **`.cursor/rules/agent-coordination.mdc`**.
 
+14. **Rynek i locale**  
+    Domyślny rynek to **Polska** (`SHOP_*` w `.env`). Przy dodawaniu krajów stosuj **[MARKET_AND_LOCALE.md](MARKET_AND_LOCALE.md)** — konfiguracja, `GET /config/market`, osobne moduły płatności/wysyłki tam, gdzie wymagają tego przepisy lub operatorzy.
+
 ## Aktualizacja tych zasad
 
 Zmiany w `RULES.md` commituj razem z uzasadnieniem w `WORKLOG.md`.

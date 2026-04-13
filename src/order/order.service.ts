@@ -16,6 +16,7 @@ import {
   ReservationStatus,
   ShippingMethod,
 } from '@prisma/client';
+import { MarketService } from '../core/market/market.service';
 import { DotykackaService } from '../dotykacka/dotykacka.service';
 import { AdminNotificationService } from '../notification/admin-notification.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -45,6 +46,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     private readonly adminNotification: AdminNotificationService,
     private readonly payments: PaymentsService,
     private readonly shipping: ShippingService,
+    private readonly market: MarketService,
   ) {}
 
   private normalizeOwnerKey(ownerKey?: string): string {
@@ -166,7 +168,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       recipientName: input.recipientName?.trim() || null,
       phone: input.phone?.trim() || null,
       email: input.email?.trim() || null,
-      country: (input.country?.trim() || 'PL').toUpperCase(),
+      country: (
+        input.country?.trim() || this.market.primaryCountryCode()
+      ).toUpperCase(),
       postalCode: input.postalCode?.trim() || null,
       city: input.city?.trim() || null,
       street: input.street?.trim() || null,
@@ -175,9 +179,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       parcelLockerId: input.parcelLockerId?.trim() || null,
       parcelLockerLabel: input.parcelLockerLabel?.trim() || null,
     };
-    if (out.country !== 'PL') {
+    if (!this.market.isCountrySupported(out.country)) {
       throw new BadRequestException(
-        'Obecnie obsługujemy wyłącznie wysyłkę na terenie Polski.',
+        this.market.unsupportedShippingCountryMessage(out.country),
       );
     }
     if (!out.phone) {

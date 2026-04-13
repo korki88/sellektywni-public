@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../config/shop_market_holder.dart';
 import 'auth_storage.dart';
 import '../config/dev_mock_accounts.dart';
 
@@ -104,6 +105,7 @@ class AuthSession extends ChangeNotifier {
     } catch (_) {
       _apiBase = AuthSession.defaultApiBase;
     }
+    unawaited(ShopMarketHolder.refresh(_apiBase));
     _applyPreviewRoleFromUrlIfAny();
     _ready = true;
     notifyListeners();
@@ -134,6 +136,7 @@ class AuthSession extends ChangeNotifier {
     if (v.isEmpty) return;
     _apiBase = v.endsWith('/') ? v.substring(0, v.length - 1) : v;
     await authStorageSetApiBase(_apiBase);
+    unawaited(ShopMarketHolder.refresh(_apiBase));
     notifyListeners();
   }
 

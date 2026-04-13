@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../config/shop_market_holder.dart';
 import '../providers/catalog_filter_notifier.dart';
 import '../providers/cart_notifier.dart';
 
@@ -463,7 +464,7 @@ class _CartScreenState extends State<CartScreen> {
                     addIfNotEmpty('apartmentNumber', apartmentCtrl.text);
                     addIfNotEmpty('parcelLockerId', lockerIdCtrl.text);
                     addIfNotEmpty('parcelLockerLabel', lockerLabelCtrl.text);
-                    shippingTarget['country'] = 'PL';
+                    shippingTarget['country'] = ShopMarketHolder.countryCode;
                   }
                   Navigator.of(ctx).pop((
                     paymentMethod: selectedPayment,
