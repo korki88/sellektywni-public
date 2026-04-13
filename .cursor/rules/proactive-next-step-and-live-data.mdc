@@ -14,3 +14,4 @@ alwaysApply: true
   - choose TTL based on business criticality and expected volatility;
   - refresh periodically or on-demand to keep UX fast and data current.
 - If live provider call fails, use graceful fallback (cached data or safe default) and never block core checkout/order flows.
+- **Git:** po zakończonej pracy ze zmianami w kodzie — `git commit` ( sensowny opis ) i **`git push`** na odpowiedni branch, chyba że użytkownik wyraźnie prosi o niepchanie zmian.
