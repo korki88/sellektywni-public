@@ -103,4 +103,3 @@ class WishlistNotifier extends ChangeNotifier {
     }
   }
 }
-

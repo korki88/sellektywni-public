@@ -16,12 +16,16 @@ import { FinalizeOrderDto } from './dto/finalize-order.dto';
 import { SubmitCartDto } from './dto/submit-cart.dto';
 import { UpdateCheckoutPreferencesDto } from './dto/update-checkout-preferences.dto';
 import { UpsertAddressBookEntryDto } from './dto/upsert-address-book-entry.dto';
+import { ProductService } from '../product/product.service';
 import { UpsertProductReviewDto } from './dto/upsert-product-review.dto';
 import { OrderService } from './order.service';
 
 @Controller('order')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly products: ProductService,
+  ) {}
 
   private userIdFromReq(req: Request): string {
     const userId = req.supabaseJwt?.sub;
@@ -161,7 +165,7 @@ export class OrderController {
 
   @Post('reviews')
   upsertReview(@Body() dto: UpsertProductReviewDto, @Req() req: Request) {
-    return this.orderService.upsertProductReview(
+    return this.products.addProductReview(
       this.userIdFromReq(req),
       dto.productId,
       dto.rating,

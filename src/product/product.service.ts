@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ProductStatus, ReservationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -53,23 +53,26 @@ export class ProductService {
   }
 
   async listPublicReviews(productId: string) {
-    const rows = await this.prisma.productReview.findMany({
-      where: { productId, isVisible: true },
-      orderBy: { createdAt: 'desc' },
-      take: 80,
-      select: {
-        id: true,
-        userId: true,
-        rating: true,
-        comment: true,
-        createdAt: true,
-      },
-    });
-    const summary = await this.prisma.productReview.aggregate({
-      where: { productId, isVisible: true },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
+    const where = { productId, isVisible: true };
+    const [rows, summary] = await Promise.all([
+      this.prisma.productReview.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 80,
+        select: {
+          id: true,
+          userId: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.productReview.aggregate({
+        where,
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+    ]);
     return {
       averageRating: summary._avg.rating,
       reviewCount: summary._count._all,
@@ -83,9 +86,6 @@ export class ProductService {
     rating: number,
     comment?: string,
   ) {
-    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-      throw new BadRequestException('Ocena musi być w skali 1–5.');
-    }
     const product = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw new NotFoundException('Produkt nie istnieje');
     const row = await this.prisma.productReview.upsert({

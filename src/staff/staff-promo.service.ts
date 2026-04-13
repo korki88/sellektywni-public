@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, PromoDiscountType } from '@prisma/client';
+import { normalizePromoCode } from '../promo/promo-code.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePromoDto } from './dto/create-promo.dto';
 import { PatchPromoDto } from './dto/patch-promo.dto';
@@ -8,10 +9,6 @@ import { PatchPromoDto } from './dto/patch-promo.dto';
 export class StaffPromoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private normalizeCode(code: string): string {
-    return code.trim().toUpperCase();
-  }
-
   list() {
     return this.prisma.promoCode.findMany({
       orderBy: { createdAt: 'desc' },
@@ -19,7 +16,7 @@ export class StaffPromoService {
   }
 
   async create(dto: CreatePromoDto) {
-    const code = this.normalizeCode(dto.code);
+    const code = normalizePromoCode(dto.code);
     if (!code) {
       throw new BadRequestException('Podaj kod.');
     }

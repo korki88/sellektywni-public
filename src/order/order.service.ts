@@ -944,6 +944,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
 
     let discountAmount = new Prisma.Decimal(0);
     let promoId: string | null = null;
+    let promoCodeDisplay: string | null = null;
     if (dto.promoCode?.trim()) {
       const pr = await this.promoService.computeDiscountForSubtotal(
         dto.promoCode,
@@ -953,6 +954,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       if (pr) {
         discountAmount = pr.discountAmount;
         promoId = pr.promoId;
+        promoCodeDisplay = pr.code;
       }
     }
     const total = Math.round((subtotal - Number(discountAmount)) * 100) / 100;
@@ -1105,13 +1107,6 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       return created;
     });
 
-    const promoSnapshot = promoId
-      ? await this.prisma.promoCode.findUnique({
-          where: { id: promoId },
-          select: { code: true },
-        })
-      : null;
-
     return {
       id: order.id,
       createdAt: order.createdAt,
@@ -1120,7 +1115,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       discountAmount: order.discountAmount,
       totalAmount: order.totalAmount,
       promoCodeId: order.promoCodeId,
-      promoCode: promoSnapshot?.code ?? null,
+      promoCode: promoCodeDisplay,
       paymentMethod: order.paymentMethod,
       paymentProvider: order.paymentProvider,
       paymentStatus: order.paymentStatus,
@@ -1366,12 +1361,4 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
-  async upsertProductReview(
-    userId: string,
-    productId: string,
-    rating: number,
-    comment?: string,
-  ) {
-    return this.productService.addProductReview(userId, productId, rating, comment);
-  }
 }

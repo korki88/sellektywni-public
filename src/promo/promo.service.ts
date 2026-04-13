@@ -1,20 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, PromoDiscountType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizePromoCode } from './promo-code.util';
 
 export type PromoApplyResult = {
   promoId: string;
-  codeNormalized: string;
+  /** Kod do wyświetlenia (jak w bazie). */
+  code: string;
   discountAmount: Prisma.Decimal;
 };
 
 @Injectable()
 export class PromoService {
   constructor(private readonly prisma: PrismaService) {}
-
-  normalizeCode(raw: string): string {
-    return raw.trim().toUpperCase();
-  }
 
   /**
    * Oblicza kwotę rabatu (bez modyfikacji bazy). subtotal — suma pozycji przed rabatem.
@@ -24,7 +22,7 @@ export class PromoService {
     userId: string,
     subtotal: number,
   ): Promise<PromoApplyResult | null> {
-    const code = this.normalizeCode(codeRaw);
+    const code = normalizePromoCode(codeRaw);
     if (!code) return null;
     const promo = await this.prisma.promoCode.findUnique({ where: { code } });
     if (!promo || !promo.active) {
@@ -66,7 +64,6 @@ export class PromoService {
       }
       discount = Math.min(f, subtotal);
     }
-    discount = Math.min(discount, subtotal);
     discount = Math.round(discount * 100) / 100;
     if (discount <= 0) {
       throw new BadRequestException('Rabat z tego kodu wynosi 0 zł.');
@@ -74,7 +71,7 @@ export class PromoService {
 
     return {
       promoId: promo.id,
-      codeNormalized: promo.code,
+      code: promo.code,
       discountAmount: new Prisma.Decimal(discount.toFixed(2)),
     };
   }

@@ -109,8 +109,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final reviews = (_reviewsPayload?['reviews'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .toList();
-    final avg = _reviewsPayload?['averageRating'];
-    final count = _reviewsPayload?['reviewCount'];
+    final reviewCount = (_reviewsPayload?['reviewCount'] as num?)?.toInt() ?? 0;
+    final avgRaw = _reviewsPayload?['averageRating'];
+    final avgNum = avgRaw is num ? avgRaw.toDouble() : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Karta produktu')),
@@ -163,9 +164,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else ...[
-            if (avg != null && count != null && (count as num) > 0)
+            if (reviewCount > 0 && avgNum != null)
               Text(
-                'Średnia: ${(avg as num).toStringAsFixed(1)} / 5 · $count opinii',
+                'Średnia: ${avgNum.toStringAsFixed(1)} / 5 · $reviewCount opinii',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -179,10 +180,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               ),
             const SizedBox(height: 8),
             ...reviews.map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('• ${r['rating']}/5 ${(r['comment'] ?? '').toString().trim()}'),
-              ),
+              (r) {
+                final c = (r['comment'] as String?)?.trim() ?? '';
+                final line = c.isEmpty
+                    ? '• ${r['rating']}/5'
+                    : '• ${r['rating']}/5 — $c';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(line),
+                );
+              },
             ),
           ],
           const SizedBox(height: 12),
