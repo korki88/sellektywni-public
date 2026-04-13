@@ -6,12 +6,12 @@ export class ShippingController {
   constructor(private readonly shipping: ShippingService) {}
 
   @Get('providers')
-  providers() {
+  async providers() {
     return this.shipping.listProviders();
   }
 
   @Get('points/inpost')
-  inpostPoints(
+  async inpostPoints(
     @Query('postalCode') postalCode?: string,
     @Query('city') city?: string,
     @Query('lat') lat?: string,
@@ -19,6 +19,74 @@ export class ShippingController {
     @Query('limit') limit?: string,
   ) {
     return this.shipping.findInpostPoints({
+      postalCode: postalCode?.trim(),
+      city: city?.trim(),
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get('points/dpd')
+  async dpdPoints(
+    @Query('postalCode') postalCode?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.shipping.findDpdPoints({
+      postalCode: postalCode?.trim(),
+      city: city?.trim(),
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get('points/dhl')
+  async dhlPoints(
+    @Query('postalCode') postalCode?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.shipping.findDhlPoints({
+      postalCode: postalCode?.trim(),
+      city: city?.trim(),
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get('points/poczta')
+  async pocztaPoints(
+    @Query('postalCode') postalCode?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.shipping.findPocztaPoints({
+      postalCode: postalCode?.trim(),
+      city: city?.trim(),
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get('points/suggest')
+  async suggestPoints(
+    @Query('postalCode') postalCode?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.shipping.suggestPickupPoints({
       postalCode: postalCode?.trim(),
       city: city?.trim(),
       lat: lat ? Number(lat) : undefined,

@@ -1,0 +1,16 @@
+---
+description: Proactive next steps and live-data-first integrations
+alwaysApply: true
+---
+
+# Proactive Execution + Live Data Policy
+
+- Always continue to the next logical implementation step without asking for additional approval, unless the user explicitly asks to pause.
+- Optimize for end-to-end delivery in one pass: implement, verify, restart preview if needed, and report outcome.
+- Integrations must be **live-first**:
+  - if provider exposes API data (prices, points, coverage, statuses), fetch from provider online instead of hardcoding in DB;
+  - use local cache only as an optimization layer, not as a source of truth by default.
+- For heavy endpoints, apply pragmatic caching:
+  - choose TTL based on business criticality and expected volatility;
+  - refresh periodically or on-demand to keep UX fast and data current.
+- If live provider call fails, use graceful fallback (cached data or safe default) and never block core checkout/order flows.

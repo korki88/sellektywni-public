@@ -825,16 +825,21 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const defaultTarget = recentTargets[0]?.shippingTarget as
       | { postalCode?: string; city?: string }
       | undefined;
-    const suggestedInpostPoints = this.shipping.findInpostPoints({
-      postalCode: defaultTarget?.postalCode,
-      city: defaultTarget?.city,
-      limit: 8,
-    });
+    const [suggestedPickupPoints, shippingProviders] = await Promise.all([
+      this.shipping.suggestPickupPoints({
+        postalCode: defaultTarget?.postalCode,
+        city: defaultTarget?.city,
+        limit: 8,
+      }),
+      this.shipping.listProviders(),
+    ]);
+    const suggestedInpostPoints = suggestedPickupPoints.INPOST;
     return {
       paymentMethods: Object.values(PaymentMethod),
       shippingMethods: Object.values(ShippingMethod),
-      shippingProviders: this.shipping.listProviders(),
+      shippingProviders,
       suggestedInpostPoints,
+      suggestedPickupPoints,
       addressBook,
       defaults,
       recentTargets,

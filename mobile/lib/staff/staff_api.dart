@@ -197,6 +197,29 @@ class StaffApi {
         .toList();
   }
 
+  /// Wszystkie przewoźnicy naraz (InPost live + DPD/DHL/Poczta gdy skonfigurowane).
+  Future<Map<String, dynamic>> fetchShippingPointsSuggest({
+    String? postalCode,
+    String? city,
+  }) async {
+    final query = <String, String>{};
+    if (postalCode != null && postalCode.trim().isNotEmpty) {
+      query['postalCode'] = postalCode.trim();
+    }
+    if (city != null && city.trim().isNotEmpty) {
+      query['city'] = city.trim();
+    }
+    final uri = Uri.parse('${_session.apiBase}/shipping/points/suggest')
+        .replace(queryParameters: query.isEmpty ? null : query);
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is Map<String, dynamic>) return j;
+    return <String, dynamic>{};
+  }
+
   Future<({List<String> availablePermissions, List<StaffPermissionUser> users})>
       fetchPermissionUsers() async {
     final uri = Uri.parse('${_session.apiBase}/staff/permissions/users');

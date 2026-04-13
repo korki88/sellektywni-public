@@ -151,21 +151,34 @@ Checkout obsługuje provider `PRZELEWY24` dla metod online (`BLIK`, `CARD_ONLINE
 |---------|------|
 | `P24_SANDBOX_BASE_URL` | Domyślnie `https://sandbox.przelewy24.pl` |
 | `P24_MERCHANT_ID` | ID merchanta sandbox/produkcyjnego |
-| `P24_POS_ID` | POS ID (jeśli wymagany przez konto) |
+| `P24_POS_ID` | POS ID (jeśli wymagany przez konto; często jak `MERCHANT_ID`) |
 | `P24_CRC` | CRC key do podpisu transakcji |
+| `P24_URL_RETURN` | URL powrotu po płatności (wymagany przy rejestracji `trnRegister`) |
+| `P24_URL_STATUS` | Opcjonalny URL powiadomień (status) |
+| `P24_CHECKOUT_EMAIL` | E-mail przekazywany do P24 przy rejestracji |
 
-Bez kluczy API działa w trybie **sandbox-simulation** (link sesji + status `PENDING`), co pozwala testować pełny flow paneli i checkoutu lokalnie.
+**Live-first:** gdy ustawione są `P24_MERCHANT_ID`, `P24_POS_ID` i `P24_CRC`, backend wykonuje **POST `/trnRegister`** (formularz, podpis MD5 wg dokumentacji), otrzymuje `token` i zwraca prawdziwy link `.../trnRequest/{token}`. Przy błędzie rejestracji następuje bezpieczny fallback (symulacja), aby nie blokować checkoutu.
+
+Bez kluczy API działa w trybie **sandbox-simulation** (link bez prawdziwego tokenu + status `PENDING`), co pozwala testować pełny flow paneli i checkoutu lokalnie.
 
 ---
 
 ## 6. Moduły przewoźników PL (API-ready + dev simulation)
 
-System ma moduł przewoźników pod szybki checkout i personalizację:
+System ma moduł przewoźników pod szybki checkout i personalizację, z polityką **live-first + cache**:
 
 - endpointy:
   - `GET /shipping/providers` - dostępni przewoźnicy i capabilities,
-  - `GET /shipping/points/inpost` - punkty odbioru (filtrowanie po kodzie/city),
-  - `GET /shipping/estimate` - wycena dostawy.
+  - `GET /shipping/points/inpost` - InPost (publiczne API),
+  - `GET /shipping/points/dpd` | `dhl` | `poczta` - punkty po skonfigurowaniu URL + Bearer w `.env`,
+  - `GET /shipping/points/suggest` - wszystkie przewoźnicy naraz (równolegle),
+  - `GET /shipping/estimate` - wycena orientacyjna (symulacja, do czasu podłączenia cenników umownych).
+- InPost points:
+  - serwis najpierw pobiera online z API InPost (`api-shipx-pl.easypack24.net`),
+  - przy błędzie przechodzi na fallback i krótki cache bezpieczeństwa.
+- DPD / DHL / Poczta Polska:
+  - **live-first:** po ustawieniu `*_API_BASE_URL` + `*_API_KEY` wykonywany jest `GET` (Bearer) na skonfigurowaną ścieżkę (domyślnie `/lockers`, `/locations`, `/points` — dopasuj do dokumentacji umownej),
+  - przy braku konfiguracji lub błędzie API: **fallback** (przykładowe punkty PL) + krótki cache — checkout nie jest blokowany.
 - checkout:
   - `GET /order/checkout/options` zwraca `shippingProviders` i `suggestedInpostPoints` bazujące na domyślnych/ostatnich danych klienta.
 - panel OWNER/STAFF:
@@ -175,10 +188,13 @@ Klucze produkcyjne (opcjonalnie, pod adaptery API):
 
 | Zmienna | Opis |
 |---------|------|
-| `INPOST_API_KEY`, `INPOST_ORG_ID` | InPost |
-| `DHL_API_KEY` | DHL eCommerce |
-| `DPD_API_KEY` | DPD |
-| `POCZTA_POLSKA_API_KEY` | Poczta Polska |
+| `INPOST_API_KEY`, `INPOST_ORG_ID` | InPost (opcjonalnie przy produkcji) |
+| `INPOST_API_BASE_URL` | Base URL API InPost (`https://api-shipx-pl.easypack24.net/v1`) |
+| `DPD_API_BASE_URL`, `DPD_API_KEY`, `DPD_LOCKERS_PATH` | DPD (np. `/lockers` wg umowy) |
+| `DHL_API_BASE_URL`, `DHL_API_KEY`, `DHL_PICKUP_PATH` | DHL |
+| `POCZTA_API_BASE_URL`, `POCZTA_POLSKA_API_KEY`, `POCZTA_PICKUP_PATH` | Poczta Polska |
+| `SHIPPING_PROVIDERS_CACHE_TTL_MS` | TTL cache listy przewoźników |
+| `SHIPPING_POINTS_CACHE_TTL_MS` | TTL cache punktów odbioru |
 
 ---
 

@@ -75,7 +75,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String? _error;
   List<DotykackaDevStockRow> _dotykackaRows = [];
   List<Map<String, dynamic>> _shippingProviders = [];
-  List<Map<String, dynamic>> _shippingInpostPoints = [];
+  /// Klucze: INPOST, DPD, DHL, POCZTA_POLSKA — lista punktów z API (live-first + fallback).
+  Map<String, dynamic>? _shippingSuggest;
   _MenuId? _lastAutoLoadedMenu;
 
   List<_MenuId> _menuForRole(AuthSession auth) {
@@ -281,11 +282,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     });
     try {
       final providers = await _api.fetchShippingProviders();
-      final points = await _api.fetchInpostPoints();
+      final suggest = await _api.fetchShippingPointsSuggest();
       if (!mounted) return;
       setState(() {
         _shippingProviders = providers;
-        _shippingInpostPoints = points;
+        _shippingSuggest = suggest;
         _loadingShipping = false;
       });
     } on StaffApiException catch (e) {
@@ -1014,6 +1015,54 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  List<Widget> _buildShippingSuggestSections(Map<String, dynamic> suggest) {
+    const order = <List<String>>[
+      ['INPOST', 'InPost'],
+      ['DPD', 'DPD Pickup'],
+      ['DHL', 'DHL POP / punkt'],
+      ['POCZTA_POLSKA', 'Poczta Polska'],
+    ];
+    final out = <Widget>[];
+    for (final entry in order) {
+      final key = entry[0];
+      final label = entry[1];
+      final raw = suggest[key];
+      final list = raw is List<dynamic> ? raw : const <dynamic>[];
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 6),
+          child: Text(
+            '$label (${list.length})',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+      );
+      if (list.isEmpty) {
+        out.add(
+          Text(
+            'Brak punktów (sprawdź konfigurację API lub sieć).',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        );
+        continue;
+      }
+      for (final p in list) {
+        if (p is! Map) continue;
+        final m = Map<String, dynamic>.from(p);
+        out.add(
+          ListTile(
+            dense: true,
+            title: Text('${m['id']} · ${m['name'] ?? ''}'),
+            subtitle: Text(
+              '${m['address'] ?? ''}, ${m['postalCode'] ?? ''} ${m['city'] ?? ''}',
+            ),
+          ),
+        );
+      }
+    }
+    return out;
+  }
+
   Widget _buildShippingTab() {
     if (_loadingShipping) {
       return const Center(child: CircularProgressIndicator());
@@ -1043,24 +1092,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 subtitle: Text(
                   'Code: ${p['code'] ?? '-'} · '
                   'Punkty: ${p['supportsMapPoints'] == true ? 'tak' : 'nie'} · '
-                  'Paczkomat: ${p['supportsParcelLocker'] == true ? 'tak' : 'nie'}',
+                  'Paczkomat: ${p['supportsParcelLocker'] == true ? 'tak' : 'nie'} · '
+                  'API: ${p['apiConfigured'] == true ? 'skonfigurowane' : 'symulacja / offline'}',
                 ),
               ),
             ),
           ),
         const SizedBox(height: 16),
-        Text('Sugerowane punkty InPost', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'Sugestie punktów (live-first: InPost z sieci; DPD/DHL/Poczta po podaniu URL + klucza w .env)',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 8),
-        if (_shippingInpostPoints.isEmpty)
-          const Text('Brak punktów')
+        if (_shippingSuggest == null)
+          const Text('Brak danych')
         else
-          ..._shippingInpostPoints.map(
-            (p) => ListTile(
-              dense: true,
-              title: Text('${p['id']} · ${p['name'] ?? ''}'),
-              subtitle: Text('${p['address'] ?? ''}, ${p['postalCode'] ?? ''} ${p['city'] ?? ''}'),
-            ),
-          ),
+          ..._buildShippingSuggestSections(_shippingSuggest!),
       ],
     );
   }
