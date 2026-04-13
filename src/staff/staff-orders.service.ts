@@ -25,6 +25,7 @@ export class StaffOrdersService {
       createdAt: o.createdAt,
       status: o.status,
       totalAmount: o.totalAmount,
+      shippingMethod: o.shippingMethod,
       paymentMethod: o.paymentMethod,
       paymentProvider: o.paymentProvider,
       paymentStatus: o.paymentStatus,

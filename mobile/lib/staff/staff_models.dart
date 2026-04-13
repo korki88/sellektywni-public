@@ -66,6 +66,7 @@ class StaffOrder {
     required this.createdAt,
     required this.status,
     required this.totalAmountRaw,
+    required this.shippingMethod,
     required this.paymentMethod,
     required this.paymentProvider,
     required this.paymentStatus,
@@ -80,6 +81,7 @@ class StaffOrder {
   final String createdAt;
   final String status;
   final String totalAmountRaw;
+  final String shippingMethod;
   final String paymentMethod;
   final String paymentProvider;
   final String paymentStatus;
@@ -95,6 +97,7 @@ class StaffOrder {
       createdAt: j['createdAt'] as String? ?? '',
       status: j['status'] as String? ?? '',
       totalAmountRaw: j['totalAmount']?.toString() ?? '0',
+      shippingMethod: j['shippingMethod'] as String? ?? '',
       paymentMethod: j['paymentMethod'] as String? ?? '',
       paymentProvider: j['paymentProvider'] as String? ?? '',
       paymentStatus: j['paymentStatus'] as String? ?? '',

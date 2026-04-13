@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/product_details.dart';
 import '../config/app_config.dart';
+import '../config/shop_catalog.dart';
 import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
 import '../providers/cart_notifier.dart';
@@ -143,6 +144,8 @@ class UserAccountScreen extends StatelessWidget {
           const SizedBox(height: 20),
           const _WishlistSummaryCard(),
           const SizedBox(height: 20),
+          const _CustomerShopInfoCard(),
+          const SizedBox(height: 20),
           _CheckoutSettingsPanel(auth: auth),
           const SizedBox(height: 20),
           _CustomerNotificationsPanel(
@@ -160,7 +163,8 @@ class UserAccountScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              'Konto właściciela — pełne uprawnienia administracyjne po stronie API.',
+              'Właściciel: panel administracyjny — statystyki, finanse (metody płatności), pracownicy, '
+              'uprawnienia STAFF, zamówienia z checklistą paragonu Dotykačka i etykiety kurierskiej.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: const Color(0xFF6B6B6B),
                   ),
@@ -170,7 +174,8 @@ class UserAccountScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              'Tryb pracownika: kolejka rezerwacji i profile klientów są w sekcjach obok.',
+              'Pracownik: rezerwacje, zamówienia, klienci, dostawy i symulacje integracji w trybie dev — '
+              'bez zakładki uprawnień (tylko OWNER).',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: const Color(0xFF6B6B6B),
                   ),
@@ -192,6 +197,72 @@ class UserAccountScreen extends StatelessWidget {
           child: const Text('Wyloguj się'),
         ),
       ],
+    );
+  }
+}
+
+/// Dostępne metody płatności i dostawy — zgodnie z backendem (checkout).
+class _CustomerShopInfoCard extends StatelessWidget {
+  const _CustomerShopInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final dev = AppConfig.useDevMockAuth;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Płatności i dostawa',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Metody płatności w koszyku:',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 6),
+            ...kSupportedPaymentMethodCodes.map(
+              (c) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('• ${paymentMethodLabelPl(c)}'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Dostawa: ${shippingMethodLabelPl('COURIER')}; '
+              '${shippingMethodLabelPl('PARCEL_LOCKER_INPOST')}; '
+              '${shippingMethodLabelPl('STORE_PICKUP')}.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF3D3D3D),
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Przewoźnicy obsługiwani przez API sklepu: '
+              '${kCourierIntegrationRows.map((e) => e['code']).join(', ')}.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF6B6B6B),
+                  ),
+            ),
+            if (dev) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Tryb deweloperski: część płatności i linków kurierskich jest symulowana — '
+                'przycisk „Symuluj opłacenie” przy oczekującej płatności w zamówieniach.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -876,7 +947,8 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                       ),
                     ),
                     ...rows.map((o) {
-                    final status = o['status']?.toString() ?? '—';
+                    final statusRaw = o['status']?.toString() ?? '—';
+                    final status = '${orderStatusLabelPl(statusRaw)} ($statusRaw)';
                     final total = o['totalAmount']?.toString() ?? '0';
                     final itemCount = (o['itemCount'] as num?)?.toInt() ?? 0;
                     final paymentStatus = o['paymentStatus']?.toString() ?? '—';

@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../config/dev_mock_accounts.dart';
 import '../data/product_details.dart';
+import '../config/shop_catalog.dart';
 import '../layout/web_app_frame.dart';
 import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
@@ -571,6 +573,212 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  bool _devIntegrationSimulation(BuildContext context) {
+    final t = context.read<AuthSession>().accessToken ?? '';
+    return AppConfig.useDevMockAuth || t.startsWith(kDevMockTokenPrefix);
+  }
+
+  Widget _buildStatsPanel() {
+    final sim = _devIntegrationSimulation(context);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          'Pulpit analityczny',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          sim
+              ? 'Tryb deweloperski: wykresy i KPI z zewnętrznych hurtowni danych nie są podłączone — poniżej zakres, który planujemy zasilć z API sklepu (Prisma / eksport).'
+              : 'Agregaty można zbudować na zamówieniach, rezerwacjach i produktach zapisanych w bazie (endpointy pod przyszłe raporty).',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+        const SizedBox(height: 20),
+        _infoCard(
+          context,
+          icon: Icons.shopping_bag_outlined,
+          title: 'Sprzedaż i konwersja',
+          lines: const [
+            'Źródło: customer_orders (status, totalAmount, paymentStatus).',
+            'Segmentacja: metoda płatności (BLIK, karta P24, przelew, COD).',
+          ],
+        ),
+        const SizedBox(height: 12),
+        _infoCard(
+          context,
+          icon: Icons.inventory_2_outlined,
+          title: 'Magazyn i Dotykačka',
+          lines: const [
+            'Stany: products.stockQty + synchronizacja z chmurą Dotykačka (gdy skonfigurowane).',
+            'W dev: symulator /dotykacka/dev przy AUTH_DEV_MOCK.',
+          ],
+        ),
+        const SizedBox(height: 12),
+        _infoCard(
+          context,
+          icon: Icons.local_shipping_outlined,
+          title: 'Wysyłka',
+          lines: const [
+            'Przewoźnicy: InPost, ORLEN, DPD, DHL, Poczta — GET /shipping/providers.',
+            'Ceny szacunkowe: GET /shipping/estimate.',
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFinancePanel() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          'Płatności (backend)',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Obsługiwane metody zgodnie z enum PaymentMethod i PaymentsService:',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+        const SizedBox(height: 16),
+        ...kSupportedPaymentMethodCodes.map((code) {
+          final IconData icon;
+          final String sub;
+          switch (code) {
+            case 'BLIK':
+              icon = Icons.flash_on_outlined;
+              sub =
+                  'Przelewy24 — sandbox lub rejestracja trnRegister przy ustawionych P24_* w .env.';
+            case 'CARD_ONLINE':
+              icon = Icons.credit_card_outlined;
+              sub =
+                  'Przelewy24 — sandbox lub rejestracja trnRegister przy ustawionych P24_* w .env.';
+            case 'BANK_TRANSFER':
+              icon = Icons.account_balance_outlined;
+              sub = 'Mock konta (dev) lub ręczna weryfikacja przelewu.';
+            case 'CASH_ON_DELIVERY':
+              icon = Icons.payments_outlined;
+              sub = 'Pobranie — status COD_PENDING do momentu odbioru.';
+            default:
+              icon = Icons.payments_outlined;
+              sub = '';
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Card(
+              child: ListTile(
+                leading: Icon(icon),
+                title: Text(paymentMethodLabelPl(code)),
+                subtitle: Text(sub, style: const TextStyle(fontSize: 13)),
+              ),
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        Text(
+          'Symulacja: bez P24 w .env zwracany jest link sandbox-simulation; przelew = BANK_TRANSFER_MOCK.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAiAgentsPanel() {
+    final sim = _devIntegrationSimulation(context);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          'Agenci AI',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        _infoCard(
+          context,
+          icon: Icons.smart_toy_outlined,
+          title: 'Status integracji',
+          lines: [
+            if (sim)
+              'Tryb deweloperski: brak połączenia z zewnętrznym modelem — żadne dane zamówień nie są wysyłane poza API sklepu.'
+            else
+              'Konfiguracja agentów (np. asystent obsługi, podsumowania zamówień) nie jest jeszcze ujęta w tym repozytorium.',
+            'Docelowo: bezpieczny kanał tylko po stronie serwera (sekrety w .env, nie w aplikacji mobilnej).',
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmployeesPanel() {
+    final auth = context.read<AuthSession>();
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          'Zespół i role',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        _infoCard(
+          context,
+          icon: Icons.badge_outlined,
+          title: 'Role w sklepie',
+          lines: const [
+            'OWNER — pełny dostęp: analityka, finanse, uprawnienia STAFF, promocje (API staff).',
+            'STAFF — rezerwacje, zamówienia, klienci, Dotykačka dev, wysyłka (wg permissions z bazy).',
+            'CUSTOMER — sklep, konto, zamówienia własne (bez panelu staff).',
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (auth.isOwner)
+          Card(
+            color: const Color(0xFFE8F0FE),
+            child: ListTile(
+              leading: const Icon(Icons.admin_panel_settings_outlined),
+              title: const Text('Uprawnienia STAFF'),
+              subtitle: const Text('Edytuj zakładkę „Uprawnienia” w tym panelu — lista permissions z /staff/permissions/users.'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _infoCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required List<String> lines,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ...lines.map(
+                    (l) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(l, style: Theme.of(context).textTheme.bodyMedium),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildQueueTab() {
     if (_loadingQueue) {
       return const Center(child: CircularProgressIndicator());
@@ -743,6 +951,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  void _showDotykackaReceiptDialog(StaffOrder o) {
+    final sim = _devIntegrationSimulation(context);
+    final buf = StringBuffer()
+      ..writeln('SELLEKTYWNI — podgląd paragonu')
+      ..writeln('Zamówienie: ${o.id}')
+      ..writeln('Data: ${o.createdAt}')
+      ..writeln('─────────────────────');
+    for (final i in o.items) {
+      buf.writeln('${i.name}  ${i.quantity}×  ${i.lineTotalRaw} zł');
+    }
+    buf
+      ..writeln('─────────────────────')
+      ..writeln('SUMA: ${o.totalAmountRaw} zł')
+      ..writeln('Płatność: ${paymentMethodLabelPl(o.paymentMethod)} / ${paymentStatusLabelPl(o.paymentStatus)}')
+      ..writeln()
+      ..writeln(
+        sim
+            ? '[DEV] Symulacja wydruku z kasy powiązanej z Dotykačką — brak połączenia z drukarką fizyczną.'
+            : 'Produkcja: druk z terminala / oprogramowania zgodnego z Dotykačka (API v2, CLOUD_ID w .env).',
+      );
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.receipt_long_outlined),
+            SizedBox(width: 8),
+            Expanded(child: Text('Paragon / Dotykačka')),
+          ],
+        ),
+        content: SingleChildScrollView(child: SelectableText(buf.toString())),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij')),
+        ],
+      ),
+    );
+  }
+
+  void _showCourierLabelDialog(StaffOrder o) {
+    final sim = _devIntegrationSimulation(context);
+    final needLabel = expectsCourierOrLockerLabel(o.shippingMethod);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.label_outline),
+            SizedBox(width: 8),
+            Expanded(child: Text('Etykieta kurierska')),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            needLabel
+                ? 'Wysyłka: ${shippingMethodLabelPl(o.shippingMethod)}\n'
+                    'Ref / session: ${o.paymentReference ?? o.id}\n\n'
+                    '${sim ? "[DEV] Symulacja etykiety — w produkcji generuj etykietę przez API przewoźnika (InPost ShipX, DPD, DHL, ORLEN SOAP itd.) według shipping_snapshot zamówienia." : "Skonfiguruj integrację przewoźnika i druk etykiety z panelu kurierskiego lub API."}'
+                : 'Odbiór osobisty w salonie — etykieta kurierska nie jest wymagana. Wystarczy paragon / potwierdzenie wydania.',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij')),
+        ],
+      ),
+    );
+  }
+
   Widget _buildOrdersTab() {
     if (_loadingOrders) {
       return const Center(child: CircularProgressIndicator());
@@ -757,6 +1032,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       );
     }
+    final sim = _devIntegrationSimulation(context);
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _orders.length,
@@ -764,6 +1040,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       itemBuilder: (context, i) {
         final o = _orders[i];
         final expanded = _expandedOrderIds.contains(o.id);
+        final needCourier = expectsCourierOrLockerLabel(o.shippingMethod);
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -787,14 +1064,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Status: ${o.status} · Pozycji: ${o.itemCount} · Kwota: ${o.totalAmountRaw} zł',
+                    'Status zamówienia: ${orderStatusLabelPl(o.status)} (${o.status}) · '
+                    '${o.itemCount} poz. · ${o.totalAmountRaw} zł',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: const Color(0xFF6B6B6B),
                         ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Płatność: ${o.paymentMethod} (${o.paymentProvider}) · status: ${o.paymentStatus}',
+                    'Wysyłka: ${shippingMethodLabelPl(o.shippingMethod)}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF6B6B6B),
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Płatność: ${paymentMethodLabelPl(o.paymentMethod)} · '
+                    '${paymentProviderLabelPl(o.paymentProvider)} · '
+                    '${paymentStatusLabelPl(o.paymentStatus)}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: const Color(0xFF6B6B6B),
                         ),
@@ -815,6 +1102,65 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: const Color(0xFF6B6B6B),
                         ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F9FC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE0E6EF)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Checklist pakowania',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '1. Paragon fiskalny — dane z systemu sprzedaży zsynchronizowanego z Dotykačką.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          needCourier
+                              ? '2. Etykieta kurierska — nadanie u wybranego przewoźnika (InPost / DPD / DHL / ORLEN / Poczta).'
+                              : '2. Etykieta kurierska — nie dotyczy (odbiór w salonie).',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (sim) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tryb dev: druk i etykiety są symulowane (okna podglądu).',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _showDotykackaReceiptDialog(o),
+                              icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                              label: Text(sim ? 'Symuluj paragon' : 'Podgląd paragonu'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _showCourierLabelDialog(o),
+                              icon: const Icon(Icons.local_post_office_outlined, size: 18),
+                              label: Text(sim ? 'Symuluj etykietę' : 'Podgląd etykiety'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -1068,12 +1414,68 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (_loadingShipping) {
       return const Center(child: CircularProgressIndicator());
     }
+    final sim = _devIntegrationSimulation(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F4FD),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFB8D4EE)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Proces wysyłki (operacyjnie)',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '• Klient wybiera metodę w koszyku: kurier, paczkomat InPost lub odbiór w salonie.\n'
+                '• Backend: GET /shipping/providers — dostępni przewoźnicy; GET /shipping/points/* — punkty; '
+                'przy braku kluczy API zwracane są dane fallback / symulacja (dev).\n'
+                '• Po opłaceniu zamówienia pakuj: najpierw paragon z kasy (Dotykačka), potem — jeśli wysyłka — etykieta kurierska.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (sim) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Tryb deweloperski: brak rzeczywistych wywołań kurierskich przy braku konfiguracji — użyj zakładki „Dotykačka DEV” do stanów testowych.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Text(
-          'Moduły przewoźników (API-ready): cenniki, punkty odbioru i szybkie sugestie checkout.',
+          'Integracje kurierskie (API w backendzie): cennik, punkty odbioru, sugestie dla checkout.',
           style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 8),
+        ...kCourierIntegrationRows.map(
+          (row) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• '),
+                Expanded(
+                  child: Text(
+                    '${row['name']} — kod ${row['code']}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         FilledButton.tonal(
@@ -1187,25 +1589,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _bodyForMenu(_MenuId id, String? role) {
     switch (id) {
       case _MenuId.stats:
-        return _buildPlaceholder(
-          'Statystyki',
-          'Przykładowe menu — podłącz źródła danych i wykresy.',
-        );
+        return _buildStatsPanel();
       case _MenuId.finance:
-        return _buildPlaceholder(
-          'Finanse',
-          'Przykładowe menu — rozliczenia i raporty.',
-        );
+        return _buildFinancePanel();
       case _MenuId.aiAgents:
-        return _buildPlaceholder(
-          'Agenci AI',
-          'Przykładowe menu — konfiguracja agentów.',
-        );
+        return _buildAiAgentsPanel();
       case _MenuId.employees:
-        return _buildPlaceholder(
-          'Pracownicy',
-          'Przykładowe menu — lista i uprawnienia STAFF.',
-        );
+        return _buildEmployeesPanel();
       case _MenuId.reservations:
         return _buildQueueTab();
       case _MenuId.orders:
