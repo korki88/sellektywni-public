@@ -10,6 +10,11 @@ Skrypt dopisania (opcjonalnie):
 
 ---
 
+## 2026-04-13 — GitHub: repo PRIVATE + polityka `.gitignore`
+
+- **`gh repo edit korki88/sellektywni --visibility private`** — repozytorium jest **prywatne**.
+- **Nie commitowano** masowo plików z `.gitignore` (`node_modules`, `.env`, `dist` itd.) — uzasadnienie bezpieczeństwa i rozmiaru: [POLICY-private-and-gitignore.md](POLICY-private-and-gitignore.md).
+
 ## 2026-04-13 — Pakiet `sync/` + reguły Cursor + npm scripts
 
 - Dodano katalog **`sync/`** (AGENT, RULES, WORKLOG, MACHINE_SETUP, LOCAL_ARTIFACTS, QUICK_REFERENCE, IDEAS, `templates/dotenv.example`, skrypty bootstrap i append-worklog).

@@ -29,6 +29,9 @@ Zasady wynikające z polecenia właściciela projektu oraz ustalenia techniczne.
 
 9. **Agent AI:** przed długą sesją na drugim PC przeczytaj [AGENT.md](AGENT.md).
 
+10. **GitHub: repozytorium prywatne**  
+    Ustawione jako **private** (nie publiczne). Nadal **nie** commitujemy `node_modules`, prawdziwego `.env`, `dist` itd. — uzasadnienie: [POLICY-private-and-gitignore.md](POLICY-private-and-gitignore.md).
+
 ## Aktualizacja tych zasad
 
 Zmiany w `RULES.md` commituj razem z uzasadnieniem w `WORKLOG.md`.
