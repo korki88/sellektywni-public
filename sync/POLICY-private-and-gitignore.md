@@ -21,7 +21,7 @@ Repozytorium **`korki88/sellektywni`** zostało ustawione jako **PRIVATE** (`gh 
 1. **Zależności:** `npm install` na każdej maszynie.
 2. **Środowisko:** `cp .env.example .env` (lub `sync/templates/dotenv.example`).
 3. **Build:** `npm run build`; Flutter WWW: `npm run rerun` lub build ręczny do `www/app`.
-4. **Sekrety zespołu poza Gitem:** menedżer haseł, GitHub Secrets (CI), 1Password — jeśli kiedyś potrzebne.
+4. **Sekrety zespołu poza plaintext `.env` w Git:** zobacz **[SECRETS.md](SECRETS.md)** — GitHub Encrypted Secrets, opcjonalnie SOPS+age, menedżer haseł.
 
 ### Odwołanie zasady
 

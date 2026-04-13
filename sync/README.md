@@ -11,6 +11,7 @@ Ten katalog jest **wersjonowany w Git** i ma umożliwić kontynuację pracy na d
 | [LOCAL_ARTIFACTS.md](LOCAL_ARTIFACTS.md) | Co jest tylko lokalnie (nie w repo) i jak to odtworzyć |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Ściąga poleceń |
 | [POLICY-private-and-gitignore.md](POLICY-private-and-gitignore.md) | Repo private + dlaczego nie commitujemy treści z `.gitignore` |
+| [SECRETS.md](SECRETS.md) | **Sekrety:** GitHub Actions, SOPS+age, menedżery haseł — bez plaintext `.env` w Git |
 | [templates/](templates/) | Szablony bezpieczne do commitu (np. `dotenv.example`) |
 | [scripts/](scripts/) | Bootstrap, dopisywanie wpisu do WORKLOG |
 

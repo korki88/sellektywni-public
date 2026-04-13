@@ -16,3 +16,7 @@ Thumbs.db
 # przypadkowe pliki lokalne
 /qc
 /queryex
+
+# age / SOPS — klucze prywatne (nigdy w repozytorium)
+**/age.key
+*.age.key

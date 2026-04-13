@@ -57,6 +57,10 @@ Obowiązuje **`sync/RULES.md`**: m.in. aktualizacja **`sync/WORKLOG.md`** po zad
 3. `npx prisma migrate deploy` — brak błędów.
 4. Flutter: `cd mobile && flutter pub get`; WWW: `npm run rerun` (wymaga Flutter w PATH).
 
+## Sekrety (drugi komputer)
+
+Nie oczekuj `.env` w repozytorium. Instrukcja: **`sync/SECRETS.md`** (SOPS+age, GitHub Secrets, szablony).
+
 ## Historia decyzji
 
 Szczegóły zadań użytkownika: **`sync/WORKLOG.md`**.

@@ -1,0 +1,5 @@
+# Jedna linia klucza PUBLICZNEGO age na osobę (zaczyna się od age1...)
+# Skopiuj ten plik do np. sync/templates/sops-age-recipients.txt (tylko publiczne klucze)
+# i użyj: export SOPS_AGE_RECIPIENTS_FILE=sync/templates/sops-age-recipients.txt
+#
+# age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq

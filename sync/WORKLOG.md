@@ -10,6 +10,13 @@ Skrypt dopisania (opcjonalnie):
 
 ---
 
+## 2026-04-13 — Sekrety: SECRETS.md, CI, SOPS/age, katalog secrets/
+
+- Dodano **`sync/SECRETS.md`** — GitHub Encrypted Secrets, workflow **SOPS + age**, menedżery haseł; bez commitu plaintext `.env`.
+- **`.github/workflows/ci.yml`** — `npm ci`, `prisma generate`, `npm run build` (bez sekretów).
+- **`secrets/.gitkeep`** — miejsce na przyszły `secrets.env.sops` (zaszyfrowany); szablon **`sync/templates/sops-age-recipients.txt.example`**.
+- **`.gitignore`** — wzorce `age.key` / `*.age.key` dla kluczy prywatnych age.
+
 ## 2026-04-13 — GitHub: repo PRIVATE + polityka `.gitignore`
 
 - **`gh repo edit korki88/sellektywni --visibility private`** — repozytorium jest **prywatne**.

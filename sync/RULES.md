@@ -32,6 +32,9 @@ Zasady wynikające z polecenia właściciela projektu oraz ustalenia techniczne.
 10. **GitHub: repozytorium prywatne**  
     Ustawione jako **private** (nie publiczne). Nadal **nie** commitujemy `node_modules`, prawdziwego `.env`, `dist` itd. — uzasadnienie: [POLICY-private-and-gitignore.md](POLICY-private-and-gitignore.md).
 
+11. **Sekrety między komputerami**  
+    Nie commituj plaintext `.env`. Stosuj [SECRETS.md](SECRETS.md): GitHub Encrypted Secrets (CI), opcjonalnie **SOPS + age** dla zaszyfrowanego pliku w repo, lub menedżer haseł.
+
 ## Aktualizacja tych zasad
 
 Zmiany w `RULES.md` commituj razem z uzasadnieniem w `WORKLOG.md`.
