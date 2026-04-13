@@ -6,8 +6,22 @@ import { PrismaService } from '../prisma/prisma.service';
 export class StaffOrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listOrders() {
+  private parseOrderStatusFilter(
+    raw?: string,
+  ): CustomerOrderStatus | undefined {
+    if (!raw?.trim()) {
+      return undefined;
+    }
+    const u = raw.trim().toUpperCase();
+    return (Object.values(CustomerOrderStatus) as string[]).includes(u)
+      ? (u as CustomerOrderStatus)
+      : undefined;
+  }
+
+  async listOrders(statusFilter?: string) {
+    const status = this.parseOrderStatusFilter(statusFilter);
     const orders = await this.prisma.customerOrder.findMany({
+      where: status ? { status } : undefined,
       include: { items: true },
       orderBy: { createdAt: 'desc' },
       take: 200,

@@ -47,3 +47,7 @@ Skrypt dopisania (opcjonalnie):
 ## 2026-04-13 18:59:24 UTC (auto)
 
 - Reguła dedukcji kroków (Cursor + sync/RULES); ESLint naprawiony; npm run lint:ci; CI z lintem; scalarToString (Orlen, shipping, P24); void bootstrap; listProviders sync
+
+## 2026-04-13 19:08:08 UTC (auto)
+
+- [agent:cursor-sellekt-7f3a91c2] API /staff/analytics/summary + low-stock; filtr GET /staff/orders?status=; GET /order/my-orders/:id; Flutter: statystyki na żywo, filtr zamówień, HelpScreen + kontakt; sync/AGENT_COORDINATION.md + reguła Cursor

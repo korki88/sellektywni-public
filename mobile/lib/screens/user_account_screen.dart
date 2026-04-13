@@ -13,6 +13,7 @@ import '../providers/auth_session.dart';
 import '../providers/cart_notifier.dart';
 import '../providers/wishlist_notifier.dart';
 import 'product_details_screen.dart';
+import 'help_screen.dart';
 import '../widgets/auth_shell.dart';
 
 /// Panel użytkownika: rola, punkty, ranga, wylogowanie. Gość widzi zaproszenie do logowania.
@@ -83,6 +84,19 @@ class UserAccountScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+              );
+            },
+            icon: const Icon(Icons.help_outline, size: 20),
+            label: const Text('Pomoc, zwroty, kontakt'),
+          ),
         ),
         if (auth.isAdminDashboardRole && nav.staffViewingShop) ...[
           const SizedBox(height: 16),
@@ -1026,6 +1040,25 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                             ],
                             if (_expandedOrders.contains(o['id'])) ...[
                               const Divider(height: 20),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Dostawa: ${shippingMethodLabelPl(o['shippingMethod']?.toString() ?? '')}',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                              if (o['shippingSnapshot'] != null) ...[
+                                const SizedBox(height: 6),
+                                SelectableText(
+                                  JsonEncoder.withIndent('  ').convert(o['shippingSnapshot']),
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: const Color(0xFF4A4A4A),
+                                      ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
                               ...(o['items'] as List<dynamic>? ?? const []).map((rawItem) {
                                 if (rawItem is! Map<String, dynamic>) {
                                   return const SizedBox.shrink();

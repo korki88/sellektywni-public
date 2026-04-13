@@ -5,6 +5,7 @@ Ten katalog jest **wersjonowany w Git** i ma umożliwić kontynuację pracy na d
 | Plik | Cel |
 |------|-----|
 | [AGENT.md](AGENT.md) | Pełny kontekst dla agenta AI na drugim komputerze |
+| [AGENT_COORDINATION.md](AGENT_COORDINATION.md) | Wiele agentów: unikalne `AGENT_ID`, gałęzie, brak kolizji |
 | [RULES.md](RULES.md) | Zasady pracy nad repo (w tym aktualizacja WORKLOG) |
 | [WORKLOG.md](WORKLOG.md) | Dziennik zadań / decyzji — **aktualizuj po każdym istotnym poleceniu** |
 | [MACHINE_SETUP.md](MACHINE_SETUP.md) | Nowa maszyna: Node, Docker, Flutter, baza, seed |

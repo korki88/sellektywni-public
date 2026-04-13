@@ -1,0 +1,11 @@
+---
+description: Unikalne AGENT_ID, gałęzie Git, brak kolizji między agentami
+alwaysApply: true
+---
+
+# Koordynacja agentów (SELLEKTYWNI)
+
+- Każdy agent ma **własny unikalny `AGENT_ID`** i dokumentuje go w **`sync/AGENT_COORDINATION.md`** (tabela rejestru) oraz w **`sync/WORKLOG.md`** jako `[agent:AGENT_ID]`.
+- **Równoległa praca:** preferuj osobną gałąź `agent/<AGENT_ID>/…` lub `feature/<AGENT_ID>-slug`, potem integracja do wspólnego brancha (np. `main-home`). Nie zakładaj, że tylko Ty modyfikujesz dany plik.
+- Przed większą zmianą: przeczytaj **`sync/WORKLOG.md`** i **`sync/AGENT_COORDINATION.md`**, żeby nie dublować ani nie wykluczać pracy innych.
+- Commit/push po sensownej paczce; opis commita może zawierać `[agent:AGENT_ID]`.

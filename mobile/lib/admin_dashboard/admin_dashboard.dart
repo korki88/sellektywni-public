@@ -80,6 +80,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
   /// Klucze: INPOST, DPD, DHL, POCZTA_POLSKA — lista punktów z API (live-first + fallback).
   Map<String, dynamic>? _shippingSuggest;
   _MenuId? _lastAutoLoadedMenu;
+  Map<String, dynamic>? _analyticsSummary;
+  List<Map<String, dynamic>> _lowStockRows = [];
+  bool _loadingAnalytics = false;
+  String? _analyticsError;
+  String? _orderStatusFilter;
 
   List<_MenuId> _menuForRole(AuthSession auth) {
     final menu = <_MenuId>[];
@@ -204,6 +209,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _loadPermissions();
       case _MenuId.dotykackaDev:
         _loadDotykackaDev();
+      case _MenuId.stats:
+        _loadAnalytics();
       default:
         break;
     }
@@ -256,13 +263,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _requestScanFocus();
   }
 
+  Future<void> _loadAnalytics() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasToken) {
+      setState(() => _analyticsError = 'Brak tokenu.');
+      return;
+    }
+    if (!auth.hasPermission('view.analytics')) {
+      setState(() => _analyticsError = 'Brak uprawnienia view.analytics.');
+      return;
+    }
+    setState(() {
+      _loadingAnalytics = true;
+      _analyticsError = null;
+    });
+    try {
+      final summary = await _api.fetchAnalyticsSummary();
+      var low = <Map<String, dynamic>>[];
+      if (auth.hasPermission('manage.orders')) {
+        low = await _api.fetchLowStock(threshold: 3);
+      }
+      if (!mounted) return;
+      setState(() {
+        _analyticsSummary = summary;
+        _lowStockRows = low;
+        _loadingAnalytics = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingAnalytics = false;
+        _analyticsError = e.toString();
+      });
+    }
+  }
+
   Future<void> _loadOrders() async {
     setState(() {
       _loadingOrders = true;
       _error = null;
     });
     try {
-      final rows = await _api.fetchOrders();
+      final rows = await _api.fetchOrders(status: _orderStatusFilter);
       if (!mounted) return;
       setState(() {
         _orders = rows;
@@ -580,6 +622,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildStatsPanel() {
     final sim = _devIntegrationSimulation(context);
+    if (_loadingAnalytics) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final s = _analyticsSummary;
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -590,41 +636,133 @@ class _AdminDashboardState extends State<AdminDashboard> {
         const SizedBox(height: 8),
         Text(
           sim
-              ? 'Tryb deweloperski: wykresy i KPI z zewnętrznych hurtowni danych nie są podłączone — poniżej zakres, który planujemy zasilć z API sklepu (Prisma / eksport).'
-              : 'Agregaty można zbudować na zamówieniach, rezerwacjach i produktach zapisanych w bazie (endpointy pod przyszłe raporty).',
+              ? 'Tryb deweloperski — dane z lokalnej bazy (API /staff/analytics/summary).'
+              : 'Dane na żywo z bazy: zamówienia, płatności, produkty, klienci.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
         ),
+        if (s == null) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Naciśnij „Odśwież dane” powyżej (wymaga uprawnienia view.analytics).',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ] else ...[
+          const SizedBox(height: 16),
+          Text(
+            'Wygenerowano: ${s['generatedAt'] ?? '—'}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+          ),
+          const SizedBox(height: 12),
+          _statRow(context, 'Przychód (opłacone zamówienia)', '${s['paidRevenueTotal'] ?? '0'} zł'),
+          _statRow(context, 'Liczba opłaconych zamówień', '${s['paidOrdersCount'] ?? 0}'),
+          _statRow(context, 'Oczekujące płatności', '${s['pendingPaymentCount'] ?? 0}'),
+          _statRow(context, 'Klienci (profil CUSTOMER)', '${s['customersCount'] ?? 0}'),
+          if (s['products'] is Map) ...[
+            _statRow(
+              context,
+              'Produkty (wszystkie / dostępne)',
+              '${(s['products'] as Map)['total'] ?? 0} / ${(s['products'] as Map)['available'] ?? 0}',
+            ),
+            _statRow(
+              context,
+              'Niski stan (≤${(s['products'] as Map)['lowStockThreshold'] ?? 3} szt.)',
+              '${(s['products'] as Map)['lowStockCount'] ?? 0}',
+            ),
+          ],
+          const SizedBox(height: 16),
+          Text(
+            'Zamówienia wg statusu',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          ...(s['ordersByStatus'] is Map
+              ? (s['ordersByStatus'] as Map).entries.map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('${e.key}: ${e.value}'),
+                    ),
+                  )
+              : const <Widget>[]),
+          const SizedBox(height: 16),
+          Text(
+            'Przychód wg metody płatności (opłacone)',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          ...((s['revenueByPaymentMethod'] as List<dynamic>? ?? const [])
+              .map((row) {
+                if (row is! Map) return const SizedBox.shrink();
+                final pm = row['paymentMethod']?.toString() ?? '';
+                final tot = row['total']?.toString() ?? '0';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('$pm: $tot zł'),
+                );
+              }),
+          const SizedBox(height: 16),
+          Text(
+            'Rezerwacje wg statusu',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          ...(s['reservationsByStatus'] is Map
+              ? (s['reservationsByStatus'] as Map).entries.map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('${e.key}: ${e.value}'),
+                    ),
+                  )
+              : const <Widget>[]),
+        ],
+        if (_lowStockRows.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text(
+            'Produkty z niskim stanem',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          ..._lowStockRows.map(
+            (r) => Card(
+              child: ListTile(
+                title: Text(r['name']?.toString() ?? ''),
+                subtitle: Text('Stan: ${r['stockQty']} · Dotykačka: ${r['idDotykacka'] ?? '—'}'),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         _infoCard(
           context,
-          icon: Icons.shopping_bag_outlined,
-          title: 'Sprzedaż i konwersja',
-          lines: const [
-            'Źródło: customer_orders (status, totalAmount, paymentStatus).',
-            'Segmentacja: metoda płatności (BLIK, karta P24, przelew, COD).',
-          ],
-        ),
-        const SizedBox(height: 12),
-        _infoCard(
-          context,
-          icon: Icons.inventory_2_outlined,
-          title: 'Magazyn i Dotykačka',
-          lines: const [
-            'Stany: products.stockQty + synchronizacja z chmurą Dotykačka (gdy skonfigurowane).',
-            'W dev: symulator /dotykacka/dev przy AUTH_DEV_MOCK.',
-          ],
-        ),
-        const SizedBox(height: 12),
-        _infoCard(
-          context,
           icon: Icons.local_shipping_outlined,
-          title: 'Wysyłka',
+          title: 'Wysyłka (API)',
           lines: const [
-            'Przewoźnicy: InPost, ORLEN, DPD, DHL, Poczta — GET /shipping/providers.',
-            'Ceny szacunkowe: GET /shipping/estimate.',
+            'Przewoźnicy: GET /shipping/providers.',
+            'Szacunek: GET /shipping/estimate.',
           ],
         ),
       ],
+    );
+  }
+
+  Widget _statRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1019,21 +1157,55 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildOrdersTab() {
-    if (_loadingOrders) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_orders.isEmpty) {
-      return Center(
-        child: Text(
-          'Brak zamówień do obsługi.',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: const Color(0xFF6B6B6B),
-              ),
-        ),
-      );
-    }
     final sim = _devIntegrationSimulation(context);
-    return ListView.separated(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: const Text('Wszystkie'),
+                selected: _orderStatusFilter == null,
+                onSelected: (_) {
+                  setState(() => _orderStatusFilter = null);
+                  _loadOrders();
+                },
+              ),
+              for (final code in const [
+                'PLACED',
+                'PROCESSING',
+                'READY',
+                'COMPLETED',
+                'CANCELED',
+              ])
+                FilterChip(
+                  label: Text(code),
+                  selected: _orderStatusFilter == code,
+                  onSelected: (_) {
+                    setState(() => _orderStatusFilter = code);
+                    _loadOrders();
+                  },
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _loadingOrders
+              ? const Center(child: CircularProgressIndicator())
+              : _orders.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Brak zamówień do obsługi (dla wybranego filtra).',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: const Color(0xFF6B6B6B),
+                            ),
+                      ),
+                    )
+                  : ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _orders.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -1225,6 +1397,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         );
       },
+    ),
+        ),
+      ],
     );
   }
 
@@ -1715,6 +1890,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         FilledButton.tonal(
                           onPressed: _loadOrders,
                           child: const Text('Odśwież zamówienia'),
+                        ),
+                      ],
+                      if (current == _MenuId.stats) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            FilledButton.tonal(
+                              onPressed: _loadAnalytics,
+                              child: const Text('Odśwież dane'),
+                            ),
+                            if (_analyticsError != null)
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 12),
+                                  child: Text(
+                                    _analyticsError!,
+                                    style: const TextStyle(color: Colors.red),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                       if (current == _MenuId.permissions) ...[

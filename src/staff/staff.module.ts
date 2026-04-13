@@ -11,6 +11,8 @@ import { StaffProductsController } from './staff-products.controller';
 import { StaffProductsService } from './staff-products.service';
 import { StaffPromoController } from './staff-promo.controller';
 import { StaffPromoService } from './staff-promo.service';
+import { StaffAnalyticsController } from './staff-analytics.controller';
+import { StaffAnalyticsService } from './staff-analytics.service';
 
 @Module({
   imports: [AuthModule],
@@ -21,6 +23,7 @@ import { StaffPromoService } from './staff-promo.service';
     StaffOrdersController,
     StaffPermissionsController,
     StaffPromoController,
+    StaffAnalyticsController,
   ],
   providers: [
     StaffProductsService,
@@ -28,6 +31,7 @@ import { StaffPromoService } from './staff-promo.service';
     StaffOrdersService,
     StaffPermissionsService,
     StaffPromoService,
+    StaffAnalyticsService,
   ],
 })
 export class StaffModule {}

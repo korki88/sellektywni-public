@@ -125,8 +125,11 @@ class StaffApi {
     }
   }
 
-  Future<List<StaffOrder>> fetchOrders() async {
-    final uri = Uri.parse('${_session.apiBase}/staff/orders');
+  Future<List<StaffOrder>> fetchOrders({String? status}) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/orders').replace(
+      queryParameters:
+          status != null && status.trim().isNotEmpty ? {'status': status.trim()} : null,
+    );
     final r = await http.get(uri, headers: _headers());
     if (r.statusCode != 200) {
       throw StaffApiException(r.statusCode, r.body);
@@ -218,6 +221,30 @@ class StaffApi {
     final j = jsonDecode(r.body);
     if (j is Map<String, dynamic>) return j;
     return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> fetchAnalyticsSummary() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/analytics/summary');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is Map<String, dynamic>) return j;
+    return <String, dynamic>{};
+  }
+
+  Future<List<Map<String, dynamic>>> fetchLowStock({int threshold = 3}) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/analytics/low-stock').replace(
+      queryParameters: {'threshold': '$threshold'},
+    );
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final rows = jsonDecode(r.body);
+    if (rows is! List) return const [];
+    return rows.whereType<Map<String, dynamic>>().toList();
   }
 
   Future<({List<String> availablePermissions, List<StaffPermissionUser> users})>

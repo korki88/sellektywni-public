@@ -62,7 +62,10 @@ export class OrderController {
 
   @Post('finalize')
   finalize(@Body() dto: FinalizeOrderDto, @Req() req: Request) {
-    return this.orderService.finalizeAcceptedOrder(this.userIdFromReq(req), dto);
+    return this.orderService.finalizeAcceptedOrder(
+      this.userIdFromReq(req),
+      dto,
+    );
   }
 
   @Get('my-orders')
@@ -70,14 +73,28 @@ export class OrderController {
     return this.orderService.listMyOrders(this.userIdFromReq(req));
   }
 
+  @Get('my-orders/:orderId')
+  myOrderById(@Param('orderId') orderId: string, @Req() req: Request) {
+    return this.orderService.getMyOrderById(this.userIdFromReq(req), orderId);
+  }
+
   @Get('payments/:orderId')
   paymentForOrder(@Param('orderId') orderId: string, @Req() req: Request) {
-    return this.orderService.getPaymentForOrder(this.userIdFromReq(req), orderId);
+    return this.orderService.getPaymentForOrder(
+      this.userIdFromReq(req),
+      orderId,
+    );
   }
 
   @Post('payments/:orderId/simulate-success')
-  simulatePaymentSuccess(@Param('orderId') orderId: string, @Req() req: Request) {
-    return this.orderService.simulatePaymentSuccess(this.userIdFromReq(req), orderId);
+  simulatePaymentSuccess(
+    @Param('orderId') orderId: string,
+    @Req() req: Request,
+  ) {
+    return this.orderService.simulatePaymentSuccess(
+      this.userIdFromReq(req),
+      orderId,
+    );
   }
 
   @Get('checkout/options')
@@ -95,7 +112,10 @@ export class OrderController {
     @Body() dto: UpdateCheckoutPreferencesDto,
     @Req() req: Request,
   ) {
-    return this.orderService.updateCheckoutPreferences(this.userIdFromReq(req), dto);
+    return this.orderService.updateCheckoutPreferences(
+      this.userIdFromReq(req),
+      dto,
+    );
   }
 
   @Get('checkout/address-book')
@@ -104,8 +124,14 @@ export class OrderController {
   }
 
   @Post('checkout/address-book')
-  createAddressBookEntry(@Body() dto: UpsertAddressBookEntryDto, @Req() req: Request) {
-    return this.orderService.upsertAddressBookEntry(this.userIdFromReq(req), dto);
+  createAddressBookEntry(
+    @Body() dto: UpsertAddressBookEntryDto,
+    @Req() req: Request,
+  ) {
+    return this.orderService.upsertAddressBookEntry(
+      this.userIdFromReq(req),
+      dto,
+    );
   }
 
   @Patch('checkout/address-book/:id')
@@ -114,12 +140,18 @@ export class OrderController {
     @Body() dto: UpsertAddressBookEntryDto,
     @Req() req: Request,
   ) {
-    return this.orderService.upsertAddressBookEntry(this.userIdFromReq(req), { ...dto, id });
+    return this.orderService.upsertAddressBookEntry(this.userIdFromReq(req), {
+      ...dto,
+      id,
+    });
   }
 
   @Delete('checkout/address-book/:id')
   deleteAddressBookEntry(@Param('id') id: string, @Req() req: Request) {
-    return this.orderService.deleteAddressBookEntry(this.userIdFromReq(req), id);
+    return this.orderService.deleteAddressBookEntry(
+      this.userIdFromReq(req),
+      id,
+    );
   }
 
   @Post('watch-availability')
@@ -128,7 +160,10 @@ export class OrderController {
     if (!productId) {
       throw new BadRequestException('Podaj productId');
     }
-    return this.orderService.watchAvailability(this.userIdFromReq(req), productId);
+    return this.orderService.watchAvailability(
+      this.userIdFromReq(req),
+      productId,
+    );
   }
 
   @Get('watch-availability')
@@ -147,10 +182,7 @@ export class OrderController {
   }
 
   @Post('wishlist')
-  addWishlist(
-    @Body() dto: { productId?: string },
-    @Req() req: Request,
-  ) {
+  addWishlist(@Body() dto: { productId?: string }, @Req() req: Request) {
     const productId = dto.productId?.trim();
     if (!productId) {
       throw new BadRequestException('Podaj productId');

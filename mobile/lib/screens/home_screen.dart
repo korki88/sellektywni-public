@@ -6,6 +6,7 @@ import '../models/product_category.dart';
 import '../models/product_condition.dart';
 import '../providers/catalog_filter_notifier.dart';
 import '../widgets/product_card.dart';
+import 'help_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,15 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('SELLEKTYWNI'),
         actions: [
+          IconButton(
+            tooltip: 'Pomoc i kontakt',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+              );
+            },
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Powiadomienia',
             onPressed: () {

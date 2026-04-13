@@ -38,6 +38,9 @@ Zasady wynikające z polecenia właściciela projektu oraz ustalenia techniczne.
 12. **Agent AI — domykanie kroków**  
     Jeśli z polecenia wynika sensowne domknięcie (np. `lint:ci` po naprawie ESLint, commit i push po paczce zmian), wykonaj to **bez pytania o zgodę**, o ile użytkownik nie poprosi wyłącznie o plan albo wstrzymanie. W Cursor: reguła **`.cursor/rules/proactive-next-step-and-live-data.mdc`**.
 
+13. **Wiele agentów — identyfikator i gałąź**  
+    Każdy agent ustala **własny unikalny `AGENT_ID`** i preferowaną gałąź roboczą; wpisuje się w **[AGENT_COORDINATION.md](AGENT_COORDINATION.md)** i oznacza wpisy w **`WORKLOG.md`** (`[agent:…]`), żeby praca się nie nakładała. Reguła Cursor: **`.cursor/rules/agent-coordination.mdc`**.
+
 ## Aktualizacja tych zasad
 
 Zmiany w `RULES.md` commituj razem z uzasadnieniem w `WORKLOG.md`.

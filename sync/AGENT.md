@@ -50,6 +50,10 @@ npm run start:dev
 
 Obowiązuje **`sync/RULES.md`**: m.in. aktualizacja **`sync/WORKLOG.md`** po zadaniach, brak commitu sekretów, praca na branchach roboczych.
 
+## Wiele agentów / deweloperów równolegle
+
+Przeczytaj **`sync/AGENT_COORDINATION.md`**: unikalny **`AGENT_ID`**, zasady gałęzi (`main-home` vs `agent/<AGENT_ID>/…`), prefiksy w `WORKLOG.md` i unikanie kolizji.
+
 ## Gdy coś nie działa na nowym PC
 
 1. `DATABASE_URL` w `.env` zgodny z Dockerem (`localhost:5432`, baza `sellektywni`).

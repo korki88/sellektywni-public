@@ -1336,6 +1336,46 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  async getMyOrderById(userId: string, orderId: string) {
+    const o = await this.prisma.customerOrder.findFirst({
+      where: { id: orderId, userId },
+      include: {
+        items: true,
+        promoCode: { select: { code: true, label: true } },
+      },
+    });
+    if (!o) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    return {
+      id: o.id,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      status: o.status,
+      subtotalAmount: o.subtotalAmount.toString(),
+      discountAmount: o.discountAmount.toString(),
+      totalAmount: o.totalAmount.toString(),
+      promoCode: o.promoCode?.code ?? null,
+      paymentMethod: o.paymentMethod,
+      paymentProvider: o.paymentProvider,
+      paymentStatus: o.paymentStatus,
+      paymentReference: o.paymentReference,
+      paymentSessionUrl: o.paymentSessionUrl,
+      paymentBankAccount: o.paymentBankAccount,
+      paymentDetails: o.paymentDetails,
+      shippingMethod: o.shippingMethod,
+      shippingSnapshot: o.shippingSnapshot,
+      itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
+      items: o.items.map((i) => ({
+        productId: i.productId,
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        lineTotal: i.lineTotal,
+      })),
+    };
+  }
+
   async listMyOrders(userId: string) {
     const rows = await this.prisma.customerOrder.findMany({
       where: { userId },

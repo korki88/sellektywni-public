@@ -14,6 +14,12 @@ class AppConfig {
     defaultValue: '',
   );
 
+  /// E-mail kontaktu / obsługi sklepu (UI „Pomoc”, stopka).
+  static const String shopSupportEmail = String.fromEnvironment(
+    'SHOP_SUPPORT_EMAIL',
+    defaultValue: 'kontakt@sellektywni.pl',
+  );
+
   static const bool _devMockFromDefine = bool.fromEnvironment(
     'USE_DEV_MOCK_AUTH',
     defaultValue: false,
