@@ -19,6 +19,22 @@ class MainStore extends StatefulWidget {
 
 class _MainStoreState extends State<MainStore> {
   int _index = 0;
+  int _cartActivationTick = 0;
+  int _accountActivationTick = 0;
+
+  void _onDestinationSelected(int i) {
+    setState(() {
+      _index = i;
+      if (i == 1) {
+        _cartActivationTick++;
+      } else if (i == 2) {
+        _accountActivationTick++;
+      }
+    });
+    if (i == 2) {
+      context.read<AuthSession>().refreshProfile();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,15 +55,15 @@ class _MainStoreState extends State<MainStore> {
             : null,
         body: IndexedStack(
           index: _index,
-          children: const [
-            HomeScreen(),
-            CartScreen(),
-            UserAccountScreen(),
+          children: [
+            const HomeScreen(),
+            CartScreen(activationTick: _cartActivationTick),
+            UserAccountScreen(activationTick: _accountActivationTick),
           ],
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
+          onDestinationSelected: _onDestinationSelected,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.grid_view_outlined),

@@ -35,6 +35,7 @@ class AuthSession extends ChangeNotifier {
   String? _profileEmail;
   int? _points;
   String? _rank;
+  List<String> _permissions = const [];
   String _apiBase = defaultApiBase;
   bool _ready = false;
 
@@ -44,6 +45,7 @@ class AuthSession extends ChangeNotifier {
   String? get profileEmail => _profileEmail;
   int? get points => _points;
   String? get rank => _rank;
+  List<String> get permissions => List.unmodifiable(_permissions);
   String get apiBase => _apiBase;
   bool get hasToken => _accessToken != null && _accessToken!.isNotEmpty;
 
@@ -55,6 +57,7 @@ class AuthSession extends ChangeNotifier {
 
   /// Panel AdminDashboard (OWNER pełny, STAFF operacje sklepowe).
   bool get isAdminDashboardRole => isStaff || isOwner;
+  bool hasPermission(String key) => isOwner || _permissions.contains(key);
 
   /// DevMode: token `dev-mock:*` — profil tylko lokalnie (bez Nest / Postgres).
   bool _applyDevMockProfileIfNeeded() {
@@ -64,6 +67,23 @@ class AuthSession extends ChangeNotifier {
     _profileEmail = fields.email;
     _points = fields.points;
     _rank = fields.rank;
+    _permissions = switch (fields.role) {
+      'OWNER' => const [
+          'manage.reservations',
+          'manage.customers',
+          'manage.orders',
+          'manage.dotykacka',
+          'manage.permissions',
+          'view.analytics',
+        ],
+      'STAFF' => const [
+          'manage.reservations',
+          'manage.customers',
+          'manage.orders',
+          'manage.dotykacka',
+        ],
+      _ => const [],
+    };
     return true;
   }
 
@@ -126,6 +146,7 @@ class AuthSession extends ChangeNotifier {
       _profileEmail = null;
       _points = null;
       _rank = null;
+      _permissions = const [];
     } else {
       await authStorageSetToken(_accessToken!);
       // Jak przy Supabase: najpierw ensure profilu w Postgres, potem /auth/me (rola, punkty).
@@ -195,6 +216,7 @@ class AuthSession extends ChangeNotifier {
         _profileEmail = null;
         _points = null;
         _rank = null;
+        _permissions = const [];
         notifyListeners();
         return;
       }
@@ -205,17 +227,25 @@ class AuthSession extends ChangeNotifier {
         _profileEmail = null;
         _points = null;
         _rank = null;
+        _permissions = const [];
       } else {
         _role = prof['role'] as String?;
         _profileEmail = prof['email'] as String?;
         _points = (prof['points'] as num?)?.toInt();
         _rank = prof['rank'] as String?;
+        final permsRaw = prof['permissions'];
+        if (permsRaw is List) {
+          _permissions = permsRaw.whereType<String>().toList();
+        } else {
+          _permissions = const [];
+        }
       }
     } catch (_) {
       _role = null;
       _profileEmail = null;
       _points = null;
       _rank = null;
+      _permissions = const [];
     }
     notifyListeners();
   }

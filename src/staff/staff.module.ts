@@ -3,6 +3,10 @@ import { AuthModule } from '../auth/auth.module';
 import { StaffController } from './staff.controller';
 import { StaffCustomersController } from './staff-customers.controller';
 import { StaffCustomersService } from './staff-customers.service';
+import { StaffOrdersController } from './staff-orders.controller';
+import { StaffOrdersService } from './staff-orders.service';
+import { StaffPermissionsController } from './staff-permissions.controller';
+import { StaffPermissionsService } from './staff-permissions.service';
 import { StaffProductsController } from './staff-products.controller';
 import { StaffProductsService } from './staff-products.service';
 
@@ -12,7 +16,14 @@ import { StaffProductsService } from './staff-products.service';
     StaffController,
     StaffProductsController,
     StaffCustomersController,
+    StaffOrdersController,
+    StaffPermissionsController,
   ],
-  providers: [StaffProductsService, StaffCustomersService],
+  providers: [
+    StaffProductsService,
+    StaffCustomersService,
+    StaffOrdersService,
+    StaffPermissionsService,
+  ],
 })
 export class StaffModule {}

@@ -1,0 +1,56 @@
+name: sellektywni-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sellektywni-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sellektywni
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - sellektywni_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sellektywni"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: sellektywni-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - sellektywni_redis_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: sellektywni-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - sellektywni_minio_data:/data
+    command: server /data --console-address ":9001"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sellektywni-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  sellektywni_postgres_data:
+  sellektywni_redis_data:
+  sellektywni_minio_data:

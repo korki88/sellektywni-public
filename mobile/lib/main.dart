@@ -82,10 +82,24 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => CatalogFilterNotifier()),
-        ChangeNotifierProvider(create: (_) => CartNotifier()),
-        ChangeNotifierProvider(create: (_) => AppNavigation()),
         ChangeNotifierProvider<AuthSession>.value(value: auth),
+        ChangeNotifierProxyProvider<AuthSession, CatalogFilterNotifier>(
+          create: (_) => CatalogFilterNotifier(),
+          update: (_, authSession, catalog) {
+            final c = catalog ?? CatalogFilterNotifier();
+            c.bindAuth(authSession);
+            return c;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthSession, CartNotifier>(
+          create: (_) => CartNotifier(),
+          update: (_, authSession, cart) {
+            final c = cart ?? CartNotifier();
+            c.bindAuth(authSession);
+            return c;
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => AppNavigation()),
       ],
       child: const SellektywniApp(),
     ),

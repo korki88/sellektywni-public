@@ -29,7 +29,9 @@ export class StaffCustomersService {
     }
 
     if (dto.setPoints !== undefined && dto.addPoints !== undefined) {
-      throw new BadRequestException('Podaj albo setPoints, albo addPoints, nie oba naraz.');
+      throw new BadRequestException(
+        'Podaj albo setPoints, albo addPoints, nie oba naraz.',
+      );
     }
 
     const data: Prisma.ProfileUpdateInput = {};

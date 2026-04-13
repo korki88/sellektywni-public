@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { Product } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 
-export type ProductForNotification = Pick<Product, 'id' | 'idDotykacka' | 'name' | 'price' | 'status'>;
+export type ProductForNotification = Pick<
+  Product,
+  'id' | 'idDotykacka' | 'name' | 'price' | 'status'
+>;
 
 @Injectable()
 export class AdminNotificationService {
@@ -15,7 +18,9 @@ export class AdminNotificationService {
     private readonly http: HttpService,
   ) {}
 
-  async notifyOrderPendingApproval(product: ProductForNotification): Promise<void> {
+  async notifyOrderPendingApproval(
+    product: ProductForNotification,
+  ): Promise<void> {
     const payload = {
       type: 'ORDER_PENDING_APPROVAL',
       productId: product.id,
@@ -26,7 +31,9 @@ export class AdminNotificationService {
       at: new Date().toISOString(),
     };
 
-    this.logger.log(`[ADMIN] Produkt oczekuje na akceptację zamówienia: ${JSON.stringify(payload)}`);
+    this.logger.log(
+      `[ADMIN] Produkt oczekuje na akceptację zamówienia: ${JSON.stringify(payload)}`,
+    );
 
     const webhook = this.config.get<string>('ADMIN_WEBHOOK_URL')?.trim();
     if (webhook) {

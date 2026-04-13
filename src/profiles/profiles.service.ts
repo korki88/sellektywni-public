@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ProfileRank, ProfileRole, type Profile } from '@prisma/client';
+import { defaultPermissionsForRole } from '../auth/permissions';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SupabaseJwtPayload } from '../types/express';
 
@@ -34,6 +31,7 @@ export class ProfilesService {
         userId: jwtPayload.sub,
         email: jwtPayload.email ?? null,
         role: ProfileRole.CUSTOMER,
+        permissions: defaultPermissionsForRole(ProfileRole.CUSTOMER),
         points: 0,
         rank: ProfileRank.BRONZE,
       },
@@ -67,6 +65,7 @@ export class ProfilesService {
         userId: jwtPayload.sub,
         email: jwtPayload.email ?? null,
         role: ProfileRole.CUSTOMER,
+        permissions: defaultPermissionsForRole(ProfileRole.CUSTOMER),
         points: 0,
         rank: ProfileRank.BRONZE,
       },
@@ -80,9 +79,6 @@ export class ProfilesService {
     const m = appMetadata as Record<string, unknown>;
     if (m.provider === 'google') return true;
     const providers = m.providers;
-    return (
-      Array.isArray(providers) &&
-      providers.some((p) => p === 'google')
-    );
+    return Array.isArray(providers) && providers.some((p) => p === 'google');
   }
 }

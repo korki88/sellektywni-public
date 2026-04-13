@@ -9,9 +9,59 @@ datasource db {
 
 enum ProductStatus {
   AVAILABLE
+  RESERVED
   PENDING_APPROVAL
   SOLD
   IN_FITTING_ROOM
+}
+
+enum ReservationStatus {
+  IN_CART
+  PENDING
+  ACCEPTED
+  REJECTED
+  AUTO_REJECTED
+  FINALIZED
+}
+
+enum CustomerOrderStatus {
+  PLACED
+  PROCESSING
+  READY
+  COMPLETED
+  CANCELED
+}
+
+enum PaymentMethod {
+  BLIK
+  CARD_ONLINE
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+enum PaymentProvider {
+  PRZELEWY24
+  BANK_TRANSFER_MOCK
+  CASH_ON_DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  COD_PENDING
+}
+
+enum ShippingMethod {
+  COURIER
+  PARCEL_LOCKER_INPOST
+  STORE_PICKUP
+}
+
+enum AddressBookEntryType {
+  ADDRESS
+  PARCEL_LOCKER
 }
 
 /// Rola użytkownika w sklepie (powiązanie z Supabase Auth `auth.users.id`).
@@ -33,6 +83,7 @@ model Profile {
   userId    String      @id @map("user_id") @db.Uuid
   email     String?
   role      ProfileRole @default(CUSTOMER)
+  permissions String[]  @default([])
   points    Int         @default(0)
   rank      ProfileRank @default(BRONZE)
   createdAt DateTime    @default(now()) @map("created_at")
@@ -47,9 +98,116 @@ model Product {
   idDotykacka String        @unique @map("id_dotykacka")
   name        String
   price       Decimal       @db.Decimal(12, 2)
+  stockQty    Int           @default(1) @map("stock_qty")
   status      ProductStatus @default(AVAILABLE)
+  reservations ProductReservation[]
+  orderItems   CustomerOrderItem[]
+  availabilityWatches AvailabilityWatch[]
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
   @@map("products")
+}
+
+model ProductReservation {
+  id        String            @id @default(uuid())
+  productId String            @map("product_id")
+  ownerKey  String            @default("unknown") @map("owner_key")
+  quantity  Int               @default(1)
+  status    ReservationStatus @default(PENDING)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@unique([ownerKey, productId, status])
+  @@map("product_reservations")
+}
+
+model CustomerOrder {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  status      CustomerOrderStatus @default(PLACED)
+  totalAmount Decimal             @db.Decimal(12, 2) @map("total_amount")
+  paymentMethod PaymentMethod     @default(BLIK) @map("payment_method")
+  paymentProvider PaymentProvider @default(PRZELEWY24) @map("payment_provider")
+  paymentStatus PaymentStatus     @default(PENDING) @map("payment_status")
+  paymentReference String?        @map("payment_reference")
+  paymentSessionUrl String?       @map("payment_session_url")
+  paymentBankAccount String?      @map("payment_bank_account")
+  paymentDetails Json             @default("{}") @map("payment_details")
+  shippingMethod ShippingMethod   @default(COURIER) @map("shipping_method")
+  shippingSnapshot Json           @map("shipping_snapshot")
+  saveToAddressBook Boolean       @default(true) @map("save_to_address_book")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  items       CustomerOrderItem[]
+
+  @@index([userId, createdAt])
+  @@map("customer_orders")
+}
+
+model CustomerOrderItem {
+  id        String        @id @default(uuid())
+  orderId   String        @map("order_id")
+  productId String        @map("product_id")
+  name      String
+  price     Decimal       @db.Decimal(12, 2)
+  quantity  Int
+  lineTotal Decimal       @db.Decimal(12, 2) @map("line_total")
+  createdAt DateTime      @default(now()) @map("created_at")
+  order     CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("customer_order_items")
+}
+
+model AvailabilityWatch {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("availability_watches")
+}
+
+model AddressBookEntry {
+  id                String               @id @default(uuid())
+  userId            String               @map("user_id")
+  label             String?
+  entryType         AddressBookEntryType @default(ADDRESS) @map("entry_type")
+  recipientName     String?              @map("recipient_name")
+  phone             String?
+  email             String?
+  country           String               @default("PL")
+  postalCode        String?              @map("postal_code")
+  city              String?
+  street            String?
+  buildingNumber    String?              @map("building_number")
+  apartmentNumber   String?              @map("apartment_number")
+  parcelLockerId    String?              @map("parcel_locker_id")
+  parcelLockerLabel String?              @map("parcel_locker_label")
+  isDefault         Boolean              @default(false) @map("is_default")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@index([userId, updatedAt])
+  @@map("address_book_entries")
+}
+
+model CheckoutPreference {
+  userId                String         @id @map("user_id")
+  preferredPaymentMethod PaymentMethod? @map("preferred_payment_method")
+  preferredShippingMethod ShippingMethod? @map("preferred_shipping_method")
+  preferredAddressId     String?        @map("preferred_address_id")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+
+  @@map("checkout_preferences")
 }

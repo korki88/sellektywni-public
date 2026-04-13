@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../data/product_details.dart';
 import '../layout/web_app_frame.dart';
 import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
+import '../screens/product_details_screen.dart';
 import '../screens/user_account_screen.dart';
 import '../staff/staff_api.dart';
 import '../staff/staff_models.dart';
@@ -41,6 +43,10 @@ enum _MenuId {
   aiAgents,
   employees,
   reservations,
+  orders,
+  shipping,
+  permissions,
+  dotykackaDev,
   scanner,
   loyalty,
 }
@@ -50,25 +56,55 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final _scanFocus = FocusNode();
   final _scanController = TextEditingController();
   final _manualIdController = TextEditingController();
+  final _dotykackaIdController = TextEditingController();
+  final _dotykackaQtyController = TextEditingController(text: '0');
 
   List<StaffProduct> _queue = [];
+  List<StaffOrder> _orders = [];
+  final Set<String> _expandedOrderIds = {};
+  List<StaffPermissionUser> _permissionUsers = [];
+  List<String> _availablePermissions = [];
   StaffCustomerProfile? _customer;
   bool _loadingQueue = false;
+  bool _loadingOrders = false;
+  bool _loadingPermissions = false;
+  bool _loadingShipping = false;
   bool _loadingCustomer = false;
+  bool _loadingDotykackaDev = false;
+  bool _dotykackaDevEnabled = false;
   String? _error;
+  List<DotykackaDevStockRow> _dotykackaRows = [];
+  List<Map<String, dynamic>> _shippingProviders = [];
+  List<Map<String, dynamic>> _shippingInpostPoints = [];
+  _MenuId? _lastAutoLoadedMenu;
 
-  List<_MenuId> _menuForRole(String? role) {
-    if (role == 'OWNER') {
-      return const [
-        _MenuId.stats,
-        _MenuId.finance,
-        _MenuId.aiAgents,
-        _MenuId.employees,
-        _MenuId.reservations,
-        _MenuId.scanner,
-      ];
+  List<_MenuId> _menuForRole(AuthSession auth) {
+    final menu = <_MenuId>[];
+    if (auth.hasPermission('view.analytics')) {
+      menu.addAll(const [_MenuId.stats, _MenuId.finance]);
     }
-    return const [_MenuId.reservations, _MenuId.scanner, _MenuId.loyalty];
+    if (auth.isOwner) {
+      menu.addAll(const [_MenuId.aiAgents, _MenuId.employees]);
+    }
+    if (auth.hasPermission('manage.reservations')) {
+      menu.add(_MenuId.reservations);
+    }
+    if (auth.hasPermission('manage.orders')) {
+      menu.add(_MenuId.orders);
+    }
+    if (auth.hasPermission('manage.orders')) {
+      menu.add(_MenuId.shipping);
+    }
+    if (auth.hasPermission('manage.permissions')) {
+      menu.add(_MenuId.permissions);
+    }
+    if (auth.hasPermission('manage.dotykacka')) {
+      menu.add(_MenuId.dotykackaDev);
+    }
+    if (auth.hasPermission('manage.customers')) {
+      menu.addAll(const [_MenuId.scanner, _MenuId.loyalty]);
+    }
+    return menu;
   }
 
   String _label(_MenuId id) {
@@ -83,6 +119,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return 'Pracownicy';
       case _MenuId.reservations:
         return 'Rezerwacje';
+      case _MenuId.orders:
+        return 'Zamówienia';
+      case _MenuId.permissions:
+        return 'Uprawnienia';
+      case _MenuId.shipping:
+        return 'Dostawy';
+      case _MenuId.dotykackaDev:
+        return 'Dotykačka DEV';
       case _MenuId.scanner:
         return 'Skaner';
       case _MenuId.loyalty:
@@ -102,6 +146,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return selected ? Icons.groups : Icons.groups_outlined;
       case _MenuId.reservations:
         return selected ? Icons.event_note : Icons.event_note_outlined;
+      case _MenuId.orders:
+        return selected ? Icons.receipt_long : Icons.receipt_long_outlined;
+      case _MenuId.permissions:
+        return selected ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined;
+      case _MenuId.shipping:
+        return selected ? Icons.local_shipping : Icons.local_shipping_outlined;
+      case _MenuId.dotykackaDev:
+        return selected ? Icons.sync_alt : Icons.sync_alt_outlined;
       case _MenuId.scanner:
         return selected ? Icons.qr_code_scanner : Icons.qr_code_scanner_outlined;
       case _MenuId.loyalty:
@@ -112,8 +164,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCurrentSectionIfNeeded(force: true);
       _requestScanFocus();
     });
   }
@@ -123,6 +175,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _scanFocus.dispose();
     _scanController.dispose();
     _manualIdController.dispose();
+    _dotykackaIdController.dispose();
+    _dotykackaQtyController.dispose();
     super.dispose();
   }
 
@@ -134,6 +188,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   StaffApi get _api => StaffApi(context.read<AuthSession>());
+
+  void _autoRefreshMenu(_MenuId menuId) {
+    switch (menuId) {
+      case _MenuId.reservations:
+        _loadQueue();
+      case _MenuId.orders:
+        _loadOrders();
+      case _MenuId.shipping:
+        _loadShipping();
+      case _MenuId.permissions:
+        _loadPermissions();
+      case _MenuId.dotykackaDev:
+        _loadDotykackaDev();
+      default:
+        break;
+    }
+  }
+
+  void _refreshCurrentSectionIfNeeded({bool force = false}) {
+    final auth = context.read<AuthSession>();
+    final menu = _menuForRole(auth);
+    if (menu.isEmpty) return;
+    final safeIndex =
+        _railIndex < 0 ? 0 : (_railIndex >= menu.length ? menu.length - 1 : _railIndex);
+    final current = menu[safeIndex];
+    if (_lastAutoLoadedMenu != current) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _refreshCurrentSectionIfNeeded();
+      });
+    }
+    if (!force && _lastAutoLoadedMenu == current) {
+      return;
+    }
+    _lastAutoLoadedMenu = current;
+    _autoRefreshMenu(current);
+  }
 
   Future<void> _loadQueue() async {
     final auth = context.read<AuthSession>();
@@ -160,6 +251,132 @@ class _AdminDashboardState extends State<AdminDashboard> {
       });
     }
     _requestScanFocus();
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() {
+      _loadingOrders = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchOrders();
+      if (!mounted) return;
+      setState(() {
+        _orders = rows;
+        _loadingOrders = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingOrders = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadShipping() async {
+    setState(() {
+      _loadingShipping = true;
+      _error = null;
+    });
+    try {
+      final providers = await _api.fetchShippingProviders();
+      final points = await _api.fetchInpostPoints();
+      if (!mounted) return;
+      setState(() {
+        _shippingProviders = providers;
+        _shippingInpostPoints = points;
+        _loadingShipping = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingShipping = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _setOrderStatus(StaffOrder order, String nextStatus) async {
+    try {
+      await _api.patchOrderStatus(order.id, nextStatus);
+      await _loadOrders();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Zmieniono status zamówienia ${order.id} na $nextStatus')),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
+  Future<void> _setOrderPaymentStatus(StaffOrder order, String nextPaymentStatus) async {
+    try {
+      await _api.patchOrderPaymentStatus(order.id, nextPaymentStatus);
+      await _loadOrders();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Zmieniono status płatności zamówienia ${order.id} na $nextPaymentStatus',
+          ),
+        ),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
+  Future<void> _loadPermissions() async {
+    setState(() {
+      _loadingPermissions = true;
+      _error = null;
+    });
+    try {
+      final data = await _api.fetchPermissionUsers();
+      if (!mounted) return;
+      setState(() {
+        _availablePermissions = data.availablePermissions;
+        _permissionUsers = data.users;
+        _loadingPermissions = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingPermissions = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _togglePermission(
+    StaffPermissionUser user,
+    String permission,
+    bool enabled,
+  ) async {
+    final updated = [...user.permissions];
+    if (enabled) {
+      if (!updated.contains(permission)) updated.add(permission);
+    } else {
+      updated.remove(permission);
+    }
+    try {
+      await _api.updatePermissions(user.userId, updated);
+      await _loadPermissions();
+      if (!mounted) return;
+      await context.read<AuthSession>().refreshProfile();
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   Future<void> _accept(StaffProduct p) async {
@@ -242,8 +459,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _requestScanFocus();
   }
 
+  Future<void> _loadDotykackaDev() async {
+    setState(() {
+      _loadingDotykackaDev = true;
+      _error = null;
+    });
+    try {
+      final data = await _api.fetchDotykackaDevStock();
+      if (!mounted) return;
+      setState(() {
+        _loadingDotykackaDev = false;
+        _dotykackaDevEnabled = data.enabled;
+        _dotykackaRows = data.rows;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingDotykackaDev = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _setDotykackaStock() async {
+    final id = _dotykackaIdController.text.trim();
+    final qty = int.tryParse(_dotykackaQtyController.text.trim());
+    if (id.isEmpty || qty == null) return;
+    try {
+      await _api.setDotykackaDevStock(id, qty);
+      await _loadDotykackaDev();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ustawiono stan $id = $qty')),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
   void _focusTabAfterScan() {
-    final menu = _menuForRole(context.read<AuthSession>().role);
+    final menu = _menuForRole(context.read<AuthSession>());
     final loyalty = menu.indexOf(_MenuId.loyalty);
     final scanner = menu.indexOf(_MenuId.scanner);
     if (loyalty >= 0) {
@@ -338,15 +596,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  p.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                InkWell(
+                  onTap: () {
+                    final product =
+                        lookupProductById(p.id) ??
+                        fallbackProductForOrderItem(
+                          productId: p.id,
+                          name: p.name,
+                          pricePln: double.tryParse(p.priceRaw) ?? 0,
+                        );
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ProductDetailsScreen(product: product),
                       ),
+                    );
+                  },
+                  child: Text(
+                    p.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${p.priceRaw} zł · ${p.status}',
+                  '${p.priceRaw} zł · ${p.pendingQuantity} szt. · ${p.status}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: const Color(0xFF6B6B6B),
                       ),
@@ -468,6 +742,329 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  Widget _buildOrdersTab() {
+    if (_loadingOrders) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_orders.isEmpty) {
+      return Center(
+        child: Text(
+          'Brak zamówień do obsługi.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: const Color(0xFF6B6B6B),
+              ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _orders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final o = _orders[i];
+        final expanded = _expandedOrderIds.contains(o.id);
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  if (expanded) {
+                    _expandedOrderIds.remove(o.id);
+                  } else {
+                    _expandedOrderIds.add(o.id);
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    o.customerEmail ?? o.userId,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Status: ${o.status} · Pozycji: ${o.itemCount} · Kwota: ${o.totalAmountRaw} zł',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF6B6B6B),
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Płatność: ${o.paymentMethod} (${o.paymentProvider}) · status: ${o.paymentStatus}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF6B6B6B),
+                        ),
+                  ),
+                  if (o.paymentReference != null && o.paymentReference!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Ref: ${o.paymentReference}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF6B6B6B),
+                            ),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Data: ${o.createdAt}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF6B6B6B),
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: () => _setOrderStatus(o, 'PROCESSING'),
+                        child: const Text('W realizacji'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () => _setOrderStatus(o, 'READY'),
+                        child: const Text('Gotowe'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () => _setOrderStatus(o, 'COMPLETED'),
+                        child: const Text('Zakończone'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => _setOrderStatus(o, 'CANCELED'),
+                        child: const Text('Anuluj'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () => _setOrderPaymentStatus(o, 'PAID'),
+                        child: const Text('Płatność: opłacone'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => _setOrderPaymentStatus(o, 'FAILED'),
+                        child: const Text('Płatność: błąd'),
+                      ),
+                    ],
+                  ),
+                  if (expanded) ...[
+                    const Divider(height: 20),
+                    ...o.items.map((item) {
+                      final product =
+                          lookupProductById(item.productId) ??
+                          fallbackProductForOrderItem(
+                            productId: item.productId,
+                            name: item.name,
+                            pricePln: double.tryParse(item.priceRaw) ?? 0,
+                          );
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(item.name),
+                        subtitle: Text(
+                          '${item.quantity} szt. · ${item.priceRaw} zł · suma ${item.lineTotalRaw} zł',
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ProductDetailsScreen(product: product),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPermissionsTab() {
+    if (_loadingPermissions) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_permissionUsers.isEmpty) {
+      return Center(
+        child: Text(
+          'Brak użytkowników do zarządzania uprawnieniami.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _permissionUsers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final u = _permissionUsers[i];
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(u.email ?? u.userId, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text('Rola: ${u.role}', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _availablePermissions
+                      .map(
+                        (p) => FilterChip(
+                          label: Text(p),
+                          selected: u.permissions.contains(p),
+                          selectedColor: const Color(0xFFE8F0FE),
+                          labelStyle: TextStyle(
+                            color: u.permissions.contains(p)
+                                ? const Color(0xFF0D1B2A)
+                                : const Color(0xFF111111),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onSelected: u.role == 'OWNER'
+                              ? null
+                              : (v) => _togglePermission(u, p, v),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDotykackaDevTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView(
+        children: [
+          Text(
+            'Symulator Dotykačka (dev): ustawiaj stany magazynowe po idDotykacka.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF6B6B6B),
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _dotykackaDevEnabled
+                ? 'Tryb symulacji: aktywny'
+                : 'Tryb symulacji: wyłączony (AUTH_DEV_MOCK=false)',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _dotykackaIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'idDotykacka (np. DOTY-1)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: _dotykackaQtyController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Stan',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton(
+                onPressed: _dotykackaDevEnabled ? _setDotykackaStock : null,
+                child: const Text('Ustaw'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.tonal(
+            onPressed: _loadDotykackaDev,
+            child: const Text('Odśwież stany'),
+          ),
+          const SizedBox(height: 14),
+          if (_loadingDotykackaDev)
+            const Center(child: CircularProgressIndicator())
+          else if (_dotykackaRows.isEmpty)
+            Text(
+              'Brak wpisów symulatora. Dodaj pierwszy stan.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
+          else
+            ..._dotykackaRows.map(
+              (r) => ListTile(
+                dense: true,
+                title: Text(r.idDotykacka),
+                trailing: Text('${r.stockQty} szt.'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShippingTab() {
+    if (_loadingShipping) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Moduły przewoźników (API-ready): cenniki, punkty odbioru i szybkie sugestie checkout.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        FilledButton.tonal(
+          onPressed: _loadShipping,
+          child: const Text('Odśwież dane przewoźników'),
+        ),
+        const SizedBox(height: 16),
+        Text('Dostępni przewoźnicy', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (_shippingProviders.isEmpty)
+          const Text('Brak danych')
+        else
+          ..._shippingProviders.map(
+            (p) => Card(
+              child: ListTile(
+                title: Text('${p['name'] ?? p['code'] ?? 'Przewoźnik'}'),
+                subtitle: Text(
+                  'Code: ${p['code'] ?? '-'} · '
+                  'Punkty: ${p['supportsMapPoints'] == true ? 'tak' : 'nie'} · '
+                  'Paczkomat: ${p['supportsParcelLocker'] == true ? 'tak' : 'nie'}',
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 16),
+        Text('Sugerowane punkty InPost', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (_shippingInpostPoints.isEmpty)
+          const Text('Brak punktów')
+        else
+          ..._shippingInpostPoints.map(
+            (p) => ListTile(
+              dense: true,
+              title: Text('${p['id']} · ${p['name'] ?? ''}'),
+              subtitle: Text('${p['address'] ?? ''}, ${p['postalCode'] ?? ''} ${p['city'] ?? ''}'),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildCustomerCard(StaffCustomerProfile c) {
     return Card(
       child: Padding(
@@ -563,6 +1160,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
       case _MenuId.reservations:
         return _buildQueueTab();
+      case _MenuId.orders:
+        return _buildOrdersTab();
+      case _MenuId.shipping:
+        return _buildShippingTab();
+      case _MenuId.permissions:
+        return _buildPermissionsTab();
+      case _MenuId.dotykackaDev:
+        return _buildDotykackaDevTab();
       case _MenuId.scanner:
         final owner = role == 'OWNER';
         return _buildScannerTab(showFullCustomerCard: owner);
@@ -574,7 +1179,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthSession>();
-    final menu = _menuForRole(auth.role);
+    final menu = _menuForRole(auth);
     if (menu.isEmpty) {
       const empty = Scaffold(
         body: Center(child: Text('Brak uprawnień panelu.')),
@@ -604,7 +1209,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       selectedIndex: safeIndex,
       labelType: railLabelType,
       minWidth: widget.presentation == AdminDashboardPresentation.overlaySidebar ? 56 : 72,
-      onDestinationSelected: (i) => setState(() => _railIndex = i),
+      onDestinationSelected: (i) {
+        setState(() => _railIndex = i);
+        _refreshCurrentSectionIfNeeded(force: true);
+      },
       destinations: [
         for (var i = 0; i < menu.length; i++)
           NavigationRailDestination(
@@ -662,6 +1270,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 ),
                               ),
                           ],
+                        ),
+                      ],
+                      if (current == _MenuId.orders) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadOrders,
+                          child: const Text('Odśwież zamówienia'),
+                        ),
+                      ],
+                      if (current == _MenuId.permissions) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadPermissions,
+                          child: const Text('Odśwież uprawnienia'),
                         ),
                       ],
                     ],

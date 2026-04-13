@@ -21,7 +21,9 @@ export class SupabaseJwtMiddleware implements NestMiddleware {
     const auth = req.headers.authorization;
     const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : null;
     if (!token) {
-      throw new UnauthorizedException('Brak nagłówka Authorization: Bearer <token>');
+      throw new UnauthorizedException(
+        'Brak nagłówka Authorization: Bearer <token>',
+      );
     }
 
     const mockEnabled =

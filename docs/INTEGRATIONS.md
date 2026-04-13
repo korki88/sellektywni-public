@@ -19,6 +19,41 @@ npm run prisma:migrate
 
 ---
 
+## 0. Local-first stack (zalecane na start)
+
+Repo zawiera gotowy stack deweloperski uruchamiany lokalnie przez Docker:
+
+- `postgres` (`localhost:5432`) - baza aplikacji (Prisma),
+- `redis` (`localhost:6379`) - cache/kolejki/rate-limiting pod obecne i przyszle funkcje,
+- `minio` (`localhost:9000`, panel `localhost:9001`) - lokalny zamiennik S3,
+- `mailpit` (UI `localhost:8025`, SMTP `localhost:1025`) - lokalny mailbox do testow.
+
+Szybki start:
+
+```bash
+npm run dev:bootstrap
+```
+
+To polecenie:
+1. stawia kontenery lokalne,
+2. uruchamia migracje Prisma,
+3. seeduje przykladowe dane (profile + produkty).
+
+Pozostale komendy:
+
+```bash
+npm run dev:up
+npm run dev:down
+npm run dev:logs
+npm run dev:reset-db
+```
+
+Po seedzie dostajesz dane pod obecne funkcje panelu i sklepu:
+- profile: OWNER / STAFF / CUSTOMER,
+- produkty w statusach `AVAILABLE`, `PENDING_APPROVAL`, `SOLD` (do testu flow zamowien i panelu staff).
+
+---
+
 ## 1b. Tryb deweloperski bez Supabase (`AUTH_DEV_MOCK`)
 
 Gdy **jeszcze nie integrujesz** zewnętrznych dostawców, możesz uruchomić API i Fluttera z **fikcyjnymi kontami**. Sklep jest dostępny także **jako gość**; logowanie (np. z zakładki „Konto”) przełącza na panel OWNER/STAFF lub konto klienta.
@@ -77,6 +112,27 @@ Integracja z chmurą Dotykačka służy m.in. do **weryfikacji produktu przy sk�
 
 **Ty:** tylko jeśli używasz Dotykačka w sklepie — rejestracja / dostęp po stronie producenta usługi.
 
+### Rezerwacje magazynowe (workflow)
+
+- Dodanie produktu do koszyka rezerwuje stan (`IN_CART`) i od razu wpływa na dostępność w ofercie.
+- Gdy `stock_qty == reserved_qty`, produkt pozostaje widoczny, ale nie można dodać kolejnej sztuki (`RESERVED`).
+- Po `Kupuję` koszyk przechodzi do kolejki akceptacji (`PENDING`) z agregacją ilości sztuk.
+- Akceptacja staff: odejmuje ilość od magazynu; odrzucenie: zwalnia rezerwację.
+- Gdy stan spadnie do `0`, produkt znika z publicznej oferty (`GET /products` filtruje `stockQty > 0`).
+
+### Symulator Dotykačka (dev)
+
+Przy `AUTH_DEV_MOCK=true` dostępny jest prosty symulator stanów magazynowych:
+
+- API:
+  - `GET /dotykacka/dev/stock` - lista nadpisanych stanów,
+  - `PATCH /dotykacka/dev/stock` - ustawienie `idDotykacka` + `stockQty`.
+- UI:
+  - panel admina -> zakładka **Dotykačka DEV** (OWNER/STAFF),
+  - wpisz `idDotykacka` (np. `DOTY-2`) i stan, kliknij `Ustaw`.
+
+To pozwala testować auto-odrzuty i blokady rezerwacji bez realnej chmury Dotykačka.
+
 ---
 
 ## 4. Powiadomienia admina (opcjonalne)
@@ -87,7 +143,46 @@ Integracja z chmurą Dotykačka służy m.in. do **weryfikacji produktu przy sk�
 
 ---
 
-## 5. Firebase Cloud Messaging (Flutter — opcjonalne)
+## 5. Płatności online: Przelewy24 (sandbox / produkcja)
+
+Checkout obsługuje provider `PRZELEWY24` dla metod online (`BLIK`, `CARD_ONLINE`).
+
+| Zmienna | Opis |
+|---------|------|
+| `P24_SANDBOX_BASE_URL` | Domyślnie `https://sandbox.przelewy24.pl` |
+| `P24_MERCHANT_ID` | ID merchanta sandbox/produkcyjnego |
+| `P24_POS_ID` | POS ID (jeśli wymagany przez konto) |
+| `P24_CRC` | CRC key do podpisu transakcji |
+
+Bez kluczy API działa w trybie **sandbox-simulation** (link sesji + status `PENDING`), co pozwala testować pełny flow paneli i checkoutu lokalnie.
+
+---
+
+## 6. Moduły przewoźników PL (API-ready + dev simulation)
+
+System ma moduł przewoźników pod szybki checkout i personalizację:
+
+- endpointy:
+  - `GET /shipping/providers` - dostępni przewoźnicy i capabilities,
+  - `GET /shipping/points/inpost` - punkty odbioru (filtrowanie po kodzie/city),
+  - `GET /shipping/estimate` - wycena dostawy.
+- checkout:
+  - `GET /order/checkout/options` zwraca `shippingProviders` i `suggestedInpostPoints` bazujące na domyślnych/ostatnich danych klienta.
+- panel OWNER/STAFF:
+  - zakładka **Dostawy** z podglądem providerów i sugerowanych punktów.
+
+Klucze produkcyjne (opcjonalnie, pod adaptery API):
+
+| Zmienna | Opis |
+|---------|------|
+| `INPOST_API_KEY`, `INPOST_ORG_ID` | InPost |
+| `DHL_API_KEY` | DHL eCommerce |
+| `DPD_API_KEY` | DPD |
+| `POCZTA_POLSKA_API_KEY` | Poczta Polska |
+
+---
+
+## 7. Firebase Cloud Messaging (Flutter — opcjonalne)
 
 Aplikacja mobilna inicjalizuje Firebase do pushy; przy braku konfiguracji loguje ostrzeżenie i działa dalej. **Do podstawowego logowania i panelu nie jest wymagane.**
 
@@ -126,3 +221,16 @@ Opcjonalnie: `$env:PROFILE_ROLE="OWNER"` (domyślnie i tak OWNER), `$env:OWNER_E
 | Firebase (mobile push) | Nie |
 
 Szczegóły zmiennych: `.env.example`.
+
+---
+
+## Lokalni zastępcy zewnętrznych dostawców
+
+Docelowe integracje z zewnętrznymi providerami warto rozwijać z zasadą "adapter + local fallback".
+W tym repo lokalne odpowiedniki są już przygotowane konfiguracyjnie:
+
+- storage plików: MinIO (S3-compatible),
+- e-mail: Mailpit (SMTP + web UI),
+- cache/asynchroniczne procesy: Redis.
+
+Dzięki temu nowe funkcje można projektować i testować lokalnie, a na środowiskach zewnętrznych tylko podmieniać konfigurację endpointów/kluczy.
