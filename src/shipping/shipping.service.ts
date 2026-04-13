@@ -3,15 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { catchError, firstValueFrom } from 'rxjs';
 
-type CarrierPoint = {
-  id: string;
-  name: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  lat: number;
-  lng: number;
-};
+import { FeatureFlagsService } from '../core/feature-flags.service';
+import { OrlenPaczkaService } from '../integrations/orlen-paczka/orlen-paczka.service';
+import type { CarrierPoint } from './types/carrier-point';
 
 @Injectable()
 export class ShippingService {
@@ -114,9 +108,32 @@ export class ShippingService {
     },
   ];
 
+  private readonly orlenFallbackPoints: CarrierPoint[] = [
+    {
+      id: 'OP-WAW-EX1',
+      name: 'ORLEN Paczka — przykład (Warszawa)',
+      address: 'ul. Marszałkowska 100',
+      postalCode: '00-001',
+      city: 'Warszawa',
+      lat: 52.2297,
+      lng: 21.0122,
+    },
+    {
+      id: 'OP-KRK-EX1',
+      name: 'ORLEN Paczka — przykład (Kraków)',
+      address: 'ul. Karmelicka 1',
+      postalCode: '31-128',
+      city: 'Kraków',
+      lat: 50.0647,
+      lng: 19.945,
+    },
+  ];
+
   constructor(
     private readonly http: HttpService,
     private readonly config: ConfigService,
+    private readonly flags: FeatureFlagsService,
+    private readonly orlenPaczka: OrlenPaczkaService,
   ) {}
 
   private providersCacheTtlMs() {
@@ -201,6 +218,9 @@ export class ShippingService {
   }
 
   async listProviders() {
+    if (!this.flags.integrationsShipping()) {
+      return [];
+    }
     const now = Date.now();
     if (this.providersCache && this.providersCache.expiresAt > now) {
       return this.providersCache.data;
@@ -247,6 +267,17 @@ export class ShippingService {
             this.config.get<string>('POCZTA_POLSKA_API_KEY')?.trim(),
         ),
       },
+      {
+        code: 'ORLEN_PACZKA',
+        name: 'ORLEN Paczka',
+        supportsParcelLocker: true,
+        supportsCourier: true,
+        supportsMapPoints: true,
+        apiConfigured: Boolean(
+          this.config.get<string>('ORLEN_PACZKA_PARTNER_ID')?.trim() &&
+            this.config.get<string>('ORLEN_PACZKA_PARTNER_KEY')?.trim(),
+        ),
+      },
     ];
     this.providersCache = {
       data,
@@ -262,6 +293,9 @@ export class ShippingService {
     lng?: number;
     limit?: number;
   }) {
+    if (!this.flags.integrationsShipping() || !this.flags.featureShippingInpost()) {
+      return [];
+    }
     const now = Date.now();
     const key = this.inpostQueryCacheKey(options);
     const cached = this.inpostPointsCache.get(key);
@@ -322,6 +356,7 @@ export class ShippingService {
 
   /**
    * Sugestie „pod nos” dla checkout — równolegle, live-first z cache.
+   * Promise.allSettled: błąd jednego przewoźnika nie blokuje pozostałych.
    */
   async suggestPickupPoints(options?: {
     postalCode?: string;
@@ -330,19 +365,42 @@ export class ShippingService {
     lng?: number;
     limit?: number;
   }) {
+    if (!this.flags.integrationsShipping()) {
+      return {
+        INPOST: [],
+        DPD: [],
+        DHL: [],
+        POCZTA_POLSKA: [],
+        ORLEN_PACZKA: [],
+      };
+    }
     const limit = options?.limit ?? 8;
-    const [inpost, dpd, dhl, poczta] = await Promise.all([
-      this.findInpostPoints({ ...options, limit }),
-      this.findDpdPoints({ ...options, limit }),
-      this.findDhlPoints({ ...options, limit }),
-      this.findPocztaPoints({ ...options, limit }),
-    ]);
-    return {
-      INPOST: inpost,
-      DPD: dpd,
-      DHL: dhl,
-      POCZTA_POLSKA: poczta,
+    const base = { ...options, limit };
+    const tasks: [string, () => Promise<CarrierPoint[]>][] = [
+      ['INPOST', () => this.findInpostPoints(base)],
+      ['DPD', () => this.findDpdPoints(base)],
+      ['DHL', () => this.findDhlPoints(base)],
+      ['POCZTA_POLSKA', () => this.findPocztaPoints(base)],
+      ['ORLEN_PACZKA', () => this.findOrlenPoints(base)],
+    ];
+    const settled = await Promise.allSettled(tasks.map(([, fn]) => fn()));
+    const out: Record<string, CarrierPoint[]> = {
+      INPOST: [],
+      DPD: [],
+      DHL: [],
+      POCZTA_POLSKA: [],
+      ORLEN_PACZKA: [],
     };
+    tasks.forEach(([code], i) => {
+      const r = settled[i];
+      if (r.status === 'fulfilled') {
+        out[code] = r.value;
+      } else {
+        this.logger.warn(`[suggestPickupPoints] ${code}: ${String(r.reason)}`);
+        out[code] = [];
+      }
+    });
+    return out;
   }
 
   async findDpdPoints(options?: {
@@ -352,6 +410,9 @@ export class ShippingService {
     lng?: number;
     limit?: number;
   }) {
+    if (!this.flags.integrationsShipping() || !this.flags.featureCarrierDpd()) {
+      return [];
+    }
     return this.findGenericCarrierPoints('DPD', options, {
       apiBase: this.config.get<string>('DPD_API_BASE_URL')?.trim(),
       apiKey: this.config.get<string>('DPD_API_KEY')?.trim(),
@@ -367,6 +428,9 @@ export class ShippingService {
     lng?: number;
     limit?: number;
   }) {
+    if (!this.flags.integrationsShipping() || !this.flags.featureCarrierDhl()) {
+      return [];
+    }
     return this.findGenericCarrierPoints('DHL', options, {
       apiBase: this.config.get<string>('DHL_API_BASE_URL')?.trim(),
       apiKey: this.config.get<string>('DHL_API_KEY')?.trim(),
@@ -382,12 +446,66 @@ export class ShippingService {
     lng?: number;
     limit?: number;
   }) {
+    if (!this.flags.integrationsShipping() || !this.flags.featureCarrierPoczta()) {
+      return [];
+    }
     return this.findGenericCarrierPoints('POCZTA', options, {
       apiBase: this.config.get<string>('POCZTA_API_BASE_URL')?.trim(),
       apiKey: this.config.get<string>('POCZTA_POLSKA_API_KEY')?.trim(),
       path: this.config.get<string>('POCZTA_PICKUP_PATH')?.trim() || '/points',
       fallback: this.pocztaFallbackPoints,
     });
+  }
+
+  async findOrlenPoints(options?: {
+    postalCode?: string;
+    city?: string;
+    lat?: number;
+    lng?: number;
+    limit?: number;
+  }) {
+    if (!this.flags.integrationsShipping() || !this.flags.featureOrlenPaczka()) {
+      return [];
+    }
+    const now = Date.now();
+    const key = this.carrierQueryCacheKey('ORLEN', options);
+    const cached = this.carrierPointsCache.get(key);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+    const limit = Math.max(1, options?.limit ?? 12);
+    let rows = await this.orlenPaczka.fetchPoints();
+    if (rows.length === 0) {
+      let fb = this.filterFallbackByHint(this.orlenFallbackPoints, options);
+      if (typeof options?.lat === 'number' && typeof options?.lng === 'number') {
+        fb = this.sortByDistance(fb, options.lat, options.lng);
+      }
+      const out = fb.slice(0, limit);
+      this.carrierPointsCache.set(key, {
+        data: out,
+        expiresAt: now + Math.min(this.pointsCacheTtlMs(), 120000),
+      });
+      return out;
+    }
+    if (options?.postalCode?.trim()) {
+      const digits = options.postalCode.replace(/\D/g, '').slice(0, 2);
+      if (digits.length >= 2) {
+        rows = rows.filter((r) => r.postalCode.replace(/\D/g, '').startsWith(digits));
+      }
+    }
+    if (options?.city?.trim()) {
+      const c = options.city.trim().toLowerCase();
+      rows = rows.filter((r) => r.city.toLowerCase().includes(c));
+    }
+    if (typeof options?.lat === 'number' && typeof options?.lng === 'number') {
+      rows = this.sortByDistance(rows, options.lat, options.lng);
+    }
+    const trimmed = rows.slice(0, limit);
+    this.carrierPointsCache.set(key, {
+      data: trimmed,
+      expiresAt: now + this.pointsCacheTtlMs(),
+    });
+    return trimmed;
   }
 
   private carrierQueryCacheKey(

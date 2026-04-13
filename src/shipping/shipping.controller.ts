@@ -78,6 +78,23 @@ export class ShippingController {
     });
   }
 
+  @Get('points/orlen')
+  async orlenPoints(
+    @Query('postalCode') postalCode?: string,
+    @Query('city') city?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.shipping.findOrlenPoints({
+      postalCode: postalCode?.trim(),
+      city: city?.trim(),
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
   @Get('points/suggest')
   async suggestPoints(
     @Query('postalCode') postalCode?: string,

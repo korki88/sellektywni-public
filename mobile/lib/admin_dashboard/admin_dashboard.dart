@@ -1018,6 +1018,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<Widget> _buildShippingSuggestSections(Map<String, dynamic> suggest) {
     const order = <List<String>>[
       ['INPOST', 'InPost'],
+      ['ORLEN_PACZKA', 'ORLEN Paczka'],
       ['DPD', 'DPD Pickup'],
       ['DHL', 'DHL POP / punkt'],
       ['POCZTA_POLSKA', 'Poczta Polska'],

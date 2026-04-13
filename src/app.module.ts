@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CoreModule } from './core/core.module';
 import { AdminController } from './admin/admin.controller';
 import { AdminModule } from './admin/admin.module';
 import { AuthController } from './auth/auth.controller';
@@ -23,6 +24,7 @@ import { StaffProductsController } from './staff/staff-products.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CoreModule,
     PrismaModule,
     ProfilesModule,
     AuthModule,

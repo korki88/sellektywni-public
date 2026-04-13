@@ -1,10 +1,11 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { OrlenPaczkaModule } from '../integrations/orlen-paczka/orlen-paczka.module';
 import { ShippingController } from './shipping.controller';
 import { ShippingService } from './shipping.service';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, OrlenPaczkaModule],
   controllers: [ShippingController],
   providers: [ShippingService],
   exports: [ShippingService],

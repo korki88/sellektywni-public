@@ -170,9 +170,12 @@ System ma moduł przewoźników pod szybki checkout i personalizację, z polityk
 - endpointy:
   - `GET /shipping/providers` - dostępni przewoźnicy i capabilities,
   - `GET /shipping/points/inpost` - InPost (publiczne API),
+  - `GET /shipping/points/orlen` - ORLEN Paczka (SOAP po `PARTNER_ID`/`PARTNER_KEY`, inaczej fallback),
   - `GET /shipping/points/dpd` | `dhl` | `poczta` - punkty po skonfigurowaniu URL + Bearer w `.env`,
-  - `GET /shipping/points/suggest` - wszystkie przewoźnicy naraz (równolegle),
+  - `GET /shipping/points/suggest` - wszystkie przewoźnicy naraz (`Promise.allSettled` — błąd jednego nie blokuje reszty),
   - `GET /shipping/estimate` - wycena orientacyjna (symulacja, do czasu podłączenia cenników umownych).
+- **Modułowość:** flagi `FEATURE_*` w `.env` (np. `FEATURE_ORLEN_PACZKA=false`) wyłączają tylko dany fragment; `FEATURE_INTEGRATIONS_SHIPPING=false` wyłącza cały moduł `/shipping` (puste listy).
+- **Czyste środowisko lokalne:** `npm run dev:clean` — reset wolumów Docker (Postgres), `prisma migrate deploy`, seed, `FLUSHALL` Redis (jeśli kontener działa).
 - InPost points:
   - serwis najpierw pobiera online z API InPost (`api-shipx-pl.easypack24.net`),
   - przy błędzie przechodzi na fallback i krótki cache bezpieczeństwa.
@@ -193,6 +196,10 @@ Klucze produkcyjne (opcjonalnie, pod adaptery API):
 | `DPD_API_BASE_URL`, `DPD_API_KEY`, `DPD_LOCKERS_PATH` | DPD (np. `/lockers` wg umowy) |
 | `DHL_API_BASE_URL`, `DHL_API_KEY`, `DHL_PICKUP_PATH` | DHL |
 | `POCZTA_API_BASE_URL`, `POCZTA_POLSKA_API_KEY`, `POCZTA_PICKUP_PATH` | Poczta Polska |
+| `ORLEN_PACZKA_PARTNER_ID`, `ORLEN_PACZKA_PARTNER_KEY` | ORLEN Paczka (SOAP WSDL) |
+| `ORLEN_PACZKA_USE_TEST` | `true` = testowy WSDL (domyślnie) |
+| `ORLEN_PACZKA_SOAP_METHOD` | Domyślnie `GiveMeAllRUCHWithFilled` |
+| `FEATURE_INTEGRATIONS_SHIPPING`, `FEATURE_ORLEN_PACZKA`, … | Wyłączanie modułów bez zmiany kodu |
 | `SHIPPING_PROVIDERS_CACHE_TTL_MS` | TTL cache listy przewoźników |
 | `SHIPPING_POINTS_CACHE_TTL_MS` | TTL cache punktów odbioru |
 
