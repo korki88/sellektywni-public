@@ -97,4 +97,8 @@ export class FinalizeOrderDto {
   @IsOptional()
   @IsBoolean()
   saveToAddressBook?: boolean;
+
+  @IsOptional()
+  @IsString()
+  promoCode?: string;
 }

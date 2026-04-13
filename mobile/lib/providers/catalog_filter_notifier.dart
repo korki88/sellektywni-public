@@ -10,13 +10,20 @@ import '../data/mock_catalog.dart';
 class CatalogFilterNotifier extends ChangeNotifier {
   ProductCategory? _category;
   ProductCondition? _condition;
+  String _searchQuery = '';
   AuthSession? _auth;
   bool _loading = false;
   Map<String, ({int stockQty, int reservedQty, bool canAddToCart})> _inventory = {};
 
   ProductCategory? get category => _category;
   ProductCondition? get condition => _condition;
+  String get searchQuery => _searchQuery;
   bool get loading => _loading;
+
+  void setSearchQuery(String value) {
+    _searchQuery = value.trim();
+    notifyListeners();
+  }
 
   void setCategory(ProductCategory? value) {
     _category = value;
@@ -39,7 +46,10 @@ class CatalogFilterNotifier extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      final uri = Uri.parse('${auth.apiBase}/products');
+      final q = _searchQuery.trim();
+      final uri = Uri.parse('${auth.apiBase}/products').replace(
+        queryParameters: q.isEmpty ? null : <String, String>{'q': q},
+      );
       final r = await http.get(uri).timeout(const Duration(seconds: 12));
       if (r.statusCode != 200) {
         _loading = false;
@@ -85,10 +95,13 @@ class CatalogFilterNotifier extends ChangeNotifier {
         })
         .whereType<Product>()
         .toList();
+    final q = _searchQuery.trim().toLowerCase();
     return merged.where((p) {
       final catOk = _category == null || p.category == _category;
       final condOk = _condition == null || p.condition == _condition;
-      return catOk && condOk;
+      final searchOk =
+          q.isEmpty || p.name.toLowerCase().contains(q);
+      return catOk && condOk && searchOk;
     }).toList();
   }
 }

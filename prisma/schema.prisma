@@ -78,6 +78,11 @@ enum ProfileRank {
   VINTAGE
 }
 
+enum PromoDiscountType {
+  PERCENT
+  FIXED_AMOUNT
+}
+
 /// Profil aplikacji — `userId` = `sub` z JWT Supabase (UUID użytkownika).
 model Profile {
   userId    String      @id @map("user_id") @db.Uuid
@@ -103,6 +108,8 @@ model Product {
   reservations ProductReservation[]
   orderItems   CustomerOrderItem[]
   availabilityWatches AvailabilityWatch[]
+  wishlistItems WishlistItem[]
+  reviews      ProductReview[]
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
@@ -128,7 +135,15 @@ model CustomerOrder {
   id          String              @id @default(uuid())
   userId      String              @map("user_id")
   status      CustomerOrderStatus @default(PLACED)
+  /// Suma pozycji przed rabatem (subtotal).
+  subtotalAmount Decimal          @db.Decimal(12, 2) @map("subtotal_amount")
+  /// Kwota rabatu z kodu promocyjnego (0 jeśli brak).
+  discountAmount Decimal          @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  /// Kwota do zapłaty po rabacie (zgodna z płatnością).
   totalAmount Decimal             @db.Decimal(12, 2) @map("total_amount")
+  promoCodeId String?             @map("promo_code_id")
+  promoCode   PromoCode?          @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoRedemption PromoRedemption?
   paymentMethod PaymentMethod     @default(BLIK) @map("payment_method")
   paymentProvider PaymentProvider @default(PRZELEWY24) @map("payment_provider")
   paymentStatus PaymentStatus     @default(PENDING) @map("payment_status")
@@ -144,7 +159,75 @@ model CustomerOrder {
   items       CustomerOrderItem[]
 
   @@index([userId, createdAt])
+  @@index([promoCodeId])
   @@map("customer_orders")
+}
+
+/// Kody rabatowe — konfiguracja w panelu (staff).
+model PromoCode {
+  id              String           @id @default(uuid())
+  code            String           @unique @map("code")
+  label           String?
+  discountType    PromoDiscountType @map("discount_type")
+  /// Procent 0–100 (gdy discountType = PERCENT).
+  percentOff      Decimal?         @map("percent_off") @db.Decimal(5, 2)
+  /// Kwota PLN (gdy discountType = FIXED_AMOUNT).
+  fixedOff        Decimal?         @map("fixed_off") @db.Decimal(12, 2)
+  minOrderAmount  Decimal          @default(0) @map("min_order_amount") @db.Decimal(12, 2)
+  maxUses         Int?             @map("max_uses")
+  usesCount       Int              @default(0) @map("uses_count")
+  maxUsesPerUser  Int              @default(1) @map("max_uses_per_user")
+  validFrom       DateTime?        @map("valid_from")
+  validTo         DateTime?        @map("valid_to")
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  orders          CustomerOrder[]
+  redemptions     PromoRedemption[]
+
+  @@map("promo_codes")
+}
+
+/// Jedna realizacja kodu na zamówienie; służy do limitu „na użytkownika”.
+model PromoRedemption {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  promoCodeId String   @map("promo_code_id")
+  orderId     String   @unique @map("order_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Restrict)
+  order       CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId, promoCodeId])
+  @@map("promo_redemptions")
+}
+
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist_items")
+}
+
+model ProductReview {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  rating    Int
+  comment   String?  @db.Text
+  isVisible Boolean  @default(true) @map("is_visible")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId, isVisible])
+  @@map("product_reviews")
 }
 
 model CustomerOrderItem {

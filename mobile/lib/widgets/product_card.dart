@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/catalog_filter_notifier.dart';
 import '../providers/cart_notifier.dart';
+import '../providers/wishlist_notifier.dart';
 import '../screens/product_details_screen.dart';
 
 class ProductCard extends StatelessWidget {
@@ -16,6 +17,7 @@ class ProductCard extends StatelessWidget {
     final theme = Theme.of(context);
     final inCart = context.watch<CartNotifier>().contains(product);
     final reserved = !product.canAddToCart;
+    final inWishlist = context.watch<WishlistNotifier>().contains(product.id);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -64,6 +66,31 @@ class ProductCard extends StatelessWidget {
                   left: 12,
                   top: 12,
                   child: _Pill(text: product.condition.label),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Material(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: IconButton(
+                      tooltip: inWishlist ? 'Usuń z ulubionych' : 'Dodaj do ulubionych',
+                      onPressed: () async {
+                        final err = await context.read<WishlistNotifier>().toggle(product.id);
+                        if (!context.mounted) return;
+                        if (err != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(err), behavior: SnackBarBehavior.floating),
+                          );
+                        }
+                      },
+                      icon: Icon(
+                        inWishlist ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: inWishlist ? const Color(0xFFB71C1C) : const Color(0xFF111111),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

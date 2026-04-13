@@ -4,7 +4,7 @@
  */
 require('dotenv').config();
 
-const { PrismaClient, ProfileRole, ProfileRank } = require('@prisma/client');
+const { PrismaClient, ProfileRole, ProfileRank, PromoDiscountType } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
@@ -127,7 +127,30 @@ async function main() {
     });
   }
 
-  console.log('Seed: profile dev-mock (OWNER, STAFF, CUSTOMER) + produkty OK.');
+  await prisma.promoCode.upsert({
+    where: { code: 'WELCOME10' },
+    create: {
+      code: 'WELCOME10',
+      label: 'Powitalny -10% (min. 100 zł)',
+      discountType: PromoDiscountType.PERCENT,
+      percentOff: 10,
+      minOrderAmount: '100.00',
+      maxUses: 5000,
+      maxUsesPerUser: 1,
+      active: true,
+    },
+    update: {
+      label: 'Powitalny -10% (min. 100 zł)',
+      discountType: PromoDiscountType.PERCENT,
+      percentOff: 10,
+      minOrderAmount: '100.00',
+      maxUses: 5000,
+      maxUsesPerUser: 1,
+      active: true,
+    },
+  });
+
+  console.log('Seed: profile dev-mock (OWNER, STAFF, CUSTOMER) + produkty + kod WELCOME10 OK.');
 }
 
 main()

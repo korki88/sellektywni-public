@@ -20,6 +20,7 @@ import {
 import { DotykackaService } from '../dotykacka/dotykacka.service';
 import { AdminNotificationService } from '../notification/admin-notification.service';
 import { PaymentsService } from '../payments/payments.service';
+import { PromoService } from '../promo/promo.service';
 import { ProductService } from '../product/product.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
@@ -40,6 +41,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly productService: ProductService,
+    private readonly promoService: PromoService,
     private readonly dotykacka: DotykackaService,
     private readonly adminNotification: AdminNotificationService,
     private readonly payments: PaymentsService,
@@ -920,7 +922,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     });
     const byProduct = new Map(acceptedRows.map((r) => [r.productId, r]));
 
-    let total = 0;
+    let subtotal = 0;
     const orderItems = items.map((item) => {
       const row = byProduct.get(item.productId);
       if (!row || row.quantity < item.quantity) {
@@ -930,7 +932,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       }
       const price = Number(row.product.price);
       const lineTotal = price * item.quantity;
-      total += lineTotal;
+      subtotal += lineTotal;
       return {
         productId: row.productId,
         name: row.product.name,
@@ -939,6 +941,24 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         lineTotal,
       };
     });
+
+    let discountAmount = new Prisma.Decimal(0);
+    let promoId: string | null = null;
+    if (dto.promoCode?.trim()) {
+      const pr = await this.promoService.computeDiscountForSubtotal(
+        dto.promoCode,
+        userId,
+        subtotal,
+      );
+      if (pr) {
+        discountAmount = pr.discountAmount;
+        promoId = pr.promoId;
+      }
+    }
+    const total = Math.round((subtotal - Number(discountAmount)) * 100) / 100;
+    if (total < 0) {
+      throw new BadRequestException('Kwota zamówienia jest nieprawidłowa.');
+    }
 
     const pickedAddressId = dto.shippingTarget.addressBookEntryId?.trim() || null;
     let normalizedShipping: ReturnType<typeof this.normalizeAddressPayload>;
@@ -1006,7 +1026,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const created = await tx.customerOrder.create({
         data: {
           userId,
-          totalAmount: total,
+          subtotalAmount: new Prisma.Decimal(subtotal.toFixed(2)),
+          discountAmount,
+          totalAmount: new Prisma.Decimal(total.toFixed(2)),
+          promoCodeId: promoId,
           paymentMethod: dto.paymentMethod,
           paymentProvider: paymentInit.paymentProvider,
           paymentStatus: paymentInit.paymentStatus,
@@ -1031,6 +1054,20 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           },
         },
       });
+
+      if (promoId) {
+        await tx.promoRedemption.create({
+          data: {
+            userId,
+            promoCodeId: promoId,
+            orderId: created.id,
+          },
+        });
+        await tx.promoCode.update({
+          where: { id: promoId },
+          data: { usesCount: { increment: 1 } },
+        });
+      }
 
       for (const item of items) {
         const row = byProduct.get(item.productId);
@@ -1068,11 +1105,22 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       return created;
     });
 
+    const promoSnapshot = promoId
+      ? await this.prisma.promoCode.findUnique({
+          where: { id: promoId },
+          select: { code: true },
+        })
+      : null;
+
     return {
       id: order.id,
       createdAt: order.createdAt,
       status: order.status,
+      subtotalAmount: order.subtotalAmount,
+      discountAmount: order.discountAmount,
       totalAmount: order.totalAmount,
+      promoCodeId: order.promoCodeId,
+      promoCode: promoSnapshot?.code ?? null,
       paymentMethod: order.paymentMethod,
       paymentProvider: order.paymentProvider,
       paymentStatus: order.paymentStatus,
@@ -1243,7 +1291,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   async listMyOrders(userId: string) {
     const rows = await this.prisma.customerOrder.findMany({
       where: { userId },
-      include: { items: true },
+      include: {
+        items: true,
+        promoCode: { select: { code: true, label: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((o) => ({
@@ -1251,7 +1302,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
       status: o.status,
-      totalAmount: o.totalAmount,
+      subtotalAmount: o.subtotalAmount.toString(),
+      discountAmount: o.discountAmount.toString(),
+      totalAmount: o.totalAmount.toString(),
+      promoCode: o.promoCode?.code ?? null,
       paymentMethod: o.paymentMethod,
       paymentProvider: o.paymentProvider,
       paymentStatus: o.paymentStatus,
@@ -1270,5 +1324,54 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         lineTotal: i.lineTotal,
       })),
     }));
+  }
+
+  async listWishlist(userId: string) {
+    const rows = await this.prisma.wishlistItem.findMany({
+      where: { userId },
+      include: {
+        product: {
+          select: { id: true, name: true, price: true, idDotykacka: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((w) => ({
+      id: w.id,
+      productId: w.productId,
+      name: w.product.name,
+      price: w.product.price.toString(),
+      idDotykacka: w.product.idDotykacka,
+      createdAt: w.createdAt,
+    }));
+  }
+
+  async addWishlist(userId: string, productId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Produkt nie istnieje');
+    await this.prisma.wishlistItem.upsert({
+      where: {
+        userId_productId: { userId, productId },
+      },
+      create: { userId, productId },
+      update: {},
+    });
+    return { ok: true, productId };
+  }
+
+  async removeWishlist(userId: string, productId: string) {
+    await this.prisma.wishlistItem.deleteMany({
+      where: { userId, productId },
+    });
+    return { ok: true };
+  }
+
+  async upsertProductReview(
+    userId: string,
+    productId: string,
+    rating: number,
+    comment?: string,
+  ) {
+    return this.productService.addProductReview(userId, productId, rating, comment);
   }
 }

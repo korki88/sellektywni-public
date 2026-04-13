@@ -98,6 +98,7 @@ class _CartScreenState extends State<CartScreen> {
       shippingMethod: checkout.shippingMethod,
       shippingTarget: checkout.shippingTarget,
       saveToAddressBook: checkout.saveToAddressBook,
+      promoCode: checkout.promoCode,
     );
     final apiError = order?['_error']?.toString();
     if (order == null || (apiError != null && apiError.isNotEmpty)) {
@@ -132,6 +133,7 @@ class _CartScreenState extends State<CartScreen> {
         String shippingMethod,
         Map<String, dynamic> shippingTarget,
         bool saveToAddressBook,
+        String? promoCode,
       })?> _openCheckoutDialog(BuildContext context, CartNotifier cart) async {
     final options = await cart.fetchCheckoutOptions();
     if (options == null) {
@@ -163,6 +165,7 @@ class _CartScreenState extends State<CartScreen> {
           String shippingMethod,
           Map<String, dynamic> shippingTarget,
           bool saveToAddressBook,
+          String? promoCode,
         })>(
       context: context,
       builder: (ctx) {
@@ -189,6 +192,7 @@ class _CartScreenState extends State<CartScreen> {
         final apartmentCtrl = TextEditingController();
         final lockerIdCtrl = TextEditingController();
         final lockerLabelCtrl = TextEditingController();
+        final promoCtrl = TextEditingController();
         String? selectedSuggestedLockerId;
         final formKey = GlobalKey<FormState>();
         var triedSubmit = false;
@@ -229,6 +233,15 @@ class _CartScreenState extends State<CartScreen> {
                           if (v == null) return;
                           setModalState(() => selectedShipping = v);
                         },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: promoCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Kod promocyjny (opcjonalnie)',
+                          hintText: 'np. WELCOME10',
+                        ),
+                        textCapitalization: TextCapitalization.characters,
                       ),
                       const SizedBox(height: 12),
                       if (addressBook.isNotEmpty) ...[
@@ -457,6 +470,9 @@ class _CartScreenState extends State<CartScreen> {
                     shippingMethod: selectedShipping,
                     shippingTarget: shippingTarget,
                     saveToAddressBook: useCustomAddress ? saveToAddressBook : true,
+                    promoCode: promoCtrl.text.trim().isEmpty
+                        ? null
+                        : promoCtrl.text.trim(),
                   ));
                 },
                 child: const Text('Finalizuj'),

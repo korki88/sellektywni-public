@@ -354,6 +354,7 @@ class CartNotifier extends ChangeNotifier {
     required String shippingMethod,
     required Map<String, dynamic> shippingTarget,
     bool saveToAddressBook = true,
+    String? promoCode,
   }) async {
     final auth = _auth;
     final token = auth?.accessToken;
@@ -376,6 +377,8 @@ class CartNotifier extends ChangeNotifier {
               'shippingMethod': shippingMethod,
               'shippingTarget': shippingTarget,
               'saveToAddressBook': saveToAddressBook,
+              if (promoCode != null && promoCode.trim().isNotEmpty)
+                'promoCode': promoCode.trim(),
             }),
           )
           .timeout(const Duration(seconds: 12));

@@ -11,6 +11,7 @@ import 'providers/app_navigation.dart';
 import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/catalog_filter_notifier.dart';
+import 'providers/wishlist_notifier.dart';
 import 'services/push_service.dart';
 import 'overlay_main.dart' show runStaffOverlayApp;
 import 'platform/web_global_errors_stub.dart'
@@ -97,6 +98,14 @@ Future<void> main() async {
             final c = cart ?? CartNotifier();
             c.bindAuth(authSession);
             return c;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthSession, WishlistNotifier>(
+          create: (_) => WishlistNotifier(),
+          update: (_, authSession, wl) {
+            final w = wl ?? WishlistNotifier();
+            w.bindAuth(authSession);
+            return w;
           },
         ),
         ChangeNotifierProvider(create: (_) => AppNavigation()),

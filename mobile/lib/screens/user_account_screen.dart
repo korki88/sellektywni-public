@@ -10,6 +10,7 @@ import '../config/app_config.dart';
 import '../providers/app_navigation.dart';
 import '../providers/auth_session.dart';
 import '../providers/cart_notifier.dart';
+import '../providers/wishlist_notifier.dart';
 import 'product_details_screen.dart';
 import '../widgets/auth_shell.dart';
 
@@ -140,6 +141,8 @@ class UserAccountScreen extends StatelessWidget {
         ),
         if (auth.isCustomer) ...[
           const SizedBox(height: 20),
+          const _WishlistSummaryCard(),
+          const SizedBox(height: 20),
           _CheckoutSettingsPanel(auth: auth),
           const SizedBox(height: 20),
           _CustomerNotificationsPanel(
@@ -189,6 +192,49 @@ class UserAccountScreen extends StatelessWidget {
           child: const Text('Wyloguj się'),
         ),
       ],
+    );
+  }
+}
+
+class _WishlistSummaryCard extends StatelessWidget {
+  const _WishlistSummaryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final wl = context.watch<WishlistNotifier>();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ulubione', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (wl.loading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else if (wl.rows.isEmpty)
+              Text(
+                'Brak produktów — dodaj serce na karcie w sklepie.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF6B6B6B),
+                    ),
+              )
+            else
+              ...wl.rows.map(
+                (r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    (r['name'] as String?) ?? (r['productId'] as String? ?? ''),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

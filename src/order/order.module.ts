@@ -3,6 +3,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { DotykackaModule } from '../dotykacka/dotykacka.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ProductModule } from '../product/product.module';
+import { PromoModule } from '../promo/promo.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
@@ -10,6 +11,7 @@ import { OrderService } from './order.service';
 @Module({
   imports: [
     ProductModule,
+    PromoModule,
     DotykackaModule,
     NotificationModule,
     PaymentsModule,

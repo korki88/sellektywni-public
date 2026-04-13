@@ -16,6 +16,7 @@ import { FinalizeOrderDto } from './dto/finalize-order.dto';
 import { SubmitCartDto } from './dto/submit-cart.dto';
 import { UpdateCheckoutPreferencesDto } from './dto/update-checkout-preferences.dto';
 import { UpsertAddressBookEntryDto } from './dto/upsert-address-book-entry.dto';
+import { UpsertProductReviewDto } from './dto/upsert-product-review.dto';
 import { OrderService } from './order.service';
 
 @Controller('order')
@@ -134,5 +135,37 @@ export class OrderController {
   @Get('my-notifications')
   myNotifications(@Req() req: Request) {
     return this.orderService.listMyNotifications(this.userIdFromReq(req));
+  }
+
+  @Get('wishlist')
+  wishlist(@Req() req: Request) {
+    return this.orderService.listWishlist(this.userIdFromReq(req));
+  }
+
+  @Post('wishlist')
+  addWishlist(
+    @Body() dto: { productId?: string },
+    @Req() req: Request,
+  ) {
+    const productId = dto.productId?.trim();
+    if (!productId) {
+      throw new BadRequestException('Podaj productId');
+    }
+    return this.orderService.addWishlist(this.userIdFromReq(req), productId);
+  }
+
+  @Delete('wishlist/:productId')
+  removeWishlist(@Param('productId') productId: string, @Req() req: Request) {
+    return this.orderService.removeWishlist(this.userIdFromReq(req), productId);
+  }
+
+  @Post('reviews')
+  upsertReview(@Body() dto: UpsertProductReviewDto, @Req() req: Request) {
+    return this.orderService.upsertProductReview(
+      this.userIdFromReq(req),
+      dto.productId,
+      dto.rating,
+      dto.comment,
+    );
   }
 }

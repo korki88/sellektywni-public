@@ -19,6 +19,7 @@ import { StaffCustomersController } from './staff/staff-customers.controller';
 import { StaffOrdersController } from './staff/staff-orders.controller';
 import { StaffPermissionsController } from './staff/staff-permissions.controller';
 import { StaffModule } from './staff/staff.module';
+import { StaffPromoController } from './staff/staff-promo.controller';
 import { StaffProductsController } from './staff/staff-products.controller';
 
 @Module({
@@ -49,6 +50,7 @@ export class AppModule implements NestModule {
         StaffCustomersController,
         StaffOrdersController,
         StaffPermissionsController,
+        StaffPromoController,
         DotykackaDevController,
         OrderController,
         ShippingController,

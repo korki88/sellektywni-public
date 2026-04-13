@@ -47,6 +47,25 @@ class HomeScreen extends StatelessWidget {
           ),
           SliverToBoxAdapter(
             child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Szukaj po nazwie (Enter)',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (v) {
+                  final n = context.read<CatalogFilterNotifier>();
+                  n.setSearchQuery(v);
+                  n.refreshFromApi();
+                },
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Wrap(
                 spacing: 8,

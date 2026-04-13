@@ -5,6 +5,7 @@ import 'layout/web_app_frame.dart';
 import 'providers/app_navigation.dart';
 import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
+import 'providers/wishlist_notifier.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/user_account_screen.dart';
@@ -33,6 +34,7 @@ class _MainStoreState extends State<MainStore> {
     });
     if (i == 2) {
       context.read<AuthSession>().refreshProfile();
+      context.read<WishlistNotifier>().load();
     }
   }
 
