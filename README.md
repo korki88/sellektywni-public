@@ -29,6 +29,15 @@
 - **Sekrety (GitHub Actions, SOPS+age, bez plaintext `.env` w Git):** [sync/SECRETS.md](sync/SECRETS.md).
 - Po sklonowaniu: skopiuj `.env.example` → `.env`, potem `npm install`, Docker, migracje i seed — szczegóły w [sync/MACHINE_SETUP.md](sync/MACHINE_SETUP.md).
 
+## Documentation
+
+- Documentation index: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- RBAC + Audit: [docs/RBAC_AUDIT_GUIDE.md](docs/RBAC_AUDIT_GUIDE.md)
+- Deployment runbook: [docs/DEPLOYMENT_RUNBOOK.md](docs/DEPLOYMENT_RUNBOOK.md)
+- Integrations: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
+- Project framework: [docs/PROJECT_FRAMEWORK.md](docs/PROJECT_FRAMEWORK.md)
+
 ---
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository (szablon bazowy CLI).

@@ -166,9 +166,7 @@ Potwierdzenie: projekt pozostaje na Prisma 6.x, bez migracji do v7.
 2. **UI logowania social**: brak jawnego przycisku OAuth Google w Flutter (backend gotowy, frontend częściowo).
 3. **Integracje przewoźników i płatności**:
    - część adapterów działa live-first, ale realne produkcyjne podpięcie zależy od kluczy i endpointów umownych.
-4. **Repo visibility automatycznie**:
-   - w tym środowisku brak `gh` CLI, więc nie da się automatycznie przełączyć repo na publiczne z poziomu agenta.
-5. **Duży plik UI**:
+4. **Duży plik UI**:
    - `mobile/lib/admin_dashboard/admin_dashboard.dart` jest nadal bardzo duży (wart refaktor do mniejszych widgetów/feature files).
 
 ---
@@ -242,7 +240,27 @@ Kroki:
 
 ---
 
-## 10) Rekomendacje architektoniczne pod moduły AI (następny sprint)
+## 10) Documentation Status
+
+Ocena po aktualizacji: dokumentacja techniczna ma teraz **solidny baseline operacyjny i architektoniczny**.
+
+Nowo dodane dokumenty:
+
+- `docs/DOCUMENTATION_INDEX.md` - centralny indeks dokumentacji.
+- `docs/ARCHITECTURE.md` - architektura systemu i granice modułów.
+- `docs/RBAC_AUDIT_GUIDE.md` - zasady RBAC i audytu.
+- `docs/DEPLOYMENT_RUNBOOK.md` - checklista i procedury wdrożeniowe.
+
+Dokumenty już istniejące i utrzymane:
+
+- `docs/INTEGRATIONS.md`
+- `docs/PROJECT_FRAMEWORK.md`
+- `sync/AGENT_COORDINATION.md`
+- `sync/WORKLOG.md`
+
+---
+
+## 11) Rekomendacje architektoniczne pod moduły AI (następny sprint)
 
 1. Zamknąć 9 info z `flutter analyze` (baseline quality gate).
 2. Wydzielić `AdminDashboard` na feature modules (`audit`, `permissions`, `ai`, `marketing`).
