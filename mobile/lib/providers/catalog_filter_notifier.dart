@@ -1,25 +1,34 @@
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../providers/auth_session.dart';
+import '../data/mock_catalog.dart';
 import '../models/product.dart';
 import '../models/product_category.dart';
-import '../data/mock_catalog.dart';
+import '../providers/auth_session.dart';
 
 class CatalogFilterNotifier extends ChangeNotifier {
+  static const int _pageSize = 12;
+
   ProductCategory? _category;
   ProductCondition? _condition;
   String _searchQuery = '';
   AuthSession? _auth;
+
   bool _loading = false;
-  Map<String, ({int stockQty, int reservedQty, bool canAddToCart})> _inventory = {};
-  Map<String, ({String? subtitle, bool isFeatured})> _merch = {};
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _offset = 0;
+
+  List<Product> _products = [];
 
   ProductCategory? get category => _category;
   ProductCondition? get condition => _condition;
   String get searchQuery => _searchQuery;
   bool get loading => _loading;
+  bool get loadingMore => _loadingMore;
+  bool get hasMore => _hasMore;
 
   void setSearchQuery(String value) {
     _searchQuery = value.trim();
@@ -44,106 +53,164 @@ class CatalogFilterNotifier extends ChangeNotifier {
   Future<void> refreshFromApi() async {
     final auth = _auth;
     if (auth == null) return;
+
     _loading = true;
+    _loadingMore = false;
+    _hasMore = true;
+    _offset = 0;
+    _products = [];
     notifyListeners();
-    try {
-      final q = _searchQuery.trim();
-      final uri = Uri.parse('${auth.apiBase}/products').replace(
-        queryParameters: q.isEmpty ? null : <String, String>{'q': q},
-      );
-      final r = await http.get(uri).timeout(const Duration(seconds: 12));
-      if (r.statusCode != 200) {
-        _loading = false;
-        notifyListeners();
-        return;
-      }
-      final arr = jsonDecode(r.body);
-      if (arr is! List) {
-        _loading = false;
-        notifyListeners();
-        return;
-      }
-      final map = <String, ({int stockQty, int reservedQty, bool canAddToCart})>{};
-      final merch = <String, ({String? subtitle, bool isFeatured})>{};
-      for (final row in arr) {
-        if (row is! Map<String, dynamic>) continue;
-        final id = row['id'] as String?;
-        if (id == null || id.isEmpty) continue;
-        map[id] = (
-          stockQty: (row['stockQty'] as num?)?.toInt() ?? 0,
-          reservedQty: (row['reservedQty'] as num?)?.toInt() ?? 0,
-          canAddToCart: row['canAddToCart'] as bool? ?? false,
-        );
-        final sub = row['subtitle'] as String?;
-        final feat = row['isFeatured'] == true;
-        if (sub != null && sub.trim().isNotEmpty || feat) {
-          merch[id] = (subtitle: sub, isFeatured: feat);
-        }
-      }
-      _inventory = map;
-      _merch = merch;
-    } catch (_) {
-      // Brak API lub błąd sieci: zostaw fallback na statyczny katalog.
-    }
+
+    await _fetchPage(reset: true);
+
     _loading = false;
     notifyListeners();
   }
 
-  /// Produkt z katalogu + bieżący stan magazynu z API (do koszyka / „ostatnio oglądane”).
-  Product? offerProductById(String productId) {
-    for (final p in mockProducts) {
-      if (p.id != productId) continue;
-      final inv = _inventory[p.id];
-      final m = _merch[p.id];
-      if (inv == null) {
-        final base = p.stockQty > 0 ? p : null;
-        if (base == null) return null;
-        if (m == null) return base;
-        return base.copyWith(subtitle: m.subtitle, isFeatured: m.isFeatured);
+  Future<void> loadMoreFromApi() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    _loadingMore = true;
+    notifyListeners();
+
+    await _fetchPage(reset: false);
+
+    _loadingMore = false;
+    notifyListeners();
+  }
+
+  Future<void> _fetchPage({required bool reset}) async {
+    final auth = _auth;
+    if (auth == null) return;
+
+    try {
+      final q = _searchQuery.trim();
+      final query = <String, String>{
+        'offset': _offset.toString(),
+        'limit': _pageSize.toString(),
+      };
+      if (q.isNotEmpty) query['q'] = q;
+
+      final uri = Uri.parse('${auth.apiBase}/products').replace(queryParameters: query);
+      final r = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (r.statusCode != 200) {
+        if (reset) {
+          _products = _fallbackProducts();
+          _hasMore = false;
+        }
+        return;
       }
-      if (inv.stockQty <= 0) return null;
-      return p.copyWith(
-        stockQty: inv.stockQty,
-        reservedQty: inv.reservedQty,
-        canAddToCart: inv.canAddToCart,
-        subtitle: m?.subtitle ?? p.subtitle,
-        isFeatured: m?.isFeatured ?? p.isFeatured,
-      );
+
+      final arr = jsonDecode(r.body);
+      if (arr is! List) {
+        if (reset) {
+          _products = _fallbackProducts();
+          _hasMore = false;
+        }
+        return;
+      }
+
+      final chunk = arr
+          .whereType<Map<String, dynamic>>()
+          .map(_mapApiRowToProduct)
+          .whereType<Product>()
+          .toList();
+
+      if (reset) {
+        _products = chunk;
+      } else {
+        _products = [..._products, ...chunk];
+      }
+
+      _offset = _products.length;
+      _hasMore = chunk.length == _pageSize;
+    } catch (_) {
+      if (reset) {
+        _products = _fallbackProducts();
+        _hasMore = false;
+      }
+    }
+  }
+
+  Product? _mapApiRowToProduct(Map<String, dynamic> row) {
+    final id = row['id']?.toString();
+    if (id == null || id.isEmpty) return null;
+
+    final stock = (row['stockQty'] as num?)?.toInt() ?? 0;
+    if (stock <= 0) return null;
+
+    final name = (row['name']?.toString() ?? '').trim();
+    final price = (row['price'] as num?)?.toDouble() ??
+        double.tryParse(row['price']?.toString() ?? '') ??
+        0;
+
+    final template = mockProducts.firstWhere(
+      (p) => p.id == id,
+      orElse: () => Product(
+        id: id,
+        name: name.isEmpty ? 'Produkt $id' : name,
+        pricePln: price,
+        imageUrl: 'https://picsum.photos/seed/sellek-$id/900/1200',
+        category: _inferCategory(name),
+        condition: ProductCondition.newItem,
+      ),
+    );
+
+    return Product(
+      id: id,
+      name: name.isEmpty ? template.name : name,
+      pricePln: price <= 0 ? template.pricePln : price,
+      imageUrl: template.imageUrl,
+      category: template.category,
+      condition: template.condition,
+      stockQty: stock,
+      reservedQty: (row['reservedQty'] as num?)?.toInt() ?? 0,
+      canAddToCart: row['canAddToCart'] as bool? ?? false,
+      subtitle: row['subtitle']?.toString(),
+      isFeatured: row['isFeatured'] == true,
+    );
+  }
+
+  ProductCategory _inferCategory(String name) {
+    final v = name.toLowerCase();
+    if (v.contains('but') || v.contains('sneaker') || v.contains('loafer')) {
+      return ProductCategory.shoes;
+    }
+    if (v.contains('torb') ||
+        v.contains('szalik') ||
+        v.contains('okular') ||
+        v.contains('czapk') ||
+        v.contains('pasek') ||
+        v.contains('portfel') ||
+        v.contains('zegarek')) {
+      return ProductCategory.accessories;
+    }
+    return ProductCategory.clothing;
+  }
+
+  List<Product> _fallbackProducts() {
+    return mockProducts.where((p) => p.stockQty > 0).toList();
+  }
+
+  Product? offerProductById(String productId) {
+    for (final p in _products) {
+      if (p.id == productId) return p;
+    }
+    for (final p in mockProducts) {
+      if (p.id == productId) return p.stockQty > 0 ? p : null;
     }
     return null;
   }
 
-  /// Produkty oznaczone jako polecane (API) i spełniające filtry listy.
   List<Product> get featuredVisibleProducts {
     return visibleProducts.where((p) => p.isFeatured).toList();
   }
 
   List<Product> get visibleProducts {
-    final merged = mockProducts
-        .map((p) {
-          final inv = _inventory[p.id];
-          final m = _merch[p.id];
-          if (inv == null) {
-            final q = p.stockQty > 0 ? p : null;
-            return q?.copyWith(subtitle: m?.subtitle ?? q.subtitle, isFeatured: m?.isFeatured ?? q.isFeatured);
-          }
-          if (inv.stockQty <= 0) return null;
-          return p.copyWith(
-            stockQty: inv.stockQty,
-            reservedQty: inv.reservedQty,
-            canAddToCart: inv.canAddToCart,
-            subtitle: m?.subtitle ?? p.subtitle,
-            isFeatured: m?.isFeatured ?? p.isFeatured,
-          );
-        })
-        .whereType<Product>()
-        .toList();
     final q = _searchQuery.trim().toLowerCase();
-    return merged.where((p) {
+    return _products.where((p) {
       final catOk = _category == null || p.category == _category;
       final condOk = _condition == null || p.condition == _condition;
-      final searchOk =
-          q.isEmpty || p.name.toLowerCase().contains(q);
+      final searchOk = q.isEmpty || p.name.toLowerCase().contains(q);
       return catOk && condOk && searchOk;
     }).toList();
   }

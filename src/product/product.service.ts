@@ -49,7 +49,12 @@ export class ProductService {
     };
   }
 
-  async listOffer(opts?: { search?: string; featuredOnly?: boolean }) {
+  async listOffer(opts?: {
+    search?: string;
+    featuredOnly?: boolean;
+    offset?: number;
+    limit?: number;
+  }) {
     const q = opts?.search?.trim();
     const where: Prisma.ProductWhereInput = {
       stockQty: { gt: 0 },
@@ -63,6 +68,8 @@ export class ProductService {
     const products = await this.prisma.product.findMany({
       where,
       orderBy: { createdAt: 'asc' },
+      skip: opts?.offset,
+      take: opts?.limit,
       include: {
         reservations: {
           where: {

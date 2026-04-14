@@ -10,8 +10,35 @@ import '../providers/recently_viewed_notifier.dart';
 import '../widgets/product_card.dart';
 import 'help_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.extentAfter > 700) return;
+    context.read<CatalogFilterNotifier>().loadMoreFromApi();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +72,7 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -140,10 +168,15 @@ class HomeScreen extends StatelessWidget {
           const SliverToBoxAdapter(child: SizedBox(height: 18)),
           const SliverToBoxAdapter(child: _FeaturedStrip()),
           const SliverToBoxAdapter(child: _RecentStrip()),
-          if (products.isEmpty)
+          if (products.isEmpty && !filter.loading)
             const SliverFillRemaining(
               hasScrollBody: false,
               child: _EmptyState(),
+            )
+          else if (products.isEmpty && filter.loading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
             )
           else
             SliverLayoutBuilder(
@@ -166,6 +199,27 @@ class HomeScreen extends StatelessWidget {
                   ),
                 );
               },
+            ),
+          if (filter.loadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(0, 4, 0, 20),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+            ),
+          if (!filter.hasMore && products.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                child: Center(
+                  child: Text(
+                    'To już wszystkie produkty.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: DesignTokens.mutedText,
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
       ),
