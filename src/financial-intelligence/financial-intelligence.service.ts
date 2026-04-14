@@ -6,6 +6,7 @@ import {
   ReservationStatus,
 } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { HypeMakerService } from '../hype-maker/hype-maker.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketingAutomationService } from '../marketing-automation/marketing-automation.service';
 
@@ -27,6 +28,7 @@ export class FinancialIntelligenceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly marketingAutomation: MarketingAutomationService,
+    private readonly hypeMaker: HypeMakerService,
     private readonly audit: AuditService,
   ) {}
 
@@ -275,6 +277,29 @@ export class FinancialIntelligenceService {
         price: proposal.product.price,
       },
     );
+
+    await this.hypeMaker
+      .runForApprovedProposal({
+        proposalId: result.id,
+        productId: proposal.product.id,
+        productName: proposal.product.name,
+        discountPercent: result.discountPercent,
+        suggestedPrice: result.suggestedPrice,
+        riskScore: result.riskScore,
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        // Kampanie AI nie mogą blokować core flow akceptacji OWNER.
+        void this.audit.logAction({
+          userId: 'HYPE_MAKER_AI',
+          userEmail: 'HYPE_MAKER_AI',
+          action: 'HYPE_MAKER_ORCHESTRATION_FAILED',
+          resourceType: 'AI_PROPOSAL',
+          resourceId: proposalId,
+          newValue: { message },
+          ipAddress: actor.ipAddress ?? null,
+        });
+      });
 
     await this.audit.logAction({
       userId: actor.userId,

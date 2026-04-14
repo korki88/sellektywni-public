@@ -76,4 +76,36 @@ export class FirebasePushService {
       this.logger.warn(`Firebase push send failed: ${message}`);
     }
   }
+
+  async sendLoyaltySegmentNotification(input: {
+    segment: string;
+    title: string;
+    body: string;
+    proposalId: string;
+    productName: string;
+  }): Promise<void> {
+    if (!this.ensureInitialized()) return;
+    const topicPrefix =
+      this.config.get<string>('FIREBASE_LOYALTY_TOPIC_PREFIX')?.trim() ||
+      'loyalty';
+    const topic = `${topicPrefix}_${input.segment.trim().toLowerCase()}`;
+    try {
+      await getMessaging().send({
+        topic,
+        notification: {
+          title: input.title,
+          body: input.body,
+        },
+        data: {
+          type: 'HYPE_MAKER_PUSH',
+          segment: input.segment.trim().toUpperCase(),
+          proposalId: input.proposalId,
+          productName: input.productName,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Firebase segment push send failed: ${message}`);
+    }
+  }
 }

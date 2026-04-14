@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { DotykackaModule } from '../dotykacka/dotykacka.module';
+import { HypeMakerModule } from '../hype-maker/hype-maker.module';
 import { NotificationModule } from '../notifications/notification.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MarketingAutomationModule } from '../marketing-automation/marketing-automation.module';
@@ -14,6 +15,7 @@ import { ProfitAnalysisService } from './profit-analysis.service';
   imports: [
     PrismaModule,
     MarketingAutomationModule,
+    HypeMakerModule,
     AuditModule,
     DotykackaModule,
     NotificationModule,
