@@ -78,10 +78,9 @@ class UserAccountScreen extends StatelessWidget {
       );
     }
 
-    final supaEmail =
-        AppConfig.shouldUseSupabaseClient
-            ? Supabase.instance.client.auth.currentUser?.email
-            : null;
+    final supaEmail = AppConfig.shouldUseSupabaseClient
+        ? Supabase.instance.client.auth.currentUser?.email
+        : null;
     final email = supaEmail ?? auth.profileEmail ?? '—';
 
     return ListView(
@@ -109,8 +108,7 @@ class UserAccountScreen extends StatelessWidget {
         if (auth.isAdminDashboardRole && nav.staffViewingShop) ...[
           const SizedBox(height: 16),
           FilledButton.tonal(
-            onPressed: () =>
-                context.read<AppNavigation>().openAdminPanel(),
+            onPressed: () => context.read<AppNavigation>().openAdminPanel(),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -128,7 +126,8 @@ class UserAccountScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(email, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 20),
-                Text('Rola w sklepie', style: Theme.of(context).textTheme.labelMedium),
+                Text('Rola w sklepie',
+                    style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 4),
                 Text(
                   _roleLabel(auth.role),
@@ -147,7 +146,8 @@ class UserAccountScreen extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: 20),
-                Text('Program lojalnościowy', style: Theme.of(context).textTheme.labelMedium),
+                Text('Program lojalnościowy',
+                    style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 8),
                 Text(
                   'Punkty: ${auth.points ?? '—'}',
@@ -342,8 +342,7 @@ class _MarketingAndPrivacyCardState extends State<_MarketingAndPrivacyCard> {
                   ? null
                   : (next) async {
                       setState(() => _busy = true);
-                      final err =
-                          await widget.auth.patchNewsletterOptIn(next);
+                      final err = await widget.auth.patchNewsletterOptIn(next);
                       if (!context.mounted) return;
                       setState(() => _busy = false);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -378,8 +377,7 @@ class _MarketingAndPrivacyCardState extends State<_MarketingAndPrivacyCard> {
                   ? null
                   : () async {
                       setState(() => _busy = true);
-                      final data =
-                          await widget.auth.fetchPersonalDataExport();
+                      final data = await widget.auth.fetchPersonalDataExport();
                       if (!context.mounted) return;
                       setState(() => _busy = false);
                       if (data == null) {
@@ -398,7 +396,7 @@ class _MarketingAndPrivacyCardState extends State<_MarketingAndPrivacyCard> {
                       await sharePersonalDataExport(name, pretty);
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
+                        const SnackBar(
                           content: Text(
                             kIsWeb
                                 ? 'Plik JSON został pobrany.'
@@ -606,7 +604,8 @@ class _ProfileCommerceCard extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 12),
-            Text('Preferowany język', style: Theme.of(context).textTheme.labelMedium),
+            Text('Preferowany język',
+                style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 6),
             DropdownButton<String>(
               value: loc,
@@ -628,30 +627,34 @@ class _ProfileCommerceCard extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
-            Text('Twój kod polecający', style: Theme.of(context).textTheme.labelMedium),
+            Text('Twój kod polecający',
+                style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(child: SelectableText(auth.referralCode ?? '—')),
                 IconButton(
                   tooltip: 'Kopiuj kod',
-                  onPressed: auth.referralCode == null || auth.referralCode!.isEmpty
-                      ? null
-                      : () async {
-                          await Clipboard.setData(
-                            ClipboardData(text: auth.referralCode!),
-                          );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Skopiowano kod do schowka')),
-                          );
-                        },
+                  onPressed:
+                      auth.referralCode == null || auth.referralCode!.isEmpty
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: auth.referralCode!),
+                              );
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Skopiowano kod do schowka')),
+                              );
+                            },
                   icon: const Icon(Icons.copy_rounded),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Text('Przypisania eksperymentów', style: Theme.of(context).textTheme.labelMedium),
+            Text('Przypisania eksperymentów',
+                style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 6),
             _ExperimentsBlock(auth: auth),
           ],
@@ -715,12 +718,10 @@ Future<Map<String, dynamic>?> _fetchExperiments(AuthSession auth) async {
   }
   try {
     final uri = Uri.parse('${auth.apiBase}/experiments/assignments');
-    final r = await http
-        .get(
-          uri,
-          headers: {'Authorization': 'Bearer ${auth.accessToken}'},
-        )
-        .timeout(const Duration(seconds: 12));
+    final r = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer ${auth.accessToken}'},
+    ).timeout(const Duration(seconds: 12));
     if (r.statusCode != 200) return null;
     final j = jsonDecode(r.body);
     if (j is Map<String, dynamic>) return j;
@@ -974,22 +975,27 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
     final prefs = await cart.fetchCheckoutPreferences();
     if (!mounted) return;
     setState(() {
-      _paymentMethods = (options?['paymentMethods'] as List<dynamic>? ?? const [])
-          .map((e) => e.toString())
-          .toList();
-      _shippingMethods = (options?['shippingMethods'] as List<dynamic>? ?? const [])
-          .map((e) => e.toString())
-          .toList();
+      _paymentMethods =
+          (options?['paymentMethods'] as List<dynamic>? ?? const [])
+              .map((e) => e.toString())
+              .toList();
+      _shippingMethods =
+          (options?['shippingMethods'] as List<dynamic>? ?? const [])
+              .map((e) => e.toString())
+              .toList();
       _addressBook = (options?['addressBook'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .toList();
-      final resolved = prefs?['resolvedDefaults'] as Map<String, dynamic>? ?? const {};
-      _payment = (prefs?['preferredPaymentMethod']?.toString().isNotEmpty == true)
-          ? prefs!['preferredPaymentMethod'].toString()
-          : resolved['paymentMethod']?.toString();
-      _shipping = (prefs?['preferredShippingMethod']?.toString().isNotEmpty == true)
-          ? prefs!['preferredShippingMethod'].toString()
-          : resolved['shippingMethod']?.toString();
+      final resolved =
+          prefs?['resolvedDefaults'] as Map<String, dynamic>? ?? const {};
+      _payment =
+          (prefs?['preferredPaymentMethod']?.toString().isNotEmpty == true)
+              ? prefs!['preferredPaymentMethod'].toString()
+              : resolved['paymentMethod']?.toString();
+      _shipping =
+          (prefs?['preferredShippingMethod']?.toString().isNotEmpty == true)
+              ? prefs!['preferredShippingMethod'].toString()
+              : resolved['shippingMethod']?.toString();
       _addressId = (prefs?['preferredAddressId']?.toString().isNotEmpty == true)
           ? prefs!['preferredAddressId'].toString()
           : resolved['preferredAddressId']?.toString();
@@ -1025,7 +1031,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
     if (!mounted) return;
     if (saved == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nie udało się zapisać wpisu adresowego.')),
+        const SnackBar(
+            content: Text('Nie udało się zapisać wpisu adresowego.')),
       );
       return;
     }
@@ -1045,23 +1052,30 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
     await _refresh();
   }
 
-  Future<Map<String, dynamic>?> _showAddressEditor({Map<String, dynamic>? existing}) {
-    final labelCtrl = TextEditingController(text: existing?['label']?.toString() ?? '');
-    final recipientCtrl =
-        TextEditingController(text: existing?['recipientName']?.toString() ?? '');
-    final phoneCtrl = TextEditingController(text: existing?['phone']?.toString() ?? '');
-    final emailCtrl = TextEditingController(text: existing?['email']?.toString() ?? '');
-    final postalCtrl = TextEditingController(text: existing?['postalCode']?.toString() ?? '');
-    final cityCtrl = TextEditingController(text: existing?['city']?.toString() ?? '');
-    final streetCtrl = TextEditingController(text: existing?['street']?.toString() ?? '');
-    final buildingCtrl =
-        TextEditingController(text: existing?['buildingNumber']?.toString() ?? '');
-    final apartmentCtrl =
-        TextEditingController(text: existing?['apartmentNumber']?.toString() ?? '');
-    final lockerIdCtrl =
-        TextEditingController(text: existing?['parcelLockerId']?.toString() ?? '');
-    final lockerLabelCtrl =
-        TextEditingController(text: existing?['parcelLockerLabel']?.toString() ?? '');
+  Future<Map<String, dynamic>?> _showAddressEditor(
+      {Map<String, dynamic>? existing}) {
+    final labelCtrl =
+        TextEditingController(text: existing?['label']?.toString() ?? '');
+    final recipientCtrl = TextEditingController(
+        text: existing?['recipientName']?.toString() ?? '');
+    final phoneCtrl =
+        TextEditingController(text: existing?['phone']?.toString() ?? '');
+    final emailCtrl =
+        TextEditingController(text: existing?['email']?.toString() ?? '');
+    final postalCtrl =
+        TextEditingController(text: existing?['postalCode']?.toString() ?? '');
+    final cityCtrl =
+        TextEditingController(text: existing?['city']?.toString() ?? '');
+    final streetCtrl =
+        TextEditingController(text: existing?['street']?.toString() ?? '');
+    final buildingCtrl = TextEditingController(
+        text: existing?['buildingNumber']?.toString() ?? '');
+    final apartmentCtrl = TextEditingController(
+        text: existing?['apartmentNumber']?.toString() ?? '');
+    final lockerIdCtrl = TextEditingController(
+        text: existing?['parcelLockerId']?.toString() ?? '');
+    final lockerLabelCtrl = TextEditingController(
+        text: existing?['parcelLockerLabel']?.toString() ?? '');
     var entryType = existing?['entryType']?.toString() ?? 'ADDRESS';
     var isDefault = existing?['isDefault'] == true;
 
@@ -1085,7 +1099,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                         child: Text('Paczkomat InPost'),
                       ),
                     ],
-                    onChanged: (v) => setModalState(() => entryType = v ?? 'ADDRESS'),
+                    onChanged: (v) =>
+                        setModalState(() => entryType = v ?? 'ADDRESS'),
                   ),
                   TextField(
                     controller: labelCtrl,
@@ -1106,16 +1121,19 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                   if (entryType == 'PARCEL_LOCKER') ...[
                     TextField(
                       controller: lockerIdCtrl,
-                      decoration: const InputDecoration(labelText: 'ID paczkomatu'),
+                      decoration:
+                          const InputDecoration(labelText: 'ID paczkomatu'),
                     ),
                     TextField(
                       controller: lockerLabelCtrl,
-                      decoration: const InputDecoration(labelText: 'Opis paczkomatu'),
+                      decoration:
+                          const InputDecoration(labelText: 'Opis paczkomatu'),
                     ),
                   ] else ...[
                     TextField(
                       controller: postalCtrl,
-                      decoration: const InputDecoration(labelText: 'Kod pocztowy'),
+                      decoration:
+                          const InputDecoration(labelText: 'Kod pocztowy'),
                     ),
                     TextField(
                       controller: cityCtrl,
@@ -1127,7 +1145,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                     ),
                     TextField(
                       controller: buildingCtrl,
-                      decoration: const InputDecoration(labelText: 'Nr budynku'),
+                      decoration:
+                          const InputDecoration(labelText: 'Nr budynku'),
                     ),
                     TextField(
                       controller: apartmentCtrl,
@@ -1136,7 +1155,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                   ],
                   CheckboxListTile(
                     value: isDefault,
-                    onChanged: (v) => setModalState(() => isDefault = v ?? false),
+                    onChanged: (v) =>
+                        setModalState(() => isDefault = v ?? false),
                     title: const Text('Ustaw jako domyślny'),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -1229,7 +1249,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: _addressId,
-              decoration: const InputDecoration(labelText: 'Domyślny adres / paczkomat'),
+              decoration: const InputDecoration(
+                  labelText: 'Domyślny adres / paczkomat'),
               items: _addressBook
                   .map(
                     (a) => DropdownMenuItem(
@@ -1237,7 +1258,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                       child: Text(
                         (a['label']?.toString().isNotEmpty == true)
                             ? a['label'].toString()
-                            : (a['parcelLockerId']?.toString().isNotEmpty == true)
+                            : (a['parcelLockerId']?.toString().isNotEmpty ==
+                                    true)
                                 ? 'Paczkomat ${a['parcelLockerId']}'
                                 : '${a['city'] ?? ''}, ${a['street'] ?? ''}',
                       ),
@@ -1297,7 +1319,8 @@ class _CheckoutSettingsPanelState extends State<_CheckoutSettingsPanel> {
                           icon: const Icon(Icons.edit_outlined),
                         ),
                         IconButton(
-                          onPressed: () => _deleteAddress(a['id']?.toString() ?? ''),
+                          onPressed: () =>
+                              _deleteAddress(a['id']?.toString() ?? ''),
                           icon: const Icon(Icons.delete_outline),
                         ),
                       ],
@@ -1324,7 +1347,8 @@ class _CustomerNotificationsPanel extends StatefulWidget {
       _CustomerNotificationsPanelState();
 }
 
-class _CustomerNotificationsPanelState extends State<_CustomerNotificationsPanel> {
+class _CustomerNotificationsPanelState
+    extends State<_CustomerNotificationsPanel> {
   late Future<List<Map<String, dynamic>>> _future;
 
   @override
@@ -1434,22 +1458,27 @@ class _CustomerNotificationsPanelState extends State<_CustomerNotificationsPanel
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
                           const SizedBox(height: 4),
                           Text(message),
-                          if (productName != null && productName.isNotEmpty) ...[
+                          if (productName != null &&
+                              productName.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text('Produkt: $productName'),
                           ],
                           const SizedBox(height: 4),
                           Text(
                             at,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: DesignTokens.mutedText,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: DesignTokens.mutedText,
+                                    ),
                           ),
                         ],
                       ),
@@ -1496,8 +1525,7 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
     final id = o['id']?.toString();
     final token = widget.auth.accessToken;
     if (id == null || token == null) return;
-    final uri =
-        Uri.parse('${widget.auth.apiBase}/order/my-orders/$id/reorder');
+    final uri = Uri.parse('${widget.auth.apiBase}/order/my-orders/$id/reorder');
     final r = await http.post(
       uri,
       headers: {'Authorization': 'Bearer $token'},
@@ -1552,7 +1580,8 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pobieranie PDF jest dostępne w przeglądarce (Flutter Web).'),
+          content: Text(
+              'Pobieranie PDF jest dostępne w przeglądarce (Flutter Web).'),
         ),
       );
       return;
@@ -1712,7 +1741,9 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                 final totalSpent = rows.fold<double>(
                   0,
                   (sum, o) =>
-                      sum + (double.tryParse(o['totalAmount']?.toString() ?? '0') ?? 0),
+                      sum +
+                      (double.tryParse(o['totalAmount']?.toString() ?? '0') ??
+                          0),
                 );
                 final avgOrder = rows.isEmpty ? 0 : totalSpent / rows.length;
                 return Column(
@@ -1731,226 +1762,277 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                       ),
                     ),
                     ...rows.map((o) {
-                    final statusRaw = o['status']?.toString() ?? '—';
-                    final status = '${orderStatusLabelPl(statusRaw)} ($statusRaw)';
-                    final total = o['totalAmount']?.toString() ?? '0';
-                    final itemCount = (o['itemCount'] as num?)?.toInt() ?? 0;
-                    final paymentStatus = o['paymentStatus']?.toString() ?? '—';
-                    final paymentMethod = o['paymentMethod']?.toString() ?? '—';
-                    final paymentReference = o['paymentReference']?.toString();
-                    final paymentSessionUrl = o['paymentSessionUrl']?.toString();
-                    final paymentBankAccount = o['paymentBankAccount']?.toString();
-                    final customerNote = o['customerNote']?.toString();
-                    final createdAt = _dateFmt(o['createdAt']?.toString() ?? '');
-                    return Container(
-                      margin: const EdgeInsets.only(top: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: DesignTokens.line),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (_expandedOrders.contains(o['id'])) {
-                              _expandedOrders.remove(o['id']);
-                            } else {
-                              _expandedOrders.add(o['id']?.toString() ?? '');
-                            }
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Data: $createdAt'),
-                            const SizedBox(height: 4),
-                            Text('Status: $status'),
-                            const SizedBox(height: 4),
-                            Text('Pozycji: $itemCount'),
-                            const SizedBox(height: 4),
-                            Text('Kwota: $total zł'),
-                            if (customerNote != null && customerNote.trim().isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                'Uwagi: $customerNote',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: DesignTokens.mutedText,
-                                    ),
-                              ),
-                            ],
-                            const SizedBox(height: 4),
-                            Text('Płatność: $paymentMethod · status: $paymentStatus'),
-                            if (paymentReference != null && paymentReference.isNotEmpty) ...[
+                      final statusRaw = o['status']?.toString() ?? '—';
+                      final status =
+                          '${orderStatusLabelPl(statusRaw)} ($statusRaw)';
+                      final total = o['totalAmount']?.toString() ?? '0';
+                      final itemCount = (o['itemCount'] as num?)?.toInt() ?? 0;
+                      final paymentStatus =
+                          o['paymentStatus']?.toString() ?? '—';
+                      final paymentMethod =
+                          o['paymentMethod']?.toString() ?? '—';
+                      final paymentReference =
+                          o['paymentReference']?.toString();
+                      final paymentSessionUrl =
+                          o['paymentSessionUrl']?.toString();
+                      final paymentBankAccount =
+                          o['paymentBankAccount']?.toString();
+                      final customerNote = o['customerNote']?.toString();
+                      final createdAt =
+                          _dateFmt(o['createdAt']?.toString() ?? '');
+                      return Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: DesignTokens.line),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (_expandedOrders.contains(o['id'])) {
+                                _expandedOrders.remove(o['id']);
+                              } else {
+                                _expandedOrders.add(o['id']?.toString() ?? '');
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Data: $createdAt'),
                               const SizedBox(height: 4),
-                              Text('Referencja: $paymentReference'),
-                            ],
-                            if (paymentBankAccount != null && paymentBankAccount.isNotEmpty) ...[
+                              Text('Status: $status'),
                               const SizedBox(height: 4),
-                              Text('Rachunek (dev): $paymentBankAccount'),
-                            ],
-                            if (paymentSessionUrl != null && paymentSessionUrl.isNotEmpty) ...[
+                              Text('Pozycji: $itemCount'),
                               const SizedBox(height: 4),
-                              Text(
-                                'Link płatności (symulacja): $paymentSessionUrl',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                            if (paymentStatus == 'PENDING') ...[
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  FilledButton.tonal(
-                                    onPressed: () async {
-                                      final err = await context
-                                          .read<CartNotifier>()
-                                          .simulateOrderPaymentSuccess(o['id']?.toString() ?? '');
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            err ?? 'Płatność zaksięgowana w trybie deweloperskim.',
-                                          ),
-                                        ),
-                                      );
-                                      if (err == null) {
-                                        setState(() => _future = _fetch());
-                                      }
-                                    },
-                                    child: const Text('Symuluj opłacenie'),
-                                  ),
-                                  if (statusRaw == 'PLACED')
-                                    OutlinedButton(
-                                      onPressed: () async {
-                                        final id = o['id']?.toString();
-                                        if (id == null || id.isEmpty) return;
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (ctx) => AlertDialog(
-                                            title: const Text('Anulować zamówienie?'),
-                                            content: const Text(
-                                              'Dostępne tylko dla nieopłaconych zamówień w statusie „złożone”. '
-                                              'Przywrócimy stan magazynowy i anulujemy rezerwację płatności.',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(ctx, false),
-                                                child: const Text('Wróć'),
-                                              ),
-                                              FilledButton(
-                                                onPressed: () => Navigator.pop(ctx, true),
-                                                child: const Text('Anuluj zamówienie'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (ok != true || !context.mounted) return;
-                                        final err = await context.read<CartNotifier>().cancelMyOrder(id);
-                                        if (!context.mounted) return;
-                                        if (err != null) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(err)),
-                                          );
-                                          return;
-                                        }
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Zamówienie zostało anulowane.'),
-                                          ),
-                                        );
-                                        setState(() => _future = _fetch());
-                                      },
-                                      child: const Text('Anuluj zamówienie'),
-                                    ),
-                                ],
-                              ),
-                            ],
-                            if (_expandedOrders.contains(o['id'])) ...[
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _reorderFromOrder(context, o),
-                                      icon: const Icon(Icons.replay_rounded, size: 18),
-                                      label: const Text('Ponów w koszyku'),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _downloadInvoice(context, o),
-                                      icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                                      label: const Text('Faktura PDF'),
-                                    ),
-                                    if (_canRequestReturn(o))
-                                      OutlinedButton.icon(
-                                        onPressed: () =>
-                                            _openReturnDialog(context, o),
-                                        icon: const Icon(Icons.undo_rounded, size: 18),
-                                        label: const Text('Wniosek o zwrot'),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const Divider(height: 20),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Dostawa: ${shippingMethodLabelPl(o['shippingMethod']?.toString() ?? '')}',
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ),
-                              if (o['shippingSnapshot'] != null) ...[
+                              Text('Kwota: $total zł'),
+                              if (customerNote != null &&
+                                  customerNote.trim().isNotEmpty) ...[
                                 const SizedBox(height: 6),
-                                SelectableText(
-                                  JsonEncoder.withIndent('  ').convert(o['shippingSnapshot']),
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                Text(
+                                  'Uwagi: $customerNote',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
                                         color: DesignTokens.mutedText,
                                       ),
                                 ),
-                                const SizedBox(height: 12),
                               ],
-                              ...(o['items'] as List<dynamic>? ?? const []).map((rawItem) {
-                                if (rawItem is! Map<String, dynamic>) {
-                                  return const SizedBox.shrink();
-                                }
-                                final productId = rawItem['productId']?.toString() ?? '';
-                                final name = rawItem['name']?.toString() ?? 'Produkt';
-                                final qty = (rawItem['quantity'] as num?)?.toInt() ?? 0;
-                                final price =
-                                    double.tryParse(rawItem['price']?.toString() ?? '0') ?? 0;
-                                final product =
-                                    lookupProductById(productId) ??
-                                        fallbackProductForOrderItem(
-                                          productId: productId,
-                                          name: name,
-                                          pricePln: price,
+                              const SizedBox(height: 4),
+                              Text(
+                                  'Płatność: $paymentMethod · status: $paymentStatus'),
+                              if (paymentReference != null &&
+                                  paymentReference.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text('Referencja: $paymentReference'),
+                              ],
+                              if (paymentBankAccount != null &&
+                                  paymentBankAccount.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text('Rachunek (dev): $paymentBankAccount'),
+                              ],
+                              if (paymentSessionUrl != null &&
+                                  paymentSessionUrl.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Link płatności (symulacja): $paymentSessionUrl',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                              if (paymentStatus == 'PENDING') ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    FilledButton.tonal(
+                                      onPressed: () async {
+                                        final err = await context
+                                            .read<CartNotifier>()
+                                            .simulateOrderPaymentSuccess(
+                                                o['id']?.toString() ?? '');
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              err ??
+                                                  'Płatność zaksięgowana w trybie deweloperskim.',
+                                            ),
+                                          ),
                                         );
-                                return ListTile(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(name),
-                                  subtitle: Text('$qty szt. · ${price.toStringAsFixed(0)} zł'),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => ProductDetailsScreen(product: product),
+                                        if (err == null) {
+                                          setState(() => _future = _fetch());
+                                        }
+                                      },
+                                      child: const Text('Symuluj opłacenie'),
                                     ),
+                                    if (statusRaw == 'PLACED')
+                                      OutlinedButton(
+                                        onPressed: () async {
+                                          final id = o['id']?.toString();
+                                          if (id == null || id.isEmpty) return;
+                                          final ok = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text(
+                                                  'Anulować zamówienie?'),
+                                              content: const Text(
+                                                'Dostępne tylko dla nieopłaconych zamówień w statusie „złożone”. '
+                                                'Przywrócimy stan magazynowy i anulujemy rezerwację płatności.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, false),
+                                                  child: const Text('Wróć'),
+                                                ),
+                                                FilledButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, true),
+                                                  child: const Text(
+                                                      'Anuluj zamówienie'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (ok != true || !context.mounted) {
+                                            return;
+                                          }
+                                          final err = await context
+                                              .read<CartNotifier>()
+                                              .cancelMyOrder(id);
+                                          if (!context.mounted) return;
+                                          if (err != null) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(content: Text(err)),
+                                            );
+                                            return;
+                                          }
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  'Zamówienie zostało anulowane.'),
+                                            ),
+                                          );
+                                          setState(() => _future = _fetch());
+                                        },
+                                        child: const Text('Anuluj zamówienie'),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                              if (_expandedOrders.contains(o['id'])) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () =>
+                                            _reorderFromOrder(context, o),
+                                        icon: const Icon(Icons.replay_rounded,
+                                            size: 18),
+                                        label: const Text('Ponów w koszyku'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: () =>
+                                            _downloadInvoice(context, o),
+                                        icon: const Icon(
+                                            Icons.picture_as_pdf_outlined,
+                                            size: 18),
+                                        label: const Text('Faktura PDF'),
+                                      ),
+                                      if (_canRequestReturn(o))
+                                        OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _openReturnDialog(context, o),
+                                          icon: const Icon(Icons.undo_rounded,
+                                              size: 18),
+                                          label: const Text('Wniosek o zwrot'),
+                                        ),
+                                    ],
                                   ),
-                                );
-                              }),
+                                ),
+                                const Divider(height: 20),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Dostawa: ${shippingMethodLabelPl(o['shippingMethod']?.toString() ?? '')}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
+                                if (o['shippingSnapshot'] != null) ...[
+                                  const SizedBox(height: 6),
+                                  SelectableText(
+                                    const JsonEncoder.withIndent(
+                                      '  ',
+                                    ).convert(o['shippingSnapshot']),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: DesignTokens.mutedText,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                                ...(o['items'] as List<dynamic>? ?? const [])
+                                    .map((rawItem) {
+                                  if (rawItem is! Map<String, dynamic>) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final productId =
+                                      rawItem['productId']?.toString() ?? '';
+                                  final name =
+                                      rawItem['name']?.toString() ?? 'Produkt';
+                                  final qty =
+                                      (rawItem['quantity'] as num?)?.toInt() ??
+                                          0;
+                                  final price = double.tryParse(
+                                          rawItem['price']?.toString() ??
+                                              '0') ??
+                                      0;
+                                  final product =
+                                      lookupProductById(productId) ??
+                                          fallbackProductForOrderItem(
+                                            productId: productId,
+                                            name: name,
+                                            pricePln: price,
+                                          );
+                                  return ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(name),
+                                    subtitle: Text(
+                                        '$qty szt. · ${price.toStringAsFixed(0)} zł'),
+                                    trailing:
+                                        const Icon(Icons.chevron_right_rounded),
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => ProductDetailsScreen(
+                                            product: product),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
                   ],
                 );
               },

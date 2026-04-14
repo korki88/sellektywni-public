@@ -1,9 +1,8 @@
-// ignore_for_file: avoid_web_libraries_in_flutter
-
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:web/web.dart' as web;
 
 Future<void> downloadPdfWithAuth({
   required String url,
@@ -18,10 +17,14 @@ Future<void> downloadPdfWithAuth({
     throw Exception('HTTP ${r.statusCode}');
   }
   final bytes = Uint8List.fromList(r.bodyBytes);
-  final blob = html.Blob([bytes], 'application/pdf');
-  final objectUrl = html.Url.createObjectUrlFromBlob(blob);
-  html.AnchorElement(href: objectUrl)
-    ..setAttribute('download', filename)
-    ..click();
-  html.Url.revokeObjectUrl(objectUrl);
+  final blob = web.Blob(
+    [bytes.toJS].toJS,
+    web.BlobPropertyBag(type: 'application/pdf'),
+  );
+  final objectUrl = web.URL.createObjectURL(blob);
+  (web.HTMLAnchorElement()
+        ..href = objectUrl
+        ..download = filename)
+      .click();
+  web.URL.revokeObjectURL(objectUrl);
 }

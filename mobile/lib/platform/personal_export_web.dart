@@ -1,12 +1,16 @@
-// ignore_for_file: avoid_web_libraries_in_flutter
+import 'dart:js_interop';
 
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 Future<void> downloadOrCopyPersonalJson(String filename, String json) async {
-  final blob = html.Blob([json], 'application/json');
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  html.AnchorElement(href: url)
-    ..setAttribute('download', filename)
-    ..click();
-  html.Url.revokeObjectUrl(url);
+  final blob = web.Blob(
+    [json.toJS].toJS,
+    web.BlobPropertyBag(type: 'application/json'),
+  );
+  final url = web.URL.createObjectURL(blob);
+  (web.HTMLAnchorElement()
+        ..href = url
+        ..download = filename)
+      .click();
+  web.URL.revokeObjectURL(url);
 }

@@ -1,4 +1,4 @@
-/// Etykiety i stałe zgodne z API / Prisma (płatności, wysyłka, przewoźnicy).
+// Etykiety i stałe zgodne z API / Prisma (płatności, wysyłka, przewoźnicy).
 
 String paymentMethodLabelPl(String? code) {
   switch (code) {
@@ -76,7 +76,8 @@ String shippingMethodLabelPl(String? code) {
 }
 
 bool expectsCourierOrLockerLabel(String? shippingMethod) {
-  return shippingMethod == 'COURIER' || shippingMethod == 'PARCEL_LOCKER_INPOST';
+  return shippingMethod == 'COURIER' ||
+      shippingMethod == 'PARCEL_LOCKER_INPOST';
 }
 
 const List<String> kSupportedPaymentMethodCodes = [

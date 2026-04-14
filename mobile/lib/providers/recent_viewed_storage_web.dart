@@ -1,12 +1,11 @@
-// ignore_for_file: avoid_web_libraries_in_flutter
-
 import 'dart:convert';
-import 'dart:html' as html;
+
+import 'package:web/web.dart' as web;
 
 const _kIds = 'shop_recently_viewed_ids_v1';
 
 Future<List<String>> recentViewedGetIds() async {
-  final raw = html.window.localStorage[_kIds];
+  final raw = web.window.localStorage.getItem(_kIds);
   if (raw == null || raw.isEmpty) return [];
   try {
     final j = jsonDecode(raw);
@@ -18,5 +17,5 @@ Future<List<String>> recentViewedGetIds() async {
 }
 
 Future<void> recentViewedSetIds(List<String> ids) async {
-  html.window.localStorage[_kIds] = jsonEncode(ids);
+  web.window.localStorage.setItem(_kIds, jsonEncode(ids));
 }

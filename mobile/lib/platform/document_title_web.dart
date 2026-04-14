@@ -1,8 +1,6 @@
-// ignore_for_file: avoid_web_libraries_in_flutter
-
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 void setBrowserDocumentTitle(String? title) {
   if (title == null || title.isEmpty) return;
-  html.document.title = title;
+  web.document.title = title;
 }

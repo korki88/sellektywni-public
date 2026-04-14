@@ -46,7 +46,9 @@ class _HelpScreenState extends State<HelpScreen> {
   }
 
   Future<void> _copyEmail(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: AppConfig.shopSupportEmail));
+    await Clipboard.setData(
+      const ClipboardData(text: AppConfig.shopSupportEmail),
+    );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Skopiowano adres e-mail do schowka')),
@@ -64,13 +66,19 @@ class _HelpScreenState extends State<HelpScreen> {
         children: [
           Text(
             'Obsługa klienta',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
             'Masz pytanie o zamówienie, zwrot lub produkt? Napisz na adres poniżej — '
             'podaj numer zamówienia lub nazwę produktu, ułatwi to odpowiedź.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: DesignTokens.mutedText),
           ),
           const SizedBox(height: 12),
           SelectableText(
@@ -88,7 +96,10 @@ class _HelpScreenState extends State<HelpScreen> {
           const SizedBox(height: 28),
           Text(
             'Strony informacyjne',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           FutureBuilder<List<Map<String, dynamic>>>(
@@ -143,29 +154,45 @@ class _HelpScreenState extends State<HelpScreen> {
           const SizedBox(height: 28),
           Text(
             'Dostawa i płatności',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const _Bullet('Dostępne metody płatności i dostawy wybierzesz w koszyku przy składaniu zamówienia.'),
-          const _Bullet('Po złożeniu zamówienia status płatności i realizacji widzisz w zakładce Konto → Twoje zamówienia.'),
+          const _Bullet(
+              'Dostępne metody płatności i dostawy wybierzesz w koszyku przy składaniu zamówienia.'),
+          const _Bullet(
+              'Po złożeniu zamówienia status płatności i realizacji widzisz w zakładce Konto → Twoje zamówienia.'),
           const SizedBox(height: 24),
           Text(
             'Zwroty i reklamacje',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const _Bullet('Zgłoszenie zwrotu lub reklamacji — mail na adres obsługi z opisem i numerem zamówienia.'),
-          const _Bullet('Produkty z rezerwacji w sklepie stacjonarnym — zasady zgodnie z regulaminem salonu i obowiązującym prawem.'),
+          const _Bullet(
+              'Zgłoszenie zwrotu lub reklamacji — mail na adres obsługi z opisem i numerem zamówienia.'),
+          const _Bullet(
+              'Produkty z rezerwacji w sklepie stacjonarnym — zasady zgodnie z regulaminem salonu i obowiązującym prawem.'),
           const SizedBox(height: 24),
           Text(
             'Polityka prywatności',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
             'Konto i logowanie są obsługiwane przez bezpiecznego dostawcę uwierzytelniania (Supabase). '
             'Dane zamówień przechowuje sklep w celu realizacji sprzedaży.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: DesignTokens.mutedText),
           ),
         ],
       ),
@@ -189,7 +216,10 @@ class _Bullet extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: DesignTokens.mutedText),
             ),
           ),
         ],
