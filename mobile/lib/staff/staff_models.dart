@@ -22,7 +22,8 @@ class StaffProduct {
   factory StaffProduct.fromJson(Map<String, dynamic> j) {
     return StaffProduct(
       id: j['id'] as String,
-      idDotykacka: j['idDotykacka'] as String? ?? j['id_dotykacka'] as String? ?? '',
+      idDotykacka:
+          j['idDotykacka'] as String? ?? j['id_dotykacka'] as String? ?? '',
       name: j['name'] as String,
       priceRaw: j['price']?.toString() ?? '0',
       status: j['status'] as String? ?? '',
@@ -183,6 +184,8 @@ class StaffAuditLog {
     required this.resourceType,
     required this.resourceId,
     required this.ipAddress,
+    this.oldValue,
+    this.newValue,
     required this.createdAt,
   });
 
@@ -193,6 +196,8 @@ class StaffAuditLog {
   final String resourceType;
   final String resourceId;
   final String? ipAddress;
+  final Object? oldValue;
+  final Object? newValue;
   final String createdAt;
 
   factory StaffAuditLog.fromJson(Map<String, dynamic> j) {
@@ -204,6 +209,8 @@ class StaffAuditLog {
       resourceType: j['resourceType'] as String? ?? 'UNKNOWN',
       resourceId: j['resourceId'] as String? ?? 'UNKNOWN',
       ipAddress: j['ipAddress'] as String?,
+      oldValue: j['oldValue'],
+      newValue: j['newValue'],
       createdAt: j['createdAt'] as String? ?? '',
     );
   }
@@ -308,12 +315,10 @@ class FinancialAiProposal {
       riskScore: (j['riskScore'] as num?)?.toInt() ?? 0,
       rationale: j['rationale']?.toString() ?? '',
       createdAt: j['createdAt']?.toString() ?? '',
-      productId: product is Map<String, dynamic>
-          ? product['id']?.toString()
-          : null,
-      productName: product is Map<String, dynamic>
-          ? product['name']?.toString()
-          : null,
+      productId:
+          product is Map<String, dynamic> ? product['id']?.toString() : null,
+      productName:
+          product is Map<String, dynamic> ? product['name']?.toString() : null,
       supplierName: supplier is Map<String, dynamic>
           ? supplier['name']?.toString()
           : null,

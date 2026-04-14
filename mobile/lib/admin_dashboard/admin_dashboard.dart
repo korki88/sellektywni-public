@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -62,6 +64,8 @@ enum _MenuId {
   loyalty,
 }
 
+enum _AuditQuickFilter { all, errors, sales, loyalty }
+
 class _AdminDashboardState extends State<AdminDashboard> {
   static const double _sectionScrollableListHeight = 320;
 
@@ -118,6 +122,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _auditTotal = 0;
   int _auditOffset = 0;
   static const int _auditPageSize = 50;
+  _AuditQuickFilter _auditQuickFilter = _AuditQuickFilter.all;
   bool _loadingAiProposals = false;
   bool _runningAiAnalysis = false;
   List<FinancialAiProposal> _aiProposals = [];
@@ -130,7 +135,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       menu.addAll(const [_MenuId.stats, _MenuId.finance]);
     }
     if (auth.isOwner) {
-      menu.addAll(const [_MenuId.aiAgents, _MenuId.marketing, _MenuId.employees]);
+      menu.addAll(
+          const [_MenuId.aiAgents, _MenuId.marketing, _MenuId.employees]);
     }
     if (auth.hasPermission('manage.catalog')) {
       menu.add(_MenuId.catalog);
@@ -217,7 +223,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case _MenuId.stats:
         return selected ? Icons.insights : Icons.insights_outlined;
       case _MenuId.finance:
-        return selected ? Icons.account_balance : Icons.account_balance_outlined;
+        return selected
+            ? Icons.account_balance
+            : Icons.account_balance_outlined;
       case _MenuId.aiAgents:
         return selected ? Icons.smart_toy : Icons.smart_toy_outlined;
       case _MenuId.marketing:
@@ -231,7 +239,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case _MenuId.orders:
         return selected ? Icons.receipt_long : Icons.receipt_long_outlined;
       case _MenuId.permissions:
-        return selected ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined;
+        return selected
+            ? Icons.admin_panel_settings
+            : Icons.admin_panel_settings_outlined;
       case _MenuId.operationHistory:
         return selected ? Icons.history : Icons.history_outlined;
       case _MenuId.cms:
@@ -247,7 +257,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case _MenuId.dotykackaDev:
         return selected ? Icons.sync_alt : Icons.sync_alt_outlined;
       case _MenuId.scanner:
-        return selected ? Icons.qr_code_scanner : Icons.qr_code_scanner_outlined;
+        return selected
+            ? Icons.qr_code_scanner
+            : Icons.qr_code_scanner_outlined;
       case _MenuId.loyalty:
         return selected ? Icons.card_giftcard : Icons.card_giftcard_outlined;
     }
@@ -324,8 +336,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final auth = context.read<AuthSession>();
     final menu = _menuForRole(auth);
     if (menu.isEmpty) return;
-    final safeIndex =
-        _railIndex < 0 ? 0 : (_railIndex >= menu.length ? menu.length - 1 : _railIndex);
+    final safeIndex = _railIndex < 0
+        ? 0
+        : (_railIndex >= menu.length ? menu.length - 1 : _railIndex);
     final current = menu[safeIndex];
     if (_lastAutoLoadedMenu != current) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -460,7 +473,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final auth = context.read<AuthSession>();
     if (!auth.isOwner) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Import danych kosztowych jest dostępny tylko dla OWNER.')),
+        const SnackBar(
+            content: Text(
+                'Import danych kosztowych jest dostępny tylko dla OWNER.')),
       );
       return;
     }
@@ -514,7 +529,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       await _loadOrders();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Zmieniono status zamówienia ${order.id} na $nextStatus')),
+        SnackBar(
+            content:
+                Text('Zmieniono status zamówienia ${order.id} na $nextStatus')),
       );
     } on StaffApiException catch (e) {
       if (!mounted) return;
@@ -524,7 +541,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  Future<void> _setOrderPaymentStatus(StaffOrder order, String nextPaymentStatus) async {
+  Future<void> _setOrderPaymentStatus(
+      StaffOrder order, String nextPaymentStatus) async {
     try {
       await _api.patchOrderPaymentStatus(order.id, nextPaymentStatus);
       await _loadOrders();
@@ -693,7 +711,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       await _loadCatalog();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Zaakceptowano propozycję i uruchomiono marketing.')),
+        const SnackBar(
+            content: Text('Zaakceptowano propozycję i uruchomiono marketing.')),
       );
     } on StaffApiException catch (e) {
       if (!mounted) return;
@@ -851,8 +870,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Anuluj')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Zapisz')),
           ],
         ),
       ),
@@ -874,7 +897,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       );
     } on StaffApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -886,7 +910,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       detail = await _api.fetchOrderDetail(o.id);
     } on StaffApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
       return;
     }
     if (!mounted) return;
@@ -900,7 +925,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             : <Map<String, dynamic>>[];
         final cn = detail?['customerNote']?.toString();
         return AlertDialog(
-          title: Text('Zamówienie ${o.id.length > 8 ? '${o.id.substring(0, 8)}…' : o.id}'),
+          title: Text(
+              'Zamówienie ${o.id.length > 8 ? '${o.id.substring(0, 8)}…' : o.id}'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -915,7 +941,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         style: Theme.of(ctx).textTheme.bodyMedium,
                       ),
                     ),
-                  Text('Notatki zespołu', style: Theme.of(ctx).textTheme.titleSmall),
+                  Text('Notatki zespołu',
+                      style: Theme.of(ctx).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   if (staffNotes.isEmpty)
                     Text(
@@ -948,7 +975,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Zamknij')),
             FilledButton(
               onPressed: () async {
                 final t = noteCtrl.text.trim();
@@ -960,7 +989,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   await _loadOrders();
                 } on StaffApiException catch (e) {
                   if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.toString())));
+                  ScaffoldMessenger.of(ctx)
+                      .showSnackBar(SnackBar(content: Text(e.toString())));
                 }
               },
               child: const Text('Dodaj notatkę'),
@@ -1179,14 +1209,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Pulpit analityczny',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
           sim
               ? 'Tryb deweloperski — dane z lokalnej bazy (API /staff/analytics/summary).'
               : 'Dane na żywo z bazy: zamówienia, płatności, produkty, klienci.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
         if (s == null) ...[
           const SizedBox(height: 16),
@@ -1198,13 +1234,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 16),
           Text(
             'Wygenerowano: ${s['generatedAt'] ?? '—'}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: DesignTokens.mutedText),
           ),
           const SizedBox(height: 12),
-          _statRow(context, 'Przychód (opłacone zamówienia)', '${s['paidRevenueTotal'] ?? '0'} zł'),
-          _statRow(context, 'Liczba opłaconych zamówień', '${s['paidOrdersCount'] ?? 0}'),
-          _statRow(context, 'Oczekujące płatności', '${s['pendingPaymentCount'] ?? 0}'),
-          _statRow(context, 'Klienci (profil CUSTOMER)', '${s['customersCount'] ?? 0}'),
+          _statRow(context, 'Przychód (opłacone zamówienia)',
+              '${s['paidRevenueTotal'] ?? '0'} zł'),
+          _statRow(context, 'Liczba opłaconych zamówień',
+              '${s['paidOrdersCount'] ?? 0}'),
+          _statRow(context, 'Oczekujące płatności',
+              '${s['pendingPaymentCount'] ?? 0}'),
+          _statRow(context, 'Klienci (profil CUSTOMER)',
+              '${s['customersCount'] ?? 0}'),
           if (s['products'] is Map) ...[
             _statRow(
               context,
@@ -1220,7 +1263,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 16),
           Text(
             'Zamówienia wg statusu',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           ...(s['ordersByStatus'] is Map
@@ -1234,23 +1280,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 16),
           Text(
             'Przychód wg metody płatności (opłacone)',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           ...(s['revenueByPaymentMethod'] as List<dynamic>? ?? const [])
               .map<Widget>((row) {
-                if (row is! Map) return const SizedBox.shrink();
-                final pm = row['paymentMethod']?.toString() ?? '';
-                final tot = row['total']?.toString() ?? '0';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('$pm: $tot zł'),
-                );
-              }),
+            if (row is! Map) return const SizedBox.shrink();
+            final pm = row['paymentMethod']?.toString() ?? '';
+            final tot = row['total']?.toString() ?? '0';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('$pm: $tot zł'),
+            );
+          }),
           const SizedBox(height: 16),
           Text(
             'Rezerwacje wg statusu',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           ...(s['reservationsByStatus'] is Map
@@ -1266,7 +1318,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 20),
           Text(
             'Produkty z niskim stanem',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -1278,7 +1333,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 return Card(
                   child: ListTile(
                     title: Text(r['name']?.toString() ?? ''),
-                    subtitle: Text('Stan: ${r['stockQty']} · Dotykačka: ${r['idDotykacka'] ?? '—'}'),
+                    subtitle: Text(
+                        'Stan: ${r['stockQty']} · Dotykačka: ${r['idDotykacka'] ?? '—'}'),
                   ),
                 );
               },
@@ -1313,7 +1369,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -1327,12 +1386,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Płatności (backend)',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
           'Obsługiwane metody zgodnie z enum PaymentMethod i PaymentsService:',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 16),
         ...kSupportedPaymentMethodCodes.map((code) {
@@ -1371,7 +1436,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         const SizedBox(height: 8),
         Text(
           'Symulacja: bez P24 w .env zwracany jest link sandbox-simulation; przelew = BANK_TRANSFER_MOCK.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
       ],
     );
@@ -1394,7 +1462,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Agenci AI',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
         Text(
@@ -1415,7 +1486,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.auto_graph_outlined),
-              label: Text(_runningAiAnalysis ? 'Analizowanie...' : 'Uruchom analizę'),
+              label: Text(
+                  _runningAiAnalysis ? 'Analizowanie...' : 'Uruchom analizę'),
             ),
             const SizedBox(width: 10),
             FilledButton.tonal(
@@ -1454,7 +1526,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       '(-${p.discountPercentRaw}%)',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (p.supplierName != null || p.paymentTermsDays != null) ...[
+                    if (p.supplierName != null ||
+                        p.paymentTermsDays != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         'Dostawca: ${p.supplierName ?? "—"} · '
@@ -1590,7 +1663,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Zespół i role',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         _infoCard(
@@ -1600,7 +1676,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           lines: const [
             'OWNER — pełny dostęp: analityka, finanse, uprawnienia STAFF, promocje (API staff).',
             'STAFF — domyślnie: rezerwacje, zamówienia, klienci, Dotykačka dev, wysyłka, CMS, zgłoszenia. '
-            'OWNER może nadać też A/B, karty podarunkowe i inne uprawnienia (zakładka Uprawnienia).',
+                'OWNER może nadać też A/B, karty podarunkowe i inne uprawnienia (zakładka Uprawnienia).',
             'CUSTOMER — sklep, konto, zamówienia własne (bez panelu staff).',
           ],
         ),
@@ -1638,12 +1714,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   ...lines.map(
                     (l) => Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(l, style: Theme.of(context).textTheme.bodyMedium),
+                      child: Text(l,
+                          style: Theme.of(context).textTheme.bodyMedium),
                     ),
                   ),
                 ],
@@ -1703,7 +1784,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     const SizedBox(height: 10),
                     FilledButton.tonalIcon(
-                      onPressed: _uploadingCostingSheet ? null : _importCostingFromSheet,
+                      onPressed: _uploadingCostingSheet
+                          ? null
+                          : _importCostingFromSheet,
                       icon: _uploadingCostingSheet
                           ? const SizedBox(
                               width: 14,
@@ -1776,9 +1859,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ? Center(
                         child: Text(
                           'Brak produktów dla bieżącego filtra.',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: DesignTokens.mutedText,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: DesignTokens.mutedText,
+                                  ),
                         ),
                       )
                     : ListView.separated(
@@ -1794,15 +1878,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 'ID: ${p.id} · Cena: ${p.priceRaw} zł'
                                 '${p.subtitle != null && p.subtitle!.trim().isNotEmpty ? '\nPodtytuł: ${p.subtitle}' : ''}',
                               ),
-                              isThreeLine: p.subtitle != null && p.subtitle!.trim().isNotEmpty,
+                              isThreeLine: p.subtitle != null &&
+                                  p.subtitle!.trim().isNotEmpty,
                               trailing: Wrap(
                                 spacing: 8,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  if (p.isFeatured) const Chip(label: Text('Polecane')),
+                                  if (p.isFeatured)
+                                    const Chip(label: Text('Polecane')),
                                   OutlinedButton.icon(
-                                    onPressed: () => _showMerchandisingDialog(p),
-                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    onPressed: () =>
+                                        _showMerchandisingDialog(p),
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 18),
                                     label: const Text('Edytuj'),
                                   ),
                                 ],
@@ -1847,8 +1935,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 InkWell(
                   onTap: () {
-                    final product =
-                        lookupProductById(p.id) ??
+                    final product = lookupProductById(p.id) ??
                         fallbackProductForOrderItem(
                           productId: p.id,
                           name: p.name,
@@ -2034,7 +2121,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     buf
       ..writeln('─────────────────────')
       ..writeln('SUMA: ${o.totalAmountRaw} zł')
-      ..writeln('Płatność: ${paymentMethodLabelPl(o.paymentMethod)} / ${paymentStatusLabelPl(o.paymentStatus)}')
+      ..writeln(
+          'Płatność: ${paymentMethodLabelPl(o.paymentMethod)} / ${paymentStatusLabelPl(o.paymentStatus)}')
       ..writeln()
       ..writeln(
         sim
@@ -2053,7 +2141,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         content: SingleChildScrollView(child: SelectableText(buf.toString())),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Zamknij')),
         ],
       ),
     );
@@ -2082,7 +2172,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Zamknij')),
         ],
       ),
     );
@@ -2140,10 +2232,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               }
                             },
                             itemBuilder: (_) => const [
-                              PopupMenuItem(value: 'APPROVED', child: Text('Zatwierdź')),
-                              PopupMenuItem(value: 'REJECTED', child: Text('Odrzuć')),
-                              PopupMenuItem(value: 'RECEIVED', child: Text('Przyjęto towar')),
-                              PopupMenuItem(value: 'PENDING', child: Text('Oczekuje')),
+                              PopupMenuItem(
+                                  value: 'APPROVED', child: Text('Zatwierdź')),
+                              PopupMenuItem(
+                                  value: 'REJECTED', child: Text('Odrzuć')),
+                              PopupMenuItem(
+                                  value: 'RECEIVED',
+                                  child: Text('Przyjęto towar')),
+                              PopupMenuItem(
+                                  value: 'PENDING', child: Text('Oczekuje')),
                             ],
                           ),
                         ),
@@ -2199,240 +2296,315 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                     )
                   : ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _orders.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
-        final o = _orders[i];
-        final expanded = _expandedOrderIds.contains(o.id);
-        final needCourier = expectsCourierOrLockerLabel(o.shippingMethod);
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  if (expanded) {
-                    _expandedOrderIds.remove(o.id);
-                  } else {
-                    _expandedOrderIds.add(o.id);
-                  }
-                });
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    o.customerEmail ?? o.userId,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Status zamówienia: ${orderStatusLabelPl(o.status)} (${o.status}) · '
-                    '${o.itemCount} poz. · ${o.totalAmountRaw} zł',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: DesignTokens.mutedText,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Wysyłka: ${shippingMethodLabelPl(o.shippingMethod)}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: DesignTokens.mutedText,
-                        ),
-                  ),
-                  if (o.customerNote != null && o.customerNote!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Uwagi klienta: ${o.customerNote}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: DesignTokens.mutedText,
-                          ),
-                    ),
-                  ],
-                  if (o.staffNotePreview != null && o.staffNotePreview!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Ostatnia notatka: ${o.staffNotePreview}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: DesignTokens.mutedText,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 4),
-                  Text(
-                    'Płatność: ${paymentMethodLabelPl(o.paymentMethod)} · '
-                    '${paymentProviderLabelPl(o.paymentProvider)} · '
-                    '${paymentStatusLabelPl(o.paymentStatus)}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: DesignTokens.mutedText,
-                        ),
-                  ),
-                  if (o.paymentReference != null && o.paymentReference!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Ref: ${o.paymentReference}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: DesignTokens.mutedText,
-                            ),
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Data: ${o.createdAt}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: DesignTokens.mutedText,
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.panelSoft,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: DesignTokens.panelLine),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Checklist pakowania',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _orders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, i) {
+                        final o = _orders[i];
+                        final expanded = _expandedOrderIds.contains(o.id);
+                        final needCourier =
+                            expectsCourierOrLockerLabel(o.shippingMethod);
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (expanded) {
+                                    _expandedOrderIds.remove(o.id);
+                                  } else {
+                                    _expandedOrderIds.add(o.id);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    o.customerEmail ?? o.userId,
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Status zamówienia: ${orderStatusLabelPl(o.status)} (${o.status}) · '
+                                    '${o.itemCount} poz. · ${o.totalAmountRaw} zł',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: DesignTokens.mutedText,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Wysyłka: ${shippingMethodLabelPl(o.shippingMethod)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: DesignTokens.mutedText,
+                                        ),
+                                  ),
+                                  if (o.customerNote != null &&
+                                      o.customerNote!.trim().isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Uwagi klienta: ${o.customerNote}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: DesignTokens.mutedText,
+                                          ),
+                                    ),
+                                  ],
+                                  if (o.staffNotePreview != null &&
+                                      o.staffNotePreview!
+                                          .trim()
+                                          .isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Ostatnia notatka: ${o.staffNotePreview}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: DesignTokens.mutedText,
+                                          ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Płatność: ${paymentMethodLabelPl(o.paymentMethod)} · '
+                                    '${paymentProviderLabelPl(o.paymentProvider)} · '
+                                    '${paymentStatusLabelPl(o.paymentStatus)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: DesignTokens.mutedText,
+                                        ),
+                                  ),
+                                  if (o.paymentReference != null &&
+                                      o.paymentReference!.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Ref: ${o.paymentReference}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: DesignTokens.mutedText,
+                                            ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Data: ${o.createdAt}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: DesignTokens.mutedText,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: DesignTokens.panelSoft,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                          color: DesignTokens.panelLine),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Checklist pakowania',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          '1. Paragon fiskalny — dane z systemu sprzedaży zsynchronizowanego z Dotykačką.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                        Text(
+                                          needCourier
+                                              ? '2. Etykieta kurierska — nadanie u wybranego przewoźnika (InPost / DPD / DHL / ORLEN / Poczta).'
+                                              : '2. Etykieta kurierska — nie dotyczy (odbiór w salonie).',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                        if (sim) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Tryb dev: druk i etykiety są symulowane (okna podglądu).',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 10),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: [
+                                            OutlinedButton.icon(
+                                              onPressed: () =>
+                                                  _showOrderStaffNotesDialog(o),
+                                              icon: const Icon(
+                                                  Icons.sticky_note_2_outlined,
+                                                  size: 18),
+                                              label:
+                                                  const Text('Notatki zespołu'),
+                                            ),
+                                            OutlinedButton.icon(
+                                              onPressed: () =>
+                                                  _showDotykackaReceiptDialog(
+                                                      o),
+                                              icon: const Icon(
+                                                  Icons.receipt_long_outlined,
+                                                  size: 18),
+                                              label: Text(sim
+                                                  ? 'Symuluj paragon'
+                                                  : 'Podgląd paragonu'),
+                                            ),
+                                            OutlinedButton.icon(
+                                              onPressed: () =>
+                                                  _showCourierLabelDialog(o),
+                                              icon: const Icon(
+                                                  Icons
+                                                      .local_post_office_outlined,
+                                                  size: 18),
+                                              label: Text(sim
+                                                  ? 'Symuluj etykietę'
+                                                  : 'Podgląd etykiety'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      FilledButton.tonal(
+                                        onPressed: () =>
+                                            _setOrderStatus(o, 'PROCESSING'),
+                                        child: const Text('W realizacji'),
+                                      ),
+                                      FilledButton.tonal(
+                                        onPressed: () =>
+                                            _setOrderStatus(o, 'READY'),
+                                        child: const Text('Gotowe'),
+                                      ),
+                                      FilledButton.tonal(
+                                        onPressed: () =>
+                                            _setOrderStatus(o, 'COMPLETED'),
+                                        child: const Text('Zakończone'),
+                                      ),
+                                      OutlinedButton(
+                                        onPressed: () =>
+                                            _setOrderStatus(o, 'CANCELED'),
+                                        child: const Text('Anuluj'),
+                                      ),
+                                      FilledButton.tonal(
+                                        onPressed: () =>
+                                            _setOrderPaymentStatus(o, 'PAID'),
+                                        child: const Text('Płatność: opłacone'),
+                                      ),
+                                      OutlinedButton(
+                                        onPressed: () =>
+                                            _setOrderPaymentStatus(o, 'FAILED'),
+                                        child: const Text('Płatność: błąd'),
+                                      ),
+                                    ],
+                                  ),
+                                  if (expanded) ...[
+                                    const Divider(height: 20),
+                                    ...o.items.map((item) {
+                                      final product =
+                                          lookupProductById(item.productId) ??
+                                              fallbackProductForOrderItem(
+                                                productId: item.productId,
+                                                name: item.name,
+                                                pricePln: double.tryParse(
+                                                        item.priceRaw) ??
+                                                    0,
+                                              );
+                                      return ListTile(
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(item.name),
+                                        subtitle: Text(
+                                          '${item.quantity} szt. · ${item.priceRaw} zł · suma ${item.lineTotalRaw} zł',
+                                        ),
+                                        trailing: const Icon(
+                                            Icons.chevron_right_rounded),
+                                        onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                ProductDetailsScreen(
+                                                    product: product),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ],
                               ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '1. Paragon fiskalny — dane z systemu sprzedaży zsynchronizowanego z Dotykačką.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        Text(
-                          needCourier
-                              ? '2. Etykieta kurierska — nadanie u wybranego przewoźnika (InPost / DPD / DHL / ORLEN / Poczta).'
-                              : '2. Etykieta kurierska — nie dotyczy (odbiór w salonie).',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        if (sim) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tryb dev: druk i etykiety są symulowane (okna podglądu).',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
                           ),
-                        ],
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () => _showOrderStaffNotesDialog(o),
-                              icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
-                              label: const Text('Notatki zespołu'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: () => _showDotykackaReceiptDialog(o),
-                              icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                              label: Text(sim ? 'Symuluj paragon' : 'Podgląd paragonu'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: () => _showCourierLabelDialog(o),
-                              icon: const Icon(Icons.local_post_office_outlined, size: 18),
-                              label: Text(sim ? 'Symuluj etykietę' : 'Podgląd etykiety'),
-                            ),
-                          ],
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.tonal(
-                        onPressed: () => _setOrderStatus(o, 'PROCESSING'),
-                        child: const Text('W realizacji'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: () => _setOrderStatus(o, 'READY'),
-                        child: const Text('Gotowe'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: () => _setOrderStatus(o, 'COMPLETED'),
-                        child: const Text('Zakończone'),
-                      ),
-                      OutlinedButton(
-                        onPressed: () => _setOrderStatus(o, 'CANCELED'),
-                        child: const Text('Anuluj'),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: () => _setOrderPaymentStatus(o, 'PAID'),
-                        child: const Text('Płatność: opłacone'),
-                      ),
-                      OutlinedButton(
-                        onPressed: () => _setOrderPaymentStatus(o, 'FAILED'),
-                        child: const Text('Płatność: błąd'),
-                      ),
-                    ],
-                  ),
-                  if (expanded) ...[
-                    const Divider(height: 20),
-                    ...o.items.map((item) {
-                      final product =
-                          lookupProductById(item.productId) ??
-                          fallbackProductForOrderItem(
-                            productId: item.productId,
-                            name: item.name,
-                            pricePln: double.tryParse(item.priceRaw) ?? 0,
-                          );
-                      return ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(item.name),
-                        subtitle: Text(
-                          '${item.quantity} szt. · ${item.priceRaw} zł · suma ${item.lineTotalRaw} zł',
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ProductDetailsScreen(product: product),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    ),
         ),
       ],
     );
   }
 
   Future<void> _openCmsEditorDialog({Map<String, dynamic>? existing}) async {
-    final slugCtrl = TextEditingController(text: existing?['slug']?.toString() ?? '');
-    final titleCtrl = TextEditingController(text: existing?['title']?.toString() ?? '');
-    final bodyCtrl = TextEditingController(text: existing?['bodyMarkdown']?.toString() ?? '');
-    final seoTitleCtrl = TextEditingController(text: existing?['seoTitle']?.toString() ?? '');
-    final seoDescCtrl = TextEditingController(text: existing?['seoDescription']?.toString() ?? '');
+    final slugCtrl =
+        TextEditingController(text: existing?['slug']?.toString() ?? '');
+    final titleCtrl =
+        TextEditingController(text: existing?['title']?.toString() ?? '');
+    final bodyCtrl = TextEditingController(
+        text: existing?['bodyMarkdown']?.toString() ?? '');
+    final seoTitleCtrl =
+        TextEditingController(text: existing?['seoTitle']?.toString() ?? '');
+    final seoDescCtrl = TextEditingController(
+        text: existing?['seoDescription']?.toString() ?? '');
     var published = existing?['published'] == true;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(existing == null ? 'Nowa strona CMS' : 'Edycja strony CMS'),
+          title:
+              Text(existing == null ? 'Nowa strona CMS' : 'Edycja strony CMS'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2489,8 +2661,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Anuluj')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Zapisz')),
           ],
         ),
       ),
@@ -2523,7 +2699,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       });
     } on StaffApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
       return;
     }
     if (!mounted) return;
@@ -2533,8 +2710,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     await _loadCmsStaff();
   }
 
-  Future<void> _openExperimentStaffDialog({Map<String, dynamic>? existing}) async {
-    final keyCtrl = TextEditingController(text: existing?['key']?.toString() ?? '');
+  Future<void> _openExperimentStaffDialog(
+      {Map<String, dynamic>? existing}) async {
+    final keyCtrl =
+        TextEditingController(text: existing?['key']?.toString() ?? '');
     final rawV = existing?['variants'];
     final initialV = rawV is List
         ? rawV.map((e) => e.toString()).join(', ')
@@ -2545,7 +2724,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(existing == null ? 'Nowy eksperyment A/B' : 'Eksperyment A/B'),
+          title: Text(
+              existing == null ? 'Nowy eksperyment A/B' : 'Eksperyment A/B'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2574,8 +2754,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zapisz')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Anuluj')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Zapisz')),
           ],
         ),
       ),
@@ -2603,7 +2787,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       });
     } on StaffApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
       return;
     }
     if (!mounted) return;
@@ -2635,7 +2820,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 8),
               TextField(
                 controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Kwota (PLN)',
                   border: OutlineInputBorder(),
@@ -2653,8 +2839,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Utwórz')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Anuluj')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Utwórz')),
         ],
       ),
     );
@@ -2679,7 +2869,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       });
     } on StaffApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
       return;
     }
     if (!mounted) return;
@@ -2698,7 +2889,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Treści widoczne w sklepie (regulamin, „O nas” itd.).',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         Align(
@@ -2746,7 +2940,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Zgłoszenia od klientów — odpowiedź ustawia status na „odpowiedziano”.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         if (_supportTicketsStaff.isEmpty)
@@ -2794,16 +2991,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 if (detail != null && detail['messages'] is List) ...[
                   ...(detail['messages'] as List<dynamic>).map((m) {
-                    if (m is! Map<String, dynamic>) return const SizedBox.shrink();
+                    if (m is! Map<String, dynamic>) {
+                      return const SizedBox.shrink();
+                    }
                     final body = m['body']?.toString() ?? '';
                     final staff = m['isStaff'] == true;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Align(
-                        alignment: staff ? Alignment.centerRight : Alignment.centerLeft,
+                        alignment: staff
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: staff ? DesignTokens.infoSoft : DesignTokens.subtleFill,
+                            color: staff
+                                ? DesignTokens.infoSoft
+                                : DesignTokens.subtleFill,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Padding(
@@ -2829,8 +3032,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Zamknij')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Wyślij')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Zamknij')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Wyślij')),
         ],
       ),
     );
@@ -2841,7 +3048,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       await _api.postSupportStaffReply(ticketId, text);
     } on StaffApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
       return;
     }
     if (!mounted) return;
@@ -2860,7 +3068,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Aktywne eksperymenty przydzielają wariant przy pierwszym wejściu użytkownika.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         Align(
@@ -2896,7 +3107,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             Expanded(
                               child: Text(
                                 key,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
                               ),
@@ -2909,7 +3123,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   await _loadExperimentsStaff();
                                 } on StaffApiException catch (err) {
                                   if (!mounted) return;
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
                                     SnackBar(content: Text(err.toString())),
                                   );
                                 }
@@ -2918,11 +3133,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text('Warianty: $vLabel', style: Theme.of(context).textTheme.bodySmall),
+                        Text('Warianty: $vLabel',
+                            style: Theme.of(context).textTheme.bodySmall),
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
-                            onPressed: () => _openExperimentStaffDialog(existing: e),
+                            onPressed: () =>
+                                _openExperimentStaffDialog(existing: e),
                             icon: const Icon(Icons.edit_outlined, size: 18),
                             label: const Text('Edytuj listę wariantów'),
                           ),
@@ -2947,7 +3164,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Karty podarunkowe — saldo pomniejszane przy realizacji zamówienia.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         Align(
@@ -3064,10 +3284,153 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}:${two(dt.second)}';
   }
 
+  List<StaffAuditLog> _filteredAuditRows() {
+    switch (_auditQuickFilter) {
+      case _AuditQuickFilter.all:
+        return _auditRows;
+      case _AuditQuickFilter.errors:
+        return _auditRows
+            .where((row) => _isAuditErrorAction(row.action))
+            .toList();
+      case _AuditQuickFilter.sales:
+        return _auditRows
+            .where((row) => _isAuditSalesAction(row.action))
+            .toList();
+      case _AuditQuickFilter.loyalty:
+        return _auditRows
+            .where((row) => _isAuditLoyaltyAction(row.action))
+            .toList();
+    }
+  }
+
+  bool _isAuditErrorAction(String action) {
+    const exact = {'REJECT_ORDER', 'LOGIN_FAILURE', 'DELETE_RESOURCE'};
+    final normalized = action.trim().toUpperCase();
+    return exact.contains(normalized) ||
+        normalized.contains('FAIL') ||
+        normalized.contains('REJECT') ||
+        normalized.contains('ERROR');
+  }
+
+  bool _isAuditSalesAction(String action) {
+    final normalized = action.trim().toUpperCase();
+    return normalized.contains('ORDER') ||
+        normalized.contains('SALE') ||
+        normalized.contains('PROMO') ||
+        normalized.contains('SYNC_POS');
+  }
+
+  bool _isAuditLoyaltyAction(String action) {
+    final normalized = action.trim().toUpperCase();
+    return normalized.contains('POINT') ||
+        normalized.contains('RANK') ||
+        normalized.contains('VINTAGE') ||
+        normalized.contains('LOYAL');
+  }
+
+  ({Color fg, Color bg}) _auditActionPalette(String action) {
+    const greenActions = {'APPROVE_ORDER', 'LOGIN_SUCCESS', 'POINTS_ADDED'};
+    const redActions = {'REJECT_ORDER', 'LOGIN_FAILURE', 'DELETE_RESOURCE'};
+    const goldActions = {
+      'CHANGE_RANK',
+      'VINTAGE_STATUS_ASSIGNED',
+      'PROMO_ACTIVATED',
+    };
+    const blueActions = {'AI_PROPOSAL_GENERATED', 'SYNC_POS'};
+    final normalized = action.trim().toUpperCase();
+    if (greenActions.contains(normalized)) {
+      return (fg: const Color(0xFF1B5E20), bg: DesignTokens.successSoft);
+    }
+    if (redActions.contains(normalized)) {
+      return (fg: DesignTokens.error, bg: DesignTokens.dangerSoft);
+    }
+    if (goldActions.contains(normalized)) {
+      return (fg: const Color(0xFF8A6D00), bg: DesignTokens.accentSoft);
+    }
+    if (blueActions.contains(normalized)) {
+      return (fg: const Color(0xFF0D47A1), bg: DesignTokens.infoSoft);
+    }
+    return (fg: DesignTokens.ink, bg: DesignTokens.panelSoft);
+  }
+
+  String _formatAuditJson(Object? value) {
+    if (value == null) return 'Brak danych.';
+    try {
+      return const JsonEncoder.withIndent('  ').convert(value);
+    } catch (_) {
+      return value.toString();
+    }
+  }
+
+  Future<void> _showAuditDetails(StaffAuditLog row) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Szczegóły: ${row.action}'),
+          content: SizedBox(
+            width: 680,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      'Kto: ${row.userEmail.isNotEmpty ? row.userEmail : row.userId}'),
+                  const SizedBox(height: 8),
+                  Text('Obiekt: ${row.resourceType}:${row.resourceId}'),
+                  const SizedBox(height: 8),
+                  Text('IP: ${row.ipAddress ?? "—"}'),
+                  const SizedBox(height: 8),
+                  Text('Data: ${_formatAuditDate(row.createdAt)}'),
+                  const SizedBox(height: 14),
+                  Text('oldValue',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.subtleFill,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DesignTokens.line),
+                    ),
+                    child: SelectableText(_formatAuditJson(row.oldValue)),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('newValue',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.subtleFill,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DesignTokens.line),
+                    ),
+                    child: SelectableText(_formatAuditJson(row.newValue)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Zamknij'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildOperationHistoryTab() {
     if (_loadingAuditLogs) {
       return const Center(child: CircularProgressIndicator());
     }
+    final rows = _filteredAuditRows();
+    final mobileLayout = MediaQuery.sizeOf(context).width < 900;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -3076,6 +3439,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: DesignTokens.mutedText,
               ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Wszystkie'),
+              selected: _auditQuickFilter == _AuditQuickFilter.all,
+              onSelected: (_) =>
+                  setState(() => _auditQuickFilter = _AuditQuickFilter.all),
+            ),
+            ChoiceChip(
+              label: const Text('Tylko Błędy'),
+              selected: _auditQuickFilter == _AuditQuickFilter.errors,
+              onSelected: (_) =>
+                  setState(() => _auditQuickFilter = _AuditQuickFilter.errors),
+            ),
+            ChoiceChip(
+              label: const Text('Tylko Sprzedaż'),
+              selected: _auditQuickFilter == _AuditQuickFilter.sales,
+              onSelected: (_) =>
+                  setState(() => _auditQuickFilter = _AuditQuickFilter.sales),
+            ),
+            ChoiceChip(
+              label: const Text('Tylko Lojalność'),
+              selected: _auditQuickFilter == _AuditQuickFilter.loyalty,
+              onSelected: (_) =>
+                  setState(() => _auditQuickFilter = _AuditQuickFilter.loyalty),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -3123,14 +3517,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         const SizedBox(height: 14),
         Text(
-          'Wyniki: ${_auditRows.length} / $_auditTotal',
+          'Wyniki: ${rows.length} / $_auditTotal',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
-        if (_auditRows.isEmpty)
+        if (rows.isEmpty)
           Text(
             'Brak wpisów dla wybranego filtra.',
             style: Theme.of(context).textTheme.bodyMedium,
+          )
+        else if (mobileLayout)
+          SizedBox(
+            height: 560,
+            child: ListView.separated(
+              itemCount: rows.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, i) {
+                final row = rows[i];
+                final palette = _auditActionPalette(row.action);
+                return Card(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _showAuditDetails(row),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  row.userEmail.isNotEmpty
+                                      ? row.userEmail
+                                      : row.userId,
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                              ),
+                              Chip(
+                                label: Text(
+                                  row.action,
+                                  style: TextStyle(
+                                    color: palette.fg,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                backgroundColor: palette.bg,
+                                side: BorderSide(color: palette.bg),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text('Obiekt: ${row.resourceType}:${row.resourceId}'),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatAuditDate(row.createdAt),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: DesignTokens.mutedText,
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           )
         else
           SizedBox(
@@ -3144,15 +3597,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   DataColumn(label: Text('Obiekt')),
                   DataColumn(label: Text('Data')),
                 ],
-                rows: _auditRows
+                rows: rows
                     .map(
                       (row) => DataRow(
+                        onSelectChanged: (_) => _showAuditDetails(row),
                         cells: [
                           DataCell(
-                            Text(row.userEmail.isNotEmpty ? row.userEmail : row.userId),
+                            Text(row.userEmail.isNotEmpty
+                                ? row.userEmail
+                                : row.userId),
                           ),
-                          DataCell(Text(row.action)),
-                          DataCell(Text('${row.resourceType}:${row.resourceId}')),
+                          DataCell(
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _auditActionPalette(row.action).bg,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                row.action,
+                                style: TextStyle(
+                                  color: _auditActionPalette(row.action).fg,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                              Text('${row.resourceType}:${row.resourceId}')),
                           DataCell(Text(_formatAuditDate(row.createdAt))),
                         ],
                       ),
@@ -3199,9 +3674,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(u.email ?? u.userId, style: Theme.of(context).textTheme.titleMedium),
+                Text(u.email ?? u.userId,
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 4),
-                Text('Rola: ${u.role}', style: Theme.of(context).textTheme.bodySmall),
+                Text('Rola: ${u.role}',
+                    style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -3329,7 +3806,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
             ),
             const SizedBox(height: 8),
-            Text('UUID: ${c.userId}', style: Theme.of(context).textTheme.bodySmall),
+            Text('UUID: ${c.userId}',
+                style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 16),
             Text(
               'Ranga: ${c.rank}  ·  Punkty: ${c.points}',
@@ -3445,8 +3923,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (mounted) setState(() => _railIndex = 0);
       });
     }
-    final safeIndex =
-        _railIndex < 0 ? 0 : (_railIndex >= menu.length ? menu.length - 1 : _railIndex);
+    final safeIndex = _railIndex < 0
+        ? 0
+        : (_railIndex >= menu.length ? menu.length - 1 : _railIndex);
     final current = menu[safeIndex];
 
     // WWW: pełne etykiety w NavigationRail potrafią wywołać niestabilny układ tekstu
@@ -3460,7 +3939,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final rail = NavigationRail(
       selectedIndex: safeIndex,
       labelType: railLabelType,
-      minWidth: widget.presentation == AdminDashboardPresentation.overlaySidebar ? 56 : 72,
+      minWidth: widget.presentation == AdminDashboardPresentation.overlaySidebar
+          ? 56
+          : 72,
       onDestinationSelected: (i) {
         setState(() => _railIndex = i);
         _refreshCurrentSectionIfNeeded(force: true);
@@ -3478,9 +3959,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ],
     );
 
-    final title = widget.presentation == AdminDashboardPresentation.overlaySidebar
-        ? 'Staff Sidebar'
-        : (auth.isOwner ? 'Owner Dashboard' : 'Staff Sidebar');
+    final title =
+        widget.presentation == AdminDashboardPresentation.overlaySidebar
+            ? 'Staff Sidebar'
+            : (auth.isOwner ? 'Owner Dashboard' : 'Staff Sidebar');
 
     final mainPanel = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3516,7 +3998,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               Expanded(
                                 child: Text(
                                   _error!,
-                                  style: const TextStyle(color: DesignTokens.error),
+                                  style: const TextStyle(
+                                      color: DesignTokens.error),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -3566,7 +4049,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   padding: const EdgeInsets.only(left: 12),
                                   child: Text(
                                     _analyticsError!,
-                                    style: const TextStyle(color: DesignTokens.error),
+                                    style: const TextStyle(
+                                        color: DesignTokens.error),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -3638,13 +4122,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final scaffold = Scaffold(
       appBar: AppBar(
         title: Text(title),
-        leading: widget.presentation == AdminDashboardPresentation.overlaySidebar
-            ? IconButton(
-                tooltip: 'Zamknij overlay',
-                icon: const Icon(Icons.close),
-                onPressed: () => closeStaffSidebarOverlay(),
-              )
-            : null,
+        leading:
+            widget.presentation == AdminDashboardPresentation.overlaySidebar
+                ? IconButton(
+                    tooltip: 'Zamknij overlay',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => closeStaffSidebarOverlay(),
+                  )
+                : null,
         actions: [
           if (widget.presentation == AdminDashboardPresentation.fullscreen &&
               !kIsWeb &&
@@ -3657,7 +4142,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Uruchomiono overlay — drugi silnik Flutter.'),
+                    content:
+                        Text('Uruchomiono overlay — drugi silnik Flutter.'),
                   ),
                 );
               },
