@@ -20,6 +20,19 @@ class SupabaseAuthSync extends StatefulWidget {
 class _SupabaseAuthSyncState extends State<SupabaseAuthSync> {
   StreamSubscription<AuthState>? _sub;
 
+  bool _isGoogleSignIn(AuthState data) {
+    if (data.event != AuthChangeEvent.signedIn) return false;
+    final appMeta = data.session?.user.appMetadata;
+    if (appMeta == null) return false;
+    final provider = appMeta['provider']?.toString().toLowerCase();
+    if (provider == 'google') return true;
+    final providers = appMeta['providers'];
+    if (providers is List) {
+      return providers.any((p) => p.toString().toLowerCase() == 'google');
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -27,8 +40,12 @@ class _SupabaseAuthSyncState extends State<SupabaseAuthSync> {
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (!mounted) return;
       final token = data.session?.accessToken;
+      final shouldBootstrapGoogle = _isGoogleSignIn(data);
       unawaited(
-        context.read<AuthSession>().syncFromSupabaseAccessToken(token),
+        context.read<AuthSession>().syncFromSupabaseAccessToken(
+              token,
+              bootstrapGoogle: shouldBootstrapGoogle,
+            ),
       );
     });
   }

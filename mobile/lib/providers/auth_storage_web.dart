@@ -1,22 +1,21 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 const _kToken = 'auth_access_token';
 const _kApiBase = 'auth_api_base';
 
-Future<String?> getToken() async => html.window.localStorage[_kToken];
+Future<String?> getToken() async => web.window.localStorage.getItem(_kToken);
 
-Future<String?> getApiBase() async => html.window.localStorage[_kApiBase];
+Future<String?> getApiBase() async =>
+    web.window.localStorage.getItem(_kApiBase);
 
 Future<void> setToken(String? token) async {
   if (token == null || token.isEmpty) {
-    html.window.localStorage.remove(_kToken);
+    web.window.localStorage.removeItem(_kToken);
   } else {
-    html.window.localStorage[_kToken] = token;
+    web.window.localStorage.setItem(_kToken, token);
   }
 }
 
 Future<void> setApiBase(String value) async {
-  html.window.localStorage[_kApiBase] = value;
+  web.window.localStorage.setItem(_kApiBase, value);
 }

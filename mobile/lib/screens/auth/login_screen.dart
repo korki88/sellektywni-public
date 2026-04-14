@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../theme/design_tokens.dart';
 import 'package:flutter/services.dart';
@@ -69,7 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Uzupełnij poprawnie login i hasło (patrz podpowiedzi pod polami).'),
+          content: Text(
+              'Uzupełnij poprawnie login i hasło (patrz podpowiedzi pod polami).'),
         ),
       );
       return;
@@ -142,6 +144,32 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    if (_loading || AppConfig.useDevMockAuth || !AppConfig.hasSupabase) {
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final redirectTo = kIsWeb ? Uri.base.removeFragment().toString() : null;
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: redirectTo,
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Align(
@@ -153,125 +181,133 @@ class _LoginScreenState extends State<LoginScreen> {
           child: CallbackShortcuts(
             bindings: <ShortcutActivator, VoidCallback>{
               const SingleActivator(LogicalKeyboardKey.enter): _onEnterKey,
-              const SingleActivator(LogicalKeyboardKey.numpadEnter): _onEnterKey,
+              const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                  _onEnterKey,
             },
             child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'SELLEKTYWNI',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  AppConfig.useDevMockAuth
-                      ? 'Logowanie (tryb dev-mock — bez Supabase)'
-                      : 'Logowanie',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: DesignTokens.mutedText,
-                      ),
-                ),
-                if (AppConfig.useDevMockAuth) ...[
-                  const SizedBox(height: 12),
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   Text(
-                    kDevMockAccountsHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: DesignTokens.mutedText,
-                          height: 1.35,
+                    'SELLEKTYWNI',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
                         ),
-                    textAlign: TextAlign.left,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppConfig.useDevMockAuth
+                        ? 'Logowanie (tryb dev-mock — bez Supabase)'
+                        : 'Logowanie',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: DesignTokens.mutedText,
+                        ),
+                  ),
+                  if (AppConfig.useDevMockAuth) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      kDevMockAccountsHint,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: DesignTokens.mutedText,
+                            height: 1.35,
+                          ),
+                      textAlign: TextAlign.left,
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  TextFormField(
+                    controller: _email,
+                    focusNode: _emailFocus,
+                    keyboardType: AppConfig.useDevMockAuth
+                        ? TextInputType.text
+                        : TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) =>
+                        FocusScope.of(context).requestFocus(_passwordFocus),
+                    autofillHints: const [AutofillHints.email],
+                    decoration: InputDecoration(
+                      labelText: AppConfig.useDevMockAuth ? 'Login' : 'E-mail',
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return AppConfig.useDevMockAuth
+                            ? 'Podaj login'
+                            : 'Podaj e-mail';
+                      }
+                      if (!AppConfig.useDevMockAuth && !v.contains('@')) {
+                        return 'Nieprawidłowy e-mail';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _password,
+                    focusNode: _passwordFocus,
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    autofillHints: const [AutofillHints.password],
+                    decoration: const InputDecoration(
+                      labelText: 'Hasło',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Podaj hasło';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: _loading
+                        ? null
+                        : () {
+                            _submit();
+                          },
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: AppTheme.light.colorScheme.primary,
+                    ),
+                    child: _loading
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Zaloguj się'),
+                  ),
+                  if (!AppConfig.useDevMockAuth && AppConfig.hasSupabase) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : _signInWithGoogle,
+                      icon: const Icon(Icons.g_mobiledata),
+                      label: const Text('Zaloguj przez Google'),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      if (AppConfig.useDevMockAuth) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Rejestracja jest wyłączona w trybie podglądu (dev-mock).',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      widget.onGoToRegister();
+                    },
+                    child: const Text('Nie masz konta? Zarejestruj się'),
                   ),
                 ],
-                const SizedBox(height: 28),
-                TextFormField(
-                  controller: _email,
-                  focusNode: _emailFocus,
-                  keyboardType: AppConfig.useDevMockAuth
-                      ? TextInputType.text
-                      : TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_passwordFocus),
-                  autofillHints: const [AutofillHints.email],
-                  decoration: InputDecoration(
-                    labelText:
-                        AppConfig.useDevMockAuth ? 'Login' : 'E-mail',
-                    border: const OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return AppConfig.useDevMockAuth
-                          ? 'Podaj login'
-                          : 'Podaj e-mail';
-                    }
-                    if (!AppConfig.useDevMockAuth && !v.contains('@')) {
-                      return 'Nieprawidłowy e-mail';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _password,
-                  focusNode: _passwordFocus,
-                  obscureText: true,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                  autofillHints: const [AutofillHints.password],
-                  decoration: const InputDecoration(
-                    labelText: 'Hasło',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Podaj hasło';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _loading
-                      ? null
-                      : () {
-                          _submit();
-                        },
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppTheme.light.colorScheme.primary,
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Zaloguj się'),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    if (AppConfig.useDevMockAuth) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Rejestracja jest wyłączona w trybie podglądu (dev-mock).',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    widget.onGoToRegister();
-                  },
-                  child: const Text('Nie masz konta? Zarejestruj się'),
-                ),
-              ],
+              ),
             ),
-          ),
           ),
         ),
       ),

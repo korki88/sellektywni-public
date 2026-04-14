@@ -1,11 +1,10 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 const _kCartsJson = 'shop_carts_by_owner_v1';
 
-Future<String?> getCartsJson() async => html.window.localStorage[_kCartsJson];
+Future<String?> getCartsJson() async =>
+    web.window.localStorage.getItem(_kCartsJson);
 
 Future<void> setCartsJson(String json) async {
-  html.window.localStorage[_kCartsJson] = json;
+  web.window.localStorage.setItem(_kCartsJson, json);
 }

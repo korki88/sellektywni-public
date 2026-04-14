@@ -185,7 +185,10 @@ class AuthSession extends ChangeNotifier {
   }
 
   /// Synchronizacja z sesją Supabase (logowanie / wylogowanie / odświeżenie tokenu).
-  Future<void> syncFromSupabaseAccessToken(String? token) async {
+  Future<void> syncFromSupabaseAccessToken(
+    String? token, {
+    bool bootstrapGoogle = false,
+  }) async {
     final t = token?.trim();
     if (t == null || t.isEmpty) {
       await setAccessToken(null);
@@ -194,6 +197,9 @@ class AuthSession extends ChangeNotifier {
     _accessToken = t;
     await authStorageSetToken(_accessToken!);
     notifyListeners();
+    if (bootstrapGoogle) {
+      await _bootstrapGoogleProfile();
+    }
     await afterSignIn();
   }
 
@@ -206,17 +212,30 @@ class AuthSession extends ChangeNotifier {
     }
     try {
       final uri = Uri.parse('$_apiBase/auth/profile/ensure');
-      await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer $_accessToken',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 12));
+      await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_accessToken',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 12));
     } catch (_) {}
     await refreshProfile();
+  }
+
+  Future<void> _bootstrapGoogleProfile() async {
+    if (!hasToken) return;
+    if (_applyDevMockProfileIfNeeded()) return;
+    try {
+      final uri = Uri.parse('$_apiBase/auth/profile/bootstrap-google');
+      await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_accessToken',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 12));
+    } catch (_) {}
   }
 
   Future<void> refreshProfile() async {
@@ -237,12 +256,10 @@ class AuthSession extends ChangeNotifier {
     }
     try {
       final uri = Uri.parse('$_apiBase/auth/me');
-      final r = await http
-          .get(
-            uri,
-            headers: {'Authorization': 'Bearer $_accessToken'},
-          )
-          .timeout(const Duration(seconds: 12));
+      final r = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      ).timeout(const Duration(seconds: 12));
       if (r.statusCode != 200) {
         _role = null;
         _profileEmail = null;
@@ -382,12 +399,10 @@ class AuthSession extends ChangeNotifier {
     }
     try {
       final uri = Uri.parse('$_apiBase/auth/me/data-export');
-      final r = await http
-          .get(
-            uri,
-            headers: {'Authorization': 'Bearer $_accessToken'},
-          )
-          .timeout(const Duration(seconds: 20));
+      final r = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      ).timeout(const Duration(seconds: 20));
       if (r.statusCode != 200) return null;
       final j = jsonDecode(r.body);
       if (j is Map<String, dynamic>) return j;
