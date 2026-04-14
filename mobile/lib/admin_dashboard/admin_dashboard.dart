@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -21,6 +19,9 @@ import '../staff/staff_models.dart';
 import '../theme/app_theme.dart';
 import 'hid_qr_scanner_layer.dart';
 import 'staff_overlay_launcher.dart';
+import 'widgets/audit_log_view.dart';
+import 'widgets/loyalty_manager.dart';
+import 'widgets/product_manager.dart';
 
 enum AdminDashboardPresentation {
   /// WWW + aplikacja — pełny ekran w [WebAppFrame] na webie.
@@ -63,8 +64,6 @@ enum _MenuId {
   scanner,
   loyalty,
 }
-
-enum _AuditQuickFilter { all, errors, sales, loyalty }
 
 class _AdminDashboardState extends State<AdminDashboard> {
   static const double _sectionScrollableListHeight = 320;
@@ -122,7 +121,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int _auditTotal = 0;
   int _auditOffset = 0;
   static const int _auditPageSize = 50;
-  _AuditQuickFilter _auditQuickFilter = _AuditQuickFilter.all;
   bool _loadingAiProposals = false;
   bool _runningAiAnalysis = false;
   List<FinancialAiProposal> _aiProposals = [];
@@ -1736,172 +1734,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  StaffProduct _staffProductFromCatalog(Map<String, dynamic> row) {
-    return StaffProduct(
-      id: row['id']?.toString() ?? '',
-      idDotykacka: row['idDotykacka']?.toString() ?? '',
-      name: row['name']?.toString() ?? 'Produkt',
-      priceRaw: row['price']?.toString() ?? '0',
-      status: row['status']?.toString() ?? '',
-      pendingQuantity: 0,
-      subtitle: row['subtitle']?.toString(),
-      isFeatured: row['isFeatured'] == true,
-    );
-  }
-
   Widget _buildCatalogTab() {
     final auth = context.read<AuthSession>();
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Katalog i merchandising. Zarządzaj widocznością produktów oraz podtytułami kart.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: DesignTokens.mutedText,
-                ),
-          ),
-          const SizedBox(height: 12),
-          if (auth.isOwner) ...[
-            Card(
-              color: DesignTokens.infoSoft,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Migracja danych kosztowych (CSV/Excel)',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Kolumny: productId lub idDotykacka oraz purchasePriceNet, vatRate, marginTarget, supplier, paymentTermsDays.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 10),
-                    FilledButton.tonalIcon(
-                      onPressed: _uploadingCostingSheet
-                          ? null
-                          : _importCostingFromSheet,
-                      icon: _uploadingCostingSheet
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file_outlined),
-                      label: Text(
-                        _uploadingCostingSheet
-                            ? 'Importowanie...'
-                            : 'Importuj CSV / Excel',
-                      ),
-                    ),
-                    if (_lastCostingImport != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        'Ostatni import: ${_lastCostingImport!.fileName}\n'
-                        'Wiersze: ${_lastCostingImport!.rowsTotal} · '
-                        'Produkty: ${_lastCostingImport!.updatedProducts} · '
-                        'Dostawcy: ${_lastCostingImport!.upsertedSuppliers}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (_lastCostingImport!.warnings.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 110,
-                          child: ListView.builder(
-                            itemCount: _lastCostingImport!.warnings.length,
-                            itemBuilder: (context, i) => Text(
-                              '• ${_lastCostingImport!.warnings[i]}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: DesignTokens.mutedText),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _catalogQueryController,
-                  onSubmitted: (_) => _loadCatalog(),
-                  decoration: const InputDecoration(
-                    labelText: 'Szukaj produktu (nazwa, fraza)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton.tonal(
-                onPressed: _loadCatalog,
-                child: const Text('Szukaj'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _loadingCatalog
-                ? const Center(child: CircularProgressIndicator())
-                : _catalogRows.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Brak produktów dla bieżącego filtra.',
-                          style:
-                              Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: DesignTokens.mutedText,
-                                  ),
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: _catalogRows.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, i) {
-                          final row = _catalogRows[i];
-                          final p = _staffProductFromCatalog(row);
-                          return Card(
-                            child: ListTile(
-                              title: Text(p.name),
-                              subtitle: Text(
-                                'ID: ${p.id} · Cena: ${p.priceRaw} zł'
-                                '${p.subtitle != null && p.subtitle!.trim().isNotEmpty ? '\nPodtytuł: ${p.subtitle}' : ''}',
-                              ),
-                              isThreeLine: p.subtitle != null &&
-                                  p.subtitle!.trim().isNotEmpty,
-                              trailing: Wrap(
-                                spacing: 8,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  if (p.isFeatured)
-                                    const Chip(label: Text('Polecane')),
-                                  OutlinedButton.icon(
-                                    onPressed: () =>
-                                        _showMerchandisingDialog(p),
-                                    icon: const Icon(Icons.edit_outlined,
-                                        size: 18),
-                                    label: const Text('Edytuj'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-        ],
-      ),
+    return ProductManager(
+      isOwner: auth.isOwner,
+      catalogQueryController: _catalogQueryController,
+      uploadingCostingSheet: _uploadingCostingSheet,
+      lastCostingImport: _lastCostingImport,
+      loadingCatalog: _loadingCatalog,
+      catalogRows: _catalogRows,
+      onImportCostingSheet: _importCostingFromSheet,
+      onLoadCatalog: _loadCatalog,
+      onEditMerchandising: _showMerchandisingDialog,
     );
   }
 
@@ -2083,28 +1927,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildLoyaltyTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ListView(
-        children: [
-          Text(
-            'Program lojalnościowy — profil po skanie QR.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: DesignTokens.mutedText,
-                ),
-          ),
-          const SizedBox(height: 16),
-          if (_loadingCustomer)
-            const Center(child: CircularProgressIndicator())
-          else if (_customer == null)
-            Text(
-              'Brak klienta — użyj zakładki Skaner lub zeskanuj kod (HID).',
-              style: Theme.of(context).textTheme.bodyLarge,
-            )
-          else
-            _buildCustomerCard(_customer!),
-        ],
-      ),
+    return LoyaltyManager(
+      loadingCustomer: _loadingCustomer,
+      customer: _customer,
+      buildCustomerCard: _buildCustomerCard,
     );
   }
 
@@ -3276,377 +3102,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  String _formatAuditDate(String raw) {
-    final parsed = DateTime.tryParse(raw);
-    if (parsed == null) return raw;
-    final dt = parsed.toLocal();
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}:${two(dt.second)}';
-  }
-
-  List<StaffAuditLog> _filteredAuditRows() {
-    switch (_auditQuickFilter) {
-      case _AuditQuickFilter.all:
-        return _auditRows;
-      case _AuditQuickFilter.errors:
-        return _auditRows
-            .where((row) => _isAuditErrorAction(row.action))
-            .toList();
-      case _AuditQuickFilter.sales:
-        return _auditRows
-            .where((row) => _isAuditSalesAction(row.action))
-            .toList();
-      case _AuditQuickFilter.loyalty:
-        return _auditRows
-            .where((row) => _isAuditLoyaltyAction(row.action))
-            .toList();
-    }
-  }
-
-  bool _isAuditErrorAction(String action) {
-    const exact = {'REJECT_ORDER', 'LOGIN_FAILURE', 'DELETE_RESOURCE'};
-    final normalized = action.trim().toUpperCase();
-    return exact.contains(normalized) ||
-        normalized.contains('FAIL') ||
-        normalized.contains('REJECT') ||
-        normalized.contains('ERROR');
-  }
-
-  bool _isAuditSalesAction(String action) {
-    final normalized = action.trim().toUpperCase();
-    return normalized.contains('ORDER') ||
-        normalized.contains('SALE') ||
-        normalized.contains('PROMO') ||
-        normalized.contains('SYNC_POS');
-  }
-
-  bool _isAuditLoyaltyAction(String action) {
-    final normalized = action.trim().toUpperCase();
-    return normalized.contains('POINT') ||
-        normalized.contains('RANK') ||
-        normalized.contains('VINTAGE') ||
-        normalized.contains('LOYAL');
-  }
-
-  ({Color fg, Color bg}) _auditActionPalette(String action) {
-    const greenActions = {'APPROVE_ORDER', 'LOGIN_SUCCESS', 'POINTS_ADDED'};
-    const redActions = {'REJECT_ORDER', 'LOGIN_FAILURE', 'DELETE_RESOURCE'};
-    const goldActions = {
-      'CHANGE_RANK',
-      'VINTAGE_STATUS_ASSIGNED',
-      'PROMO_ACTIVATED',
-    };
-    const blueActions = {'AI_PROPOSAL_GENERATED', 'SYNC_POS'};
-    final normalized = action.trim().toUpperCase();
-    if (greenActions.contains(normalized)) {
-      return (fg: const Color(0xFF1B5E20), bg: DesignTokens.successSoft);
-    }
-    if (redActions.contains(normalized)) {
-      return (fg: DesignTokens.error, bg: DesignTokens.dangerSoft);
-    }
-    if (goldActions.contains(normalized)) {
-      return (fg: const Color(0xFF8A6D00), bg: DesignTokens.accentSoft);
-    }
-    if (blueActions.contains(normalized)) {
-      return (fg: const Color(0xFF0D47A1), bg: DesignTokens.infoSoft);
-    }
-    return (fg: DesignTokens.ink, bg: DesignTokens.panelSoft);
-  }
-
-  String _formatAuditJson(Object? value) {
-    if (value == null) return 'Brak danych.';
-    try {
-      return const JsonEncoder.withIndent('  ').convert(value);
-    } catch (_) {
-      return value.toString();
-    }
-  }
-
-  Future<void> _showAuditDetails(StaffAuditLog row) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Szczegóły: ${row.action}'),
-          content: SizedBox(
-            width: 680,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                      'Kto: ${row.userEmail.isNotEmpty ? row.userEmail : row.userId}'),
-                  const SizedBox(height: 8),
-                  Text('Obiekt: ${row.resourceType}:${row.resourceId}'),
-                  const SizedBox(height: 8),
-                  Text('IP: ${row.ipAddress ?? "—"}'),
-                  const SizedBox(height: 8),
-                  Text('Data: ${_formatAuditDate(row.createdAt)}'),
-                  const SizedBox(height: 14),
-                  Text('oldValue',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.subtleFill,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: DesignTokens.line),
-                    ),
-                    child: SelectableText(_formatAuditJson(row.oldValue)),
-                  ),
-                  const SizedBox(height: 12),
-                  Text('newValue',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.subtleFill,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: DesignTokens.line),
-                    ),
-                    child: SelectableText(_formatAuditJson(row.newValue)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Zamknij'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildOperationHistoryTab() {
-    if (_loadingAuditLogs) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final rows = _filteredAuditRows();
-    final mobileLayout = MediaQuery.sizeOf(context).width < 900;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          'Dziennik aktywności (tylko Owner Dashboard).',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: DesignTokens.mutedText,
-              ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ChoiceChip(
-              label: const Text('Wszystkie'),
-              selected: _auditQuickFilter == _AuditQuickFilter.all,
-              onSelected: (_) =>
-                  setState(() => _auditQuickFilter = _AuditQuickFilter.all),
-            ),
-            ChoiceChip(
-              label: const Text('Tylko Błędy'),
-              selected: _auditQuickFilter == _AuditQuickFilter.errors,
-              onSelected: (_) =>
-                  setState(() => _auditQuickFilter = _AuditQuickFilter.errors),
-            ),
-            ChoiceChip(
-              label: const Text('Tylko Sprzedaż'),
-              selected: _auditQuickFilter == _AuditQuickFilter.sales,
-              onSelected: (_) =>
-                  setState(() => _auditQuickFilter = _AuditQuickFilter.sales),
-            ),
-            ChoiceChip(
-              label: const Text('Tylko Lojalność'),
-              selected: _auditQuickFilter == _AuditQuickFilter.loyalty,
-              onSelected: (_) =>
-                  setState(() => _auditQuickFilter = _AuditQuickFilter.loyalty),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: 320,
-              child: TextField(
-                controller: _auditUserIdFilterController,
-                decoration: const InputDecoration(
-                  labelText: 'Kto (email)',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _loadAuditLogs(reset: true),
-              ),
-            ),
-            SizedBox(
-              width: 360,
-              child: TextField(
-                controller: _auditActionFilterController,
-                decoration: const InputDecoration(
-                  labelText: 'Akcja (np. CHANGE_ORDER_STATUS)',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _loadAuditLogs(reset: true),
-              ),
-            ),
-            SizedBox(
-              width: 260,
-              child: TextField(
-                controller: _auditResourceTypeFilterController,
-                decoration: const InputDecoration(
-                  labelText: 'Obiekt (ORDER, PRODUCT...)',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _loadAuditLogs(reset: true),
-              ),
-            ),
-            FilledButton.tonal(
-              onPressed: () => _loadAuditLogs(reset: true),
-              child: const Text('Filtruj'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'Wyniki: ${rows.length} / $_auditTotal',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 8),
-        if (rows.isEmpty)
-          Text(
-            'Brak wpisów dla wybranego filtra.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          )
-        else if (mobileLayout)
-          SizedBox(
-            height: 560,
-            child: ListView.separated(
-              itemCount: rows.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, i) {
-                final row = rows[i];
-                final palette = _auditActionPalette(row.action);
-                return Card(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => _showAuditDetails(row),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  row.userEmail.isNotEmpty
-                                      ? row.userEmail
-                                      : row.userId,
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                              ),
-                              Chip(
-                                label: Text(
-                                  row.action,
-                                  style: TextStyle(
-                                    color: palette.fg,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                backgroundColor: palette.bg,
-                                side: BorderSide(color: palette.bg),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text('Obiekt: ${row.resourceType}:${row.resourceId}'),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatAuditDate(row.createdAt),
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: DesignTokens.mutedText,
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          )
-        else
-          SizedBox(
-            height: 520,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Kto')),
-                  DataColumn(label: Text('Akcja')),
-                  DataColumn(label: Text('Obiekt')),
-                  DataColumn(label: Text('Data')),
-                ],
-                rows: rows
-                    .map(
-                      (row) => DataRow(
-                        onSelectChanged: (_) => _showAuditDetails(row),
-                        cells: [
-                          DataCell(
-                            Text(row.userEmail.isNotEmpty
-                                ? row.userEmail
-                                : row.userId),
-                          ),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _auditActionPalette(row.action).bg,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                row.action,
-                                style: TextStyle(
-                                  color: _auditActionPalette(row.action).fg,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                              Text('${row.resourceType}:${row.resourceId}')),
-                          DataCell(Text(_formatAuditDate(row.createdAt))),
-                        ],
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-        const SizedBox(height: 12),
-        if (_loadingMoreAuditLogs)
-          const Center(child: CircularProgressIndicator())
-        else if (_auditHasMore)
-          Center(
-            child: FilledButton.tonal(
-              onPressed: () => _loadAuditLogs(),
-              child: const Text('Wczytaj więcej'),
-            ),
-          ),
-      ],
+    return AuditLogView(
+      loadingAuditLogs: _loadingAuditLogs,
+      auditRows: _auditRows,
+      auditTotal: _auditTotal,
+      auditHasMore: _auditHasMore,
+      loadingMoreAuditLogs: _loadingMoreAuditLogs,
+      userFilterController: _auditUserIdFilterController,
+      actionFilterController: _auditActionFilterController,
+      resourceTypeFilterController: _auditResourceTypeFilterController,
+      onFilter: () => _loadAuditLogs(reset: true),
+      onLoadMore: _loadAuditLogs,
     );
   }
 
