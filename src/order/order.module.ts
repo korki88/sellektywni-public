@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PaymentsModule } from '../payments/payments.module';
 import { DotykackaModule } from '../dotykacka/dotykacka.module';
-import { NotificationModule } from '../notification/notification.module';
+import { NotificationModule } from '../notifications/notification.module';
 import { ProductModule } from '../product/product.module';
 import { PromoModule } from '../promo/promo.module';
 import { ShippingModule } from '../shipping/shipping.module';

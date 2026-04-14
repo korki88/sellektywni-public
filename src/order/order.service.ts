@@ -19,7 +19,7 @@ import {
 } from '@prisma/client';
 import { MarketService } from '../core/market/market.service';
 import { DotykackaService } from '../dotykacka/dotykacka.service';
-import { AdminNotificationService } from '../notification/admin-notification.service';
+import { AdminNotificationService } from '../notifications/admin-notification.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PromoService } from '../promo/promo.service';
 import { ProductService } from '../product/product.service';
