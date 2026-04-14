@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ProfileRole } from '@prisma/client';
 import { MinimumRole } from '../auth/decorators/minimum-role.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';

@@ -1,0 +1,12 @@
+---
+description: Pakiet sync/ — dziennik i dokumentacja między komputerami
+globs:
+alwaysApply: true
+---
+
+# SELLEKTYWNI — synchronizacja repo
+
+- Przed większą zmianą sprawdź kontekst w **`sync/AGENT.md`** i **`sync/WORKLOG.md`**.
+- Po zakończeniu zadania użytkownika dopisz wpis do **`sync/WORKLOG.md`** (krótko: data UTC, co zrobiono, pliki) — zasady w **`sync/RULES.md`**.
+- Nie commituj **`.env`** z sekretami; źródło szablonu: **`.env.example`** / **`sync/templates/dotenv.example`**.
+- Nowa maszyna: **`sync/MACHINE_SETUP.md`**.

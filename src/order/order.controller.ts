@@ -4,12 +4,15 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Req,
+  Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import type { Request } from 'express';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { FinalizeOrderDto } from './dto/finalize-order.dto';
@@ -18,6 +21,8 @@ import { UpdateCheckoutPreferencesDto } from './dto/update-checkout-preferences.
 import { UpsertAddressBookEntryDto } from './dto/upsert-address-book-entry.dto';
 import { ProductService } from '../product/product.service';
 import { UpsertProductReviewDto } from './dto/upsert-product-review.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { InvoicePdfService } from './invoice-pdf.service';
 import { OrderService } from './order.service';
 
 @Controller('order')
@@ -25,6 +30,7 @@ export class OrderController {
   constructor(
     private readonly orderService: OrderService,
     private readonly products: ProductService,
+    private readonly invoicePdf: InvoicePdfService,
   ) {}
 
   private userIdFromReq(req: Request): string {
@@ -62,7 +68,10 @@ export class OrderController {
 
   @Post('finalize')
   finalize(@Body() dto: FinalizeOrderDto, @Req() req: Request) {
-    return this.orderService.finalizeAcceptedOrder(this.userIdFromReq(req), dto);
+    return this.orderService.finalizeAcceptedOrder(
+      this.userIdFromReq(req),
+      dto,
+    );
   }
 
   @Get('my-orders')
@@ -70,14 +79,69 @@ export class OrderController {
     return this.orderService.listMyOrders(this.userIdFromReq(req));
   }
 
+  @Get('my-orders/:orderId')
+  myOrderById(@Param('orderId') orderId: string, @Req() req: Request) {
+    return this.orderService.getMyOrderById(this.userIdFromReq(req), orderId);
+  }
+
+  @Post('my-orders/:orderId/cancel')
+  cancelMyOrder(@Param('orderId') orderId: string, @Req() req: Request) {
+    return this.orderService.cancelMyOrder(this.userIdFromReq(req), orderId);
+  }
+
+  @Get('my-orders/:orderId/invoice.pdf')
+  @Header('Content-Type', 'application/pdf')
+  async orderInvoicePdf(
+    @Param('orderId') orderId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const buf = await this.invoicePdf.buildOrderInvoicePdf(
+      this.userIdFromReq(req),
+      orderId,
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="zamowienie-${orderId}.pdf"`,
+    );
+    res.send(buf);
+  }
+
+  @Post('my-orders/:orderId/reorder')
+  reorderPayload(@Param('orderId') orderId: string, @Req() req: Request) {
+    return this.orderService.getReorderPayload(
+      this.userIdFromReq(req),
+      orderId,
+    );
+  }
+
+  @Post('returns')
+  createReturn(@Body() dto: CreateReturnRequestDto, @Req() req: Request) {
+    return this.orderService.createReturnRequest(this.userIdFromReq(req), dto);
+  }
+
+  @Get('my-returns')
+  myReturns(@Req() req: Request) {
+    return this.orderService.listMyReturns(this.userIdFromReq(req));
+  }
+
   @Get('payments/:orderId')
   paymentForOrder(@Param('orderId') orderId: string, @Req() req: Request) {
-    return this.orderService.getPaymentForOrder(this.userIdFromReq(req), orderId);
+    return this.orderService.getPaymentForOrder(
+      this.userIdFromReq(req),
+      orderId,
+    );
   }
 
   @Post('payments/:orderId/simulate-success')
-  simulatePaymentSuccess(@Param('orderId') orderId: string, @Req() req: Request) {
-    return this.orderService.simulatePaymentSuccess(this.userIdFromReq(req), orderId);
+  simulatePaymentSuccess(
+    @Param('orderId') orderId: string,
+    @Req() req: Request,
+  ) {
+    return this.orderService.simulatePaymentSuccess(
+      this.userIdFromReq(req),
+      orderId,
+    );
   }
 
   @Get('checkout/options')
@@ -95,7 +159,10 @@ export class OrderController {
     @Body() dto: UpdateCheckoutPreferencesDto,
     @Req() req: Request,
   ) {
-    return this.orderService.updateCheckoutPreferences(this.userIdFromReq(req), dto);
+    return this.orderService.updateCheckoutPreferences(
+      this.userIdFromReq(req),
+      dto,
+    );
   }
 
   @Get('checkout/address-book')
@@ -104,8 +171,14 @@ export class OrderController {
   }
 
   @Post('checkout/address-book')
-  createAddressBookEntry(@Body() dto: UpsertAddressBookEntryDto, @Req() req: Request) {
-    return this.orderService.upsertAddressBookEntry(this.userIdFromReq(req), dto);
+  createAddressBookEntry(
+    @Body() dto: UpsertAddressBookEntryDto,
+    @Req() req: Request,
+  ) {
+    return this.orderService.upsertAddressBookEntry(
+      this.userIdFromReq(req),
+      dto,
+    );
   }
 
   @Patch('checkout/address-book/:id')
@@ -114,12 +187,18 @@ export class OrderController {
     @Body() dto: UpsertAddressBookEntryDto,
     @Req() req: Request,
   ) {
-    return this.orderService.upsertAddressBookEntry(this.userIdFromReq(req), { ...dto, id });
+    return this.orderService.upsertAddressBookEntry(this.userIdFromReq(req), {
+      ...dto,
+      id,
+    });
   }
 
   @Delete('checkout/address-book/:id')
   deleteAddressBookEntry(@Param('id') id: string, @Req() req: Request) {
-    return this.orderService.deleteAddressBookEntry(this.userIdFromReq(req), id);
+    return this.orderService.deleteAddressBookEntry(
+      this.userIdFromReq(req),
+      id,
+    );
   }
 
   @Post('watch-availability')
@@ -128,7 +207,10 @@ export class OrderController {
     if (!productId) {
       throw new BadRequestException('Podaj productId');
     }
-    return this.orderService.watchAvailability(this.userIdFromReq(req), productId);
+    return this.orderService.watchAvailability(
+      this.userIdFromReq(req),
+      productId,
+    );
   }
 
   @Get('watch-availability')
@@ -147,10 +229,7 @@ export class OrderController {
   }
 
   @Post('wishlist')
-  addWishlist(
-    @Body() dto: { productId?: string },
-    @Req() req: Request,
-  ) {
+  addWishlist(@Body() dto: { productId?: string }, @Req() req: Request) {
     const productId = dto.productId?.trim();
     if (!productId) {
       throw new BadRequestException('Podaj productId');

@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -101,4 +102,18 @@ export class FinalizeOrderDto {
   @IsOptional()
   @IsString()
   promoCode?: string;
+
+  @IsOptional()
+  @IsString()
+  giftCardCode?: string;
+
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
+
+  /** Uwagi do zamówienia (np. preferencje dostawy, życzenia prezentowe) — max 2000 znaków. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  customerNote?: string;
 }

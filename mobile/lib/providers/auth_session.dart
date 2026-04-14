@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../config/shop_market_holder.dart';
 import 'auth_storage.dart';
 import '../config/dev_mock_accounts.dart';
 
@@ -35,6 +36,9 @@ class AuthSession extends ChangeNotifier {
   String? _profileEmail;
   int? _points;
   String? _rank;
+  bool? _newsletterOptIn;
+  String? _preferredLocale;
+  String? _referralCode;
   List<String> _permissions = const [];
   String _apiBase = defaultApiBase;
   bool _ready = false;
@@ -45,6 +49,9 @@ class AuthSession extends ChangeNotifier {
   String? get profileEmail => _profileEmail;
   int? get points => _points;
   String? get rank => _rank;
+  bool? get newsletterOptIn => _newsletterOptIn;
+  String? get preferredLocale => _preferredLocale;
+  String? get referralCode => _referralCode;
   List<String> get permissions => List.unmodifiable(_permissions);
   String get apiBase => _apiBase;
   bool get hasToken => _accessToken != null && _accessToken!.isNotEmpty;
@@ -67,6 +74,13 @@ class AuthSession extends ChangeNotifier {
     _profileEmail = fields.email;
     _points = fields.points;
     _rank = fields.rank;
+    _newsletterOptIn = false;
+    _preferredLocale = 'pl';
+    _referralCode = switch (fields.role) {
+      'OWNER' => 'DEVREF-OWNER',
+      'STAFF' => 'DEVREF-STAFF',
+      _ => 'DEVREF-CLIENT',
+    };
     _permissions = switch (fields.role) {
       'OWNER' => const [
           'manage.reservations',
@@ -75,12 +89,22 @@ class AuthSession extends ChangeNotifier {
           'manage.dotykacka',
           'manage.permissions',
           'view.analytics',
+          'manage.cms',
+          'manage.support',
+          'manage.experiments',
+          'manage.gift_cards',
+          'manage.catalog',
+          'manage.reviews',
         ],
       'STAFF' => const [
           'manage.reservations',
           'manage.customers',
           'manage.orders',
           'manage.dotykacka',
+          'manage.cms',
+          'manage.support',
+          'manage.catalog',
+          'manage.reviews',
         ],
       _ => const [],
     };
@@ -104,6 +128,7 @@ class AuthSession extends ChangeNotifier {
     } catch (_) {
       _apiBase = AuthSession.defaultApiBase;
     }
+    unawaited(ShopMarketHolder.refresh(_apiBase));
     _applyPreviewRoleFromUrlIfAny();
     _ready = true;
     notifyListeners();
@@ -134,6 +159,7 @@ class AuthSession extends ChangeNotifier {
     if (v.isEmpty) return;
     _apiBase = v.endsWith('/') ? v.substring(0, v.length - 1) : v;
     await authStorageSetApiBase(_apiBase);
+    unawaited(ShopMarketHolder.refresh(_apiBase));
     notifyListeners();
   }
 
@@ -146,6 +172,9 @@ class AuthSession extends ChangeNotifier {
       _profileEmail = null;
       _points = null;
       _rank = null;
+      _newsletterOptIn = null;
+      _preferredLocale = null;
+      _referralCode = null;
       _permissions = const [];
     } else {
       await authStorageSetToken(_accessToken!);
@@ -196,6 +225,9 @@ class AuthSession extends ChangeNotifier {
       _profileEmail = null;
       _points = null;
       _rank = null;
+      _newsletterOptIn = null;
+      _preferredLocale = null;
+      _referralCode = null;
       notifyListeners();
       return;
     }
@@ -216,6 +248,9 @@ class AuthSession extends ChangeNotifier {
         _profileEmail = null;
         _points = null;
         _rank = null;
+        _newsletterOptIn = null;
+        _preferredLocale = null;
+        _referralCode = null;
         _permissions = const [];
         notifyListeners();
         return;
@@ -227,12 +262,18 @@ class AuthSession extends ChangeNotifier {
         _profileEmail = null;
         _points = null;
         _rank = null;
+        _newsletterOptIn = null;
+        _preferredLocale = null;
+        _referralCode = null;
         _permissions = const [];
       } else {
         _role = prof['role'] as String?;
         _profileEmail = prof['email'] as String?;
         _points = (prof['points'] as num?)?.toInt();
         _rank = prof['rank'] as String?;
+        _newsletterOptIn = prof['newsletterOptIn'] as bool?;
+        _preferredLocale = prof['preferredLocale'] as String?;
+        _referralCode = prof['referralCode'] as String?;
         final permsRaw = prof['permissions'];
         if (permsRaw is List) {
           _permissions = permsRaw.whereType<String>().toList();
@@ -245,8 +286,114 @@ class AuthSession extends ChangeNotifier {
       _profileEmail = null;
       _points = null;
       _rank = null;
+      _newsletterOptIn = null;
+      _preferredLocale = null;
+      _referralCode = null;
       _permissions = const [];
     }
     notifyListeners();
+  }
+
+  Future<String?> patchPreferredLocale(String locale) async {
+    if (!hasToken) return 'Brak sesji';
+    final l = locale.trim().toLowerCase();
+    if (l.length < 2) return 'Nieprawidłowy kod języka';
+    if (_applyDevMockProfileIfNeeded()) {
+      _preferredLocale = l;
+      notifyListeners();
+      return null;
+    }
+    try {
+      final uri = Uri.parse('$_apiBase/auth/me/locale');
+      final r = await http
+          .patch(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $_accessToken',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'locale': l}),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (r.statusCode != 200) {
+        return 'Serwer: ${r.statusCode}';
+      }
+      final j = jsonDecode(r.body) as Map<String, dynamic>;
+      final prof = j['profile'];
+      if (prof is Map<String, dynamic>) {
+        _preferredLocale = prof['preferredLocale'] as String?;
+      }
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
+  Future<String?> patchNewsletterOptIn(bool optIn) async {
+    if (!hasToken) return 'Brak sesji';
+    if (_applyDevMockProfileIfNeeded()) {
+      _newsletterOptIn = optIn;
+      notifyListeners();
+      return null;
+    }
+    try {
+      final uri = Uri.parse('$_apiBase/auth/me/newsletter');
+      final r = await http
+          .patch(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $_accessToken',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'optIn': optIn}),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (r.statusCode != 200) {
+        return 'Serwer: ${r.statusCode}';
+      }
+      final j = jsonDecode(r.body) as Map<String, dynamic>;
+      final prof = j['profile'];
+      if (prof is Map<String, dynamic>) {
+        _newsletterOptIn = prof['newsletterOptIn'] as bool?;
+      }
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
+  /// JSON eksportu RODO — null przy błędzie.
+  Future<Map<String, dynamic>?> fetchPersonalDataExport() async {
+    if (!hasToken) return null;
+    if (_applyDevMockProfileIfNeeded()) {
+      return {
+        'exportedAt': DateTime.now().toUtc().toIso8601String(),
+        'note': 'Tryb dev-mock — brak pełnych danych z bazy.',
+        'profile': {
+          'role': _role,
+          'email': _profileEmail,
+          'newsletterOptIn': _newsletterOptIn,
+          'preferredLocale': _preferredLocale,
+          'referralCode': _referralCode,
+        },
+      };
+    }
+    try {
+      final uri = Uri.parse('$_apiBase/auth/me/data-export');
+      final r = await http
+          .get(
+            uri,
+            headers: {'Authorization': 'Bearer $_accessToken'},
+          )
+          .timeout(const Duration(seconds: 20));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(r.body);
+      if (j is Map<String, dynamic>) return j;
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 }

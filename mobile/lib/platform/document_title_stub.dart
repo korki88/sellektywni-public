@@ -1,0 +1,1 @@
+void setBrowserDocumentTitle(String? title) {}

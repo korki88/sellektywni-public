@@ -6,8 +6,12 @@ export class ProductController {
   constructor(private readonly products: ProductService) {}
 
   @Get()
-  listOffer(@Query('q') q?: string) {
-    return this.products.listOffer({ search: q });
+  listOffer(@Query('q') q?: string, @Query('featured') featured?: string) {
+    const featuredOnly =
+      featured === '1' ||
+      featured === 'true' ||
+      featured?.toLowerCase() === 'yes';
+    return this.products.listOffer({ search: q, featuredOnly });
   }
 
   @Get(':productId/reviews')

@@ -5,7 +5,9 @@ import '../layout/catalog_grid_layout.dart';
 import '../models/product_category.dart';
 import '../models/product_condition.dart';
 import '../providers/catalog_filter_notifier.dart';
+import '../providers/recently_viewed_notifier.dart';
 import '../widgets/product_card.dart';
+import 'help_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,15 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('SELLEKTYWNI'),
         actions: [
+          IconButton(
+            tooltip: 'Pomoc i kontakt',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+              );
+            },
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Powiadomienia',
             onPressed: () {
@@ -126,6 +137,8 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 18)),
+          const SliverToBoxAdapter(child: _FeaturedStrip()),
+          const SliverToBoxAdapter(child: _RecentStrip()),
           if (products.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
@@ -153,6 +166,97 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeaturedStrip extends StatelessWidget {
+  const _FeaturedStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = context.watch<CatalogFilterNotifier>();
+    final featured = catalog.featuredVisibleProducts;
+    if (featured.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: Text(
+              'Polecane',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+          SizedBox(
+            height: 220,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: featured.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) => SizedBox(
+                width: 132,
+                child: ProductCard(product: featured[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentStrip extends StatelessWidget {
+  const _RecentStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final recent = context.watch<RecentlyViewedNotifier>();
+    final catalog = context.watch<CatalogFilterNotifier>();
+    if (recent.ids.isEmpty) return const SizedBox.shrink();
+    final items = <Widget>[];
+    for (final id in recent.ids) {
+      final p = catalog.offerProductById(id);
+      if (p == null) continue;
+      items.add(
+        SizedBox(
+          width: 132,
+          child: ProductCard(product: p),
+        ),
+      );
+    }
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: Text(
+              'Ostatnio oglądane',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+          SizedBox(
+            height: 220,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) => items[i],
+            ),
+          ),
         ],
       ),
     );

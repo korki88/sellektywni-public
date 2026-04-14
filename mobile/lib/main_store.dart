@@ -6,7 +6,9 @@ import 'providers/app_navigation.dart';
 import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/wishlist_notifier.dart';
+import 'providers/compare_notifier.dart';
 import 'screens/cart_screen.dart';
+import 'screens/comparison_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/user_account_screen.dart';
 
@@ -45,6 +47,7 @@ class _MainStoreState extends State<MainStore> {
     final showBackToPanel =
         auth.isAuthenticated && auth.isAdminDashboardRole && nav.staffViewingShop;
 
+    final compareCount = context.watch<CompareNotifier>().items.length;
     return WebAppFrame(
       child: Scaffold(
         floatingActionButton: showBackToPanel
@@ -54,7 +57,19 @@ class _MainStoreState extends State<MainStore> {
                 icon: const Icon(Icons.admin_panel_settings_outlined),
                 label: const Text('Panel'),
               )
-            : null,
+            : compareCount > 0
+                ? FloatingActionButton.extended(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ComparisonScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.compare_arrows_rounded),
+                    label: Text('Porównaj ($compareCount)'),
+                  )
+                : null,
         body: IndexedStack(
           index: _index,
           children: [

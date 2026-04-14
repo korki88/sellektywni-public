@@ -72,7 +72,10 @@ export class DotykackaService {
   }
 
   async resolveStockQty(product: Product): Promise<number> {
-    if (this.isDevSimulationEnabled() && this.devStock.has(product.idDotykacka)) {
+    if (
+      this.isDevSimulationEnabled() &&
+      this.devStock.has(product.idDotykacka)
+    ) {
       return this.devStock.get(product.idDotykacka) ?? product.stockQty;
     }
     if (!this.isConfigured()) {
@@ -83,7 +86,9 @@ export class DotykackaService {
       const remote = this.extractStockQty(payload);
       return remote ?? product.stockQty;
     } catch (e) {
-      this.logger.warn(`Dotykačka stock fallback for ${product.idDotykacka}: ${e}`);
+      this.logger.warn(
+        `Dotykačka stock fallback for ${product.idDotykacka}: ${e}`,
+      );
       return product.stockQty;
     }
   }
@@ -93,10 +98,12 @@ export class DotykackaService {
   }
 
   listDevStock(): Array<{ idDotykacka: string; stockQty: number }> {
-    return Array.from(this.devStock.entries()).map(([idDotykacka, stockQty]) => ({
-      idDotykacka,
-      stockQty,
-    }));
+    return Array.from(this.devStock.entries()).map(
+      ([idDotykacka, stockQty]) => ({
+        idDotykacka,
+        stockQty,
+      }),
+    );
   }
 
   private extractStockQty(payload: unknown): number | null {

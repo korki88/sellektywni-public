@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentMethod, PaymentProvider, PaymentStatus } from '@prisma/client';
 import { createHash } from 'crypto';
 import { firstValueFrom } from 'rxjs';
+import { MarketService } from '../core/market/market.service';
 
 type InitPaymentInput = {
   paymentMethod: PaymentMethod;
@@ -20,6 +21,7 @@ export class PaymentsService {
   constructor(
     private readonly config: ConfigService,
     private readonly http: HttpService,
+    private readonly market: MarketService,
   ) {}
 
   async initializePayment(input: InitPaymentInput): Promise<{
@@ -42,7 +44,7 @@ export class PaymentsService {
           accountHolder: 'SELLEKTYWNI.PL DEV PAYMENTS',
           title: `Zamówienie ${reference}`,
           amount: input.totalAmount.toFixed(2),
-          currency: 'PLN',
+          currency: this.market.primaryCurrency(),
           mode: 'dev-simulation',
         },
       };
@@ -56,7 +58,7 @@ export class PaymentsService {
         paymentBankAccount: null,
         paymentDetails: {
           note: 'Płatność przy odbiorze',
-          currency: 'PLN',
+          currency: this.market.primaryCurrency(),
         },
       };
     }
@@ -66,7 +68,8 @@ export class PaymentsService {
       this.config.get<string>('P24_POS_ID')?.trim() ?? p24MerchantId ?? '';
     const p24Crc = this.config.get<string>('P24_CRC')?.trim();
     const p24SandboxBase =
-      this.config.get<string>('P24_SANDBOX_BASE_URL') ?? 'https://sandbox.przelewy24.pl';
+      this.config.get<string>('P24_SANDBOX_BASE_URL') ??
+      'https://sandbox.przelewy24.pl';
     const base = p24SandboxBase.replace(/\/$/, '');
     const p24Configured = Boolean(p24MerchantId && p24Crc && p24PosId);
 
@@ -97,7 +100,7 @@ export class PaymentsService {
             provider: 'Przelewy24',
             providerMode: 'live-register',
             amount: input.totalAmount.toFixed(2),
-            currency: 'PLN',
+            currency: this.market.primaryCurrency(),
             customerId: input.userId,
           },
         };
@@ -121,7 +124,7 @@ export class PaymentsService {
           ? 'Sprawdź CRC, POS ID i URL zwrotu (P24_URL_RETURN).'
           : 'Ustaw P24_MERCHANT_ID, P24_POS_ID i P24_CRC aby włączyć rejestrację trnRegister.',
         amount: input.totalAmount.toFixed(2),
-        currency: 'PLN',
+        currency: this.market.primaryCurrency(),
         customerId: input.userId,
       },
     };
@@ -145,11 +148,13 @@ export class PaymentsService {
       description: string;
     },
   ): Promise<{ token: string; sessionUrl: string } | null> {
-    const sessionId = opts.sessionId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
+    const sessionId = opts.sessionId
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .slice(0, 100);
     if (!sessionId) return null;
     const amount = Math.round(opts.amountPln * 100);
     if (amount <= 0) return null;
-    const currency = 'PLN';
+    const currency = this.market.primaryCurrency();
     const sign = createHash('md5')
       .update(
         `${sessionId}|${opts.merchantId}|${amount}|${currency}|${opts.crc}`,
@@ -164,7 +169,7 @@ export class PaymentsService {
       p24_currency: currency,
       p24_description: opts.description.slice(0, 1024),
       p24_email: opts.email,
-      p24_country: 'PL',
+      p24_country: this.market.primaryCountryCode(),
       p24_url_return: opts.returnUrl,
       p24_api_version: '3.2',
       p24_sign: sign,
@@ -175,18 +180,21 @@ export class PaymentsService {
     }
 
     try {
-      const { data } = await firstValueFrom(
+      const res = await firstValueFrom(
         this.http.post(`${baseUrl}/trnRegister`, body.toString(), {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           responseType: 'text',
         }),
       );
+      const data: unknown = res.data;
       const raw = typeof data === 'string' ? data : String(data);
       const parsed = this.parseP24FormBody(raw);
       const err = parsed['error'];
       const token = parsed['token'];
       if (err && err !== '0') {
-        this.logger.warn(`P24 trnRegister error=${err} body=${raw.slice(0, 500)}`);
+        this.logger.warn(
+          `P24 trnRegister error=${err} body=${raw.slice(0, 500)}`,
+        );
         return null;
       }
       if (!token) {

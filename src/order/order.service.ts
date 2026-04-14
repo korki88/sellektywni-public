@@ -9,14 +9,15 @@ import {
 } from '@nestjs/common';
 import {
   AddressBookEntryType,
+  CustomerOrderStatus,
   PaymentMethod,
-  PaymentProvider,
   PaymentStatus,
   Prisma,
   ProductStatus,
   ReservationStatus,
   ShippingMethod,
 } from '@prisma/client';
+import { MarketService } from '../core/market/market.service';
 import { DotykackaService } from '../dotykacka/dotykacka.service';
 import { AdminNotificationService } from '../notification/admin-notification.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -29,6 +30,7 @@ import { FinalizeOrderDto } from './dto/finalize-order.dto';
 import { SubmitCartDto } from './dto/submit-cart.dto';
 import { UpdateCheckoutPreferencesDto } from './dto/update-checkout-preferences.dto';
 import { UpsertAddressBookEntryDto } from './dto/upsert-address-book-entry.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 
 @Injectable()
 export class OrderService implements OnModuleInit, OnModuleDestroy {
@@ -46,6 +48,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     private readonly adminNotification: AdminNotificationService,
     private readonly payments: PaymentsService,
     private readonly shipping: ShippingService,
+    private readonly market: MarketService,
   ) {}
 
   private normalizeOwnerKey(ownerKey?: string): string {
@@ -89,7 +92,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const rows = await this.prisma.productReservation.findMany({
       where: {
         ownerKey,
-        status: { in: [ReservationStatus.REJECTED, ReservationStatus.AUTO_REJECTED] },
+        status: {
+          in: [ReservationStatus.REJECTED, ReservationStatus.AUTO_REJECTED],
+        },
         updatedAt: { lte: cutoff },
       },
       select: { id: true },
@@ -110,7 +115,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       );
       const rows = await this.prisma.productReservation.findMany({
         where: {
-          status: { in: [ReservationStatus.REJECTED, ReservationStatus.AUTO_REJECTED] },
+          status: {
+            in: [ReservationStatus.REJECTED, ReservationStatus.AUTO_REJECTED],
+          },
           updatedAt: { lte: cutoff },
         },
         select: { id: true },
@@ -163,7 +170,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       recipientName: input.recipientName?.trim() || null,
       phone: input.phone?.trim() || null,
       email: input.email?.trim() || null,
-      country: (input.country?.trim() || 'PL').toUpperCase(),
+      country: (
+        input.country?.trim() || this.market.primaryCountryCode()
+      ).toUpperCase(),
       postalCode: input.postalCode?.trim() || null,
       city: input.city?.trim() || null,
       street: input.street?.trim() || null,
@@ -172,8 +181,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       parcelLockerId: input.parcelLockerId?.trim() || null,
       parcelLockerLabel: input.parcelLockerLabel?.trim() || null,
     };
-    if (out.country !== 'PL') {
-      throw new BadRequestException('Obecnie obsługujemy wyłącznie wysyłkę na terenie Polski.');
+    if (!this.market.isCountrySupported(out.country)) {
+      throw new BadRequestException(
+        this.market.unsupportedShippingCountryMessage(out.country),
+      );
     }
     if (!out.phone) {
       throw new BadRequestException('Podaj numer telefonu do kontaktu.');
@@ -203,7 +214,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       orderBy: { createdAt: 'desc' },
     });
     if (!lastOrder) return null;
-    const snapshot = (lastOrder.shippingSnapshot ?? {}) as Record<string, unknown>;
+    const snapshot = (lastOrder.shippingSnapshot ?? {}) as Record<
+      string,
+      unknown
+    >;
     return {
       paymentMethod: lastOrder.paymentMethod,
       shippingMethod: lastOrder.shippingMethod,
@@ -223,7 +237,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const preferredAddress =
       (preference?.preferredAddressId
         ? addressBook.find((a) => a.id === preference.preferredAddressId)
-        : null) ?? addressBook.find((a) => a.isDefault) ?? null;
+        : null) ??
+      addressBook.find((a) => a.isDefault) ??
+      null;
     return {
       paymentMethod:
         preference?.preferredPaymentMethod ??
@@ -235,14 +251,14 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         ShippingMethod.COURIER,
       preferredAddressId: preferredAddress?.id ?? null,
       source:
-        preference?.preferredPaymentMethod || preference?.preferredShippingMethod
+        preference?.preferredPaymentMethod ||
+        preference?.preferredShippingMethod
           ? 'settings'
           : lastOrder
             ? 'last-order'
             : 'defaults',
     };
   }
-
 
   private async recalcProductStatusTx(
     tx: Prisma.TransactionClient,
@@ -252,7 +268,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       where: { id: productId },
       include: {
         reservations: {
-          where: { status: { in: [ReservationStatus.IN_CART, ReservationStatus.PENDING] } },
+          where: {
+            status: {
+              in: [ReservationStatus.IN_CART, ReservationStatus.PENDING],
+            },
+          },
           select: { quantity: true },
         },
       },
@@ -281,7 +301,7 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       where: { productId, status: ReservationStatus.PENDING },
       orderBy: { createdAt: 'desc' },
     });
-    let pendingTotal = pendingRows.reduce((sum, r) => sum + r.quantity, 0);
+    const pendingTotal = pendingRows.reduce((sum, r) => sum + r.quantity, 0);
     if (pendingTotal <= stockQty) return 0;
     let excess = pendingTotal - stockQty;
     let autoRejected = 0;
@@ -294,7 +314,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       if (row.quantity === rejectedNow) {
         await tx.productReservation.update({
           where: { id: row.id },
-          data: { status: ReservationStatus.AUTO_REJECTED, updatedAt: new Date() },
+          data: {
+            status: ReservationStatus.AUTO_REJECTED,
+            updatedAt: new Date(),
+          },
         });
         await this.ensureAvailabilityWatchTx(tx, row.ownerKey, row.productId);
       } else {
@@ -328,7 +351,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async syncProductStock(productId: string) {
-    const p = await this.prisma.product.findUnique({ where: { id: productId } });
+    const p = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
     if (!p) throw new NotFoundException('Produkt nie istnieje');
     const stockQty = await this.dotykacka.resolveStockQty(p);
     if (stockQty !== p.stockQty) {
@@ -364,83 +389,88 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const synced = await this.syncProductStock(existing.id);
     try {
       const result = await this.prisma.$transaction(async (tx) => {
-      const locked = await tx.product.findUnique({
-        where: { id: synced.id },
-      });
-      if (!locked) throw new NotFoundException('Produkt nie istnieje');
-
-      const latestStock = await this.dotykacka.resolveStockQty(locked);
-      let effectiveStock = locked.stockQty;
-      if (latestStock !== locked.stockQty) {
-        effectiveStock = latestStock;
-        await tx.product.update({
-          where: { id: locked.id },
-          data: { stockQty: latestStock },
+        const locked = await tx.product.findUnique({
+          where: { id: synced.id },
         });
-      }
+        if (!locked) throw new NotFoundException('Produkt nie istnieje');
 
-      const autoRejectedByStoreSale = await this.trimReservationsToStock(
-        tx,
-        locked.id,
-        effectiveStock,
-      );
+        const latestStock = await this.dotykacka.resolveStockQty(locked);
+        let effectiveStock = locked.stockQty;
+        if (latestStock !== locked.stockQty) {
+          effectiveStock = latestStock;
+          await tx.product.update({
+            where: { id: locked.id },
+            data: { stockQty: latestStock },
+          });
+        }
 
-      const reservedRows = await tx.productReservation.findMany({
-        where: {
-          productId: locked.id,
-          status: { in: [ReservationStatus.IN_CART, ReservationStatus.PENDING] },
-        },
-        select: { quantity: true },
-      });
-      const reservedQty = reservedRows.reduce((sum, r) => sum + r.quantity, 0);
-      const availableQty = effectiveStock - reservedQty;
-      const keepReservedUntilStockSync =
-        locked.status === ProductStatus.RESERVED &&
-        latestStock === locked.stockQty &&
-        availableQty > 0;
-      if (keepReservedUntilStockSync) {
-        throw new ConflictException('PRODUCT_RESERVED_UNTIL_STOCK_SYNC');
-      }
-      const syncedStatus =
-        effectiveStock <= 0
-          ? ProductStatus.SOLD
-          : availableQty <= 0
-            ? ProductStatus.RESERVED
-            : ProductStatus.AVAILABLE;
-      if (locked.status !== syncedStatus) {
-        await tx.product.update({
-          where: { id: locked.id },
-          data: { status: syncedStatus },
+        const autoRejectedByStoreSale = await this.trimReservationsToStock(
+          tx,
+          locked.id,
+          effectiveStock,
+        );
+
+        const reservedRows = await tx.productReservation.findMany({
+          where: {
+            productId: locked.id,
+            status: {
+              in: [ReservationStatus.IN_CART, ReservationStatus.PENDING],
+            },
+          },
+          select: { quantity: true },
         });
-      }
-      if (availableQty < qty) {
-        throw new ConflictException('PRODUCT_NOT_AVAILABLE_NOW');
-      }
+        const reservedQty = reservedRows.reduce(
+          (sum, r) => sum + r.quantity,
+          0,
+        );
+        const availableQty = effectiveStock - reservedQty;
+        const keepReservedUntilStockSync =
+          locked.status === ProductStatus.RESERVED &&
+          latestStock === locked.stockQty &&
+          availableQty > 0;
+        if (keepReservedUntilStockSync) {
+          throw new ConflictException('PRODUCT_RESERVED_UNTIL_STOCK_SYNC');
+        }
+        const syncedStatus =
+          effectiveStock <= 0
+            ? ProductStatus.SOLD
+            : availableQty <= 0
+              ? ProductStatus.RESERVED
+              : ProductStatus.AVAILABLE;
+        if (locked.status !== syncedStatus) {
+          await tx.product.update({
+            where: { id: locked.id },
+            data: { status: syncedStatus },
+          });
+        }
+        if (availableQty < qty) {
+          throw new ConflictException('PRODUCT_NOT_AVAILABLE_NOW');
+        }
 
-      await tx.productReservation.upsert({
-        where: {
-          ownerKey_productId_status: {
+        await tx.productReservation.upsert({
+          where: {
+            ownerKey_productId_status: {
+              ownerKey,
+              productId: locked.id,
+              status: ReservationStatus.PENDING,
+            },
+          },
+          create: {
             ownerKey,
             productId: locked.id,
+            quantity: qty,
             status: ReservationStatus.PENDING,
           },
-        },
-        create: {
-          ownerKey,
-          productId: locked.id,
-          quantity: qty,
-          status: ReservationStatus.PENDING,
-        },
-        update: {
-          quantity: { increment: qty },
-        },
+          update: {
+            quantity: { increment: qty },
+          },
+        });
+        await tx.availabilityWatch.deleteMany({
+          where: { userId, productId: locked.id },
+        });
+        const product = await this.recalcProductStatusTx(tx, locked.id);
+        return { product, autoRejectedByStoreSale };
       });
-      await tx.availabilityWatch.deleteMany({
-        where: { userId, productId: locked.id },
-      });
-      const product = await this.recalcProductStatusTx(tx, locked.id);
-      return { product, autoRejectedByStoreSale };
-    });
       await this.adminNotification.notifyOrderPendingApproval(result.product);
       return {
         message: 'Produkt został dodany do koszyka i przekazany do akceptacji.',
@@ -519,7 +549,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       });
     }
     const product = await this.recalcProductStatus(existing.id);
-    return { message: 'Zwolniono rezerwację z koszyka', quantity: qty, product, ownerKey };
+    return {
+      message: 'Zwolniono rezerwację z koszyka',
+      quantity: qty,
+      product,
+      ownerKey,
+    };
   }
 
   async submitCart(_dto: SubmitCartDto, userId: string) {
@@ -541,7 +576,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       if (synced.stockQty < row.quantity) {
         await this.prisma.productReservation.update({
           where: { id: row.id },
-          data: { status: ReservationStatus.AUTO_REJECTED, updatedAt: new Date() },
+          data: {
+            status: ReservationStatus.AUTO_REJECTED,
+            updatedAt: new Date(),
+          },
         });
         const userId = this.userIdFromOwnerKey(row.ownerKey);
         if (userId) {
@@ -629,21 +667,22 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     >();
     for (const row of rows) {
       const key = row.productId;
-      const entry =
-        grouped.get(key) ??
-        {
-          productId: row.productId,
-          idDotykacka: row.product.idDotykacka,
-          name: row.product.name,
-          price: row.product.price.toString(),
-          inCartQty: 0,
-          pendingQty: 0,
-          acceptedQty: 0,
-          rejectedQty: 0,
-        };
-      if (row.status === ReservationStatus.IN_CART) entry.inCartQty += row.quantity;
-      if (row.status === ReservationStatus.PENDING) entry.pendingQty += row.quantity;
-      if (row.status === ReservationStatus.ACCEPTED) entry.acceptedQty += row.quantity;
+      const entry = grouped.get(key) ?? {
+        productId: row.productId,
+        idDotykacka: row.product.idDotykacka,
+        name: row.product.name,
+        price: row.product.price.toString(),
+        inCartQty: 0,
+        pendingQty: 0,
+        acceptedQty: 0,
+        rejectedQty: 0,
+      };
+      if (row.status === ReservationStatus.IN_CART)
+        entry.inCartQty += row.quantity;
+      if (row.status === ReservationStatus.PENDING)
+        entry.pendingQty += row.quantity;
+      if (row.status === ReservationStatus.ACCEPTED)
+        entry.acceptedQty += row.quantity;
       if (
         row.status === ReservationStatus.REJECTED ||
         row.status === ReservationStatus.AUTO_REJECTED
@@ -696,7 +735,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       const exists = await this.prisma.addressBookEntry.findFirst({
         where: { id: dto.id, userId },
       });
-      if (!exists) throw new NotFoundException('Wpis książki adresowej nie istnieje');
+      if (!exists)
+        throw new NotFoundException('Wpis książki adresowej nie istnieje');
       const updated = await this.prisma.$transaction(async (tx) => {
         if (dto.isDefault) {
           await tx.addressBookEntry.updateMany({
@@ -761,7 +801,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       where: { userId, id },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('Wpis książki adresowej nie istnieje');
+    if (!existing)
+      throw new NotFoundException('Wpis książki adresowej nie istnieje');
     await this.prisma.addressBookEntry.delete({ where: { id } });
     return { ok: true };
   }
@@ -779,7 +820,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async updateCheckoutPreferences(userId: string, dto: UpdateCheckoutPreferencesDto) {
+  async updateCheckoutPreferences(
+    userId: string,
+    dto: UpdateCheckoutPreferencesDto,
+  ) {
     if (dto.preferredAddressId) {
       const exists = await this.prisma.addressBookEntry.findFirst({
         where: { id: dto.preferredAddressId, userId },
@@ -827,14 +871,12 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     const defaultTarget = recentTargets[0]?.shippingTarget as
       | { postalCode?: string; city?: string }
       | undefined;
-    const [suggestedPickupPoints, shippingProviders] = await Promise.all([
-      this.shipping.suggestPickupPoints({
-        postalCode: defaultTarget?.postalCode,
-        city: defaultTarget?.city,
-        limit: 8,
-      }),
-      this.shipping.listProviders(),
-    ]);
+    const suggestedPickupPoints = await this.shipping.suggestPickupPoints({
+      postalCode: defaultTarget?.postalCode,
+      city: defaultTarget?.city,
+      limit: 8,
+    });
+    const shippingProviders = this.shipping.listProviders();
     const suggestedInpostPoints = suggestedPickupPoints.INPOST;
     return {
       paymentMethods: Object.values(PaymentMethod),
@@ -874,7 +916,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     });
     if (!order) throw new NotFoundException('Zamówienie nie istnieje');
     if (order.paymentStatus === PaymentStatus.PAID) {
-      return { ok: true, message: 'Płatność była już wcześniej oznaczona jako opłacona.' };
+      return {
+        ok: true,
+        message: 'Płatność była już wcześniej oznaczona jako opłacona.',
+      };
     }
     const updated = await this.prisma.customerOrder.update({
       where: { id: orderId },
@@ -957,12 +1002,67 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         promoCodeDisplay = pr.code;
       }
     }
-    const total = Math.round((subtotal - Number(discountAmount)) * 100) / 100;
+
+    let referralDiscount = 0;
+    let referralCodeApplied: string | null = null;
+    if (dto.referralCode?.trim()) {
+      const code = dto.referralCode.trim().toUpperCase();
+      const refProfile = await this.prisma.profile.findUnique({
+        where: { referralCode: code },
+      });
+      if (refProfile && refProfile.userId !== userId) {
+        const prior = await this.prisma.customerOrder.count({
+          where: { userId },
+        });
+        if (prior === 0) {
+          const afterPromo = subtotal - Number(discountAmount);
+          referralDiscount = Math.min(
+            10,
+            Math.round(afterPromo * 0.05 * 100) / 100,
+          );
+          referralCodeApplied = code;
+        }
+      }
+    }
+
+    let giftCardDiscount = 0;
+    let giftCardId: string | null = null;
+    if (dto.giftCardCode?.trim()) {
+      const gc = await this.prisma.giftCard.findFirst({
+        where: {
+          code: dto.giftCardCode.trim().toUpperCase(),
+          active: true,
+        },
+      });
+      if (
+        gc &&
+        (!gc.expiresAt || gc.expiresAt > new Date()) &&
+        Number(gc.balanceAmount) > 0
+      ) {
+        const afterPromoRef =
+          subtotal - Number(discountAmount) - referralDiscount;
+        giftCardDiscount = Math.min(
+          Number(gc.balanceAmount),
+          Math.max(0, afterPromoRef),
+        );
+        giftCardId = gc.id;
+      }
+    }
+
+    const total =
+      Math.round(
+        (subtotal -
+          Number(discountAmount) -
+          referralDiscount -
+          giftCardDiscount) *
+          100,
+      ) / 100;
     if (total < 0) {
       throw new BadRequestException('Kwota zamówienia jest nieprawidłowa.');
     }
 
-    const pickedAddressId = dto.shippingTarget.addressBookEntryId?.trim() || null;
+    const pickedAddressId =
+      dto.shippingTarget.addressBookEntryId?.trim() || null;
     let normalizedShipping: ReturnType<typeof this.normalizeAddressPayload>;
     if (pickedAddressId) {
       const existing = await this.prisma.addressBookEntry.findFirst({
@@ -986,7 +1086,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         parcelLockerLabel: existing.parcelLockerLabel ?? undefined,
       });
     } else {
-      normalizedShipping = this.normalizeAddressPayload(dto.shippingMethod, dto.shippingTarget);
+      normalizedShipping = this.normalizeAddressPayload(
+        dto.shippingMethod,
+        dto.shippingTarget,
+      );
     }
 
     const paymentInit = await this.payments.initializePayment({
@@ -1025,13 +1128,23 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           savedAddressId = createdAddress.id;
         }
       }
+      const note = dto.customerNote?.trim().slice(0, 2000);
       const created = await tx.customerOrder.create({
         data: {
           userId,
           subtotalAmount: new Prisma.Decimal(subtotal.toFixed(2)),
           discountAmount,
           totalAmount: new Prisma.Decimal(total.toFixed(2)),
+          giftCardDiscountAmount: new Prisma.Decimal(
+            giftCardDiscount.toFixed(2),
+          ),
+          referralDiscountAmount: new Prisma.Decimal(
+            referralDiscount.toFixed(2),
+          ),
+          giftCardId: giftCardId ?? undefined,
+          referralCodeApplied: referralCodeApplied ?? undefined,
           promoCodeId: promoId,
+          customerNote: note && note.length > 0 ? note : undefined,
           paymentMethod: dto.paymentMethod,
           paymentProvider: paymentInit.paymentProvider,
           paymentStatus: paymentInit.paymentStatus,
@@ -1069,6 +1182,21 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
           where: { id: promoId },
           data: { usesCount: { increment: 1 } },
         });
+      }
+
+      if (giftCardId && giftCardDiscount > 0) {
+        const gcRow = await tx.giftCard.findUnique({
+          where: { id: giftCardId },
+        });
+        if (gcRow) {
+          const newBal = Number(gcRow.balanceAmount) - giftCardDiscount;
+          await tx.giftCard.update({
+            where: { id: giftCardId },
+            data: {
+              balanceAmount: new Prisma.Decimal(Math.max(0, newBal).toFixed(2)),
+            },
+          });
+        }
       }
 
       for (const item of items) {
@@ -1136,7 +1264,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async watchAvailability(userId: string, productId: string) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
     if (!product) throw new NotFoundException('Produkt nie istnieje');
     await this.prisma.availabilityWatch.upsert({
       where: {
@@ -1165,7 +1295,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         product: {
           include: {
             reservations: {
-              where: { status: { in: [ReservationStatus.IN_CART, ReservationStatus.PENDING] } },
+              where: {
+                status: {
+                  in: [ReservationStatus.IN_CART, ReservationStatus.PENDING],
+                },
+              },
               select: { quantity: true },
             },
           },
@@ -1174,7 +1308,10 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((w) => {
-      const reservedQty = w.product.reservations.reduce((sum, r) => sum + r.quantity, 0);
+      const reservedQty = w.product.reservations.reduce(
+        (sum, r) => sum + r.quantity,
+        0,
+      );
       const availableQty = Math.max(0, w.product.stockQty - reservedQty);
       return {
         productId: w.productId,
@@ -1257,7 +1394,8 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       type: 'ORDER_PLACED',
       level: 'success',
       title: 'Zamówienie zostało utworzone',
-      message: 'Dziękujemy za zakup. Zamówienie zostało zapisane na Twoim koncie.',
+      message:
+        'Dziękujemy za zakup. Zamówienie zostało zapisane na Twoim koncie.',
       orderId: o.id,
       totalAmount: o.totalAmount.toString(),
       at: o.createdAt,
@@ -1283,6 +1421,49 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  async getMyOrderById(userId: string, orderId: string) {
+    const o = await this.prisma.customerOrder.findFirst({
+      where: { id: orderId, userId },
+      include: {
+        items: true,
+        promoCode: { select: { code: true, label: true } },
+      },
+    });
+    if (!o) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    return {
+      id: o.id,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      status: o.status,
+      customerNote: o.customerNote,
+      subtotalAmount: o.subtotalAmount.toString(),
+      discountAmount: o.discountAmount.toString(),
+      giftCardDiscountAmount: o.giftCardDiscountAmount.toString(),
+      referralDiscountAmount: o.referralDiscountAmount.toString(),
+      totalAmount: o.totalAmount.toString(),
+      promoCode: o.promoCode?.code ?? null,
+      paymentMethod: o.paymentMethod,
+      paymentProvider: o.paymentProvider,
+      paymentStatus: o.paymentStatus,
+      paymentReference: o.paymentReference,
+      paymentSessionUrl: o.paymentSessionUrl,
+      paymentBankAccount: o.paymentBankAccount,
+      paymentDetails: o.paymentDetails,
+      shippingMethod: o.shippingMethod,
+      shippingSnapshot: o.shippingSnapshot,
+      itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
+      items: o.items.map((i) => ({
+        productId: i.productId,
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        lineTotal: i.lineTotal,
+      })),
+    };
+  }
+
   async listMyOrders(userId: string) {
     const rows = await this.prisma.customerOrder.findMany({
       where: { userId },
@@ -1297,8 +1478,11 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
       createdAt: o.createdAt,
       updatedAt: o.updatedAt,
       status: o.status,
+      customerNote: o.customerNote,
       subtotalAmount: o.subtotalAmount.toString(),
       discountAmount: o.discountAmount.toString(),
+      giftCardDiscountAmount: o.giftCardDiscountAmount.toString(),
+      referralDiscountAmount: o.referralDiscountAmount.toString(),
       totalAmount: o.totalAmount.toString(),
       promoCode: o.promoCode?.code ?? null,
       paymentMethod: o.paymentMethod,
@@ -1319,6 +1503,80 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
         lineTotal: i.lineTotal,
       })),
     }));
+  }
+
+  /**
+   * Anulowanie przez klienta: wyłącznie przed opłaceniem (jak w Shopify „cancel unpaid”).
+   * Przywraca stan magazynowy i ewentualnie saldo karty / użycie kodu promocyjnego.
+   */
+  async cancelMyOrder(userId: string, orderId: string) {
+    const order = await this.prisma.customerOrder.findFirst({
+      where: { id: orderId, userId },
+      include: {
+        items: true,
+        promoRedemption: true,
+      },
+    });
+    if (!order) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    if (order.status === CustomerOrderStatus.CANCELED) {
+      throw new BadRequestException('Zamówienie jest już anulowane');
+    }
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new BadRequestException(
+        'Nie można anulować opłaconego zamówienia — napisz na obsługę klienta.',
+      );
+    }
+    if (order.status !== CustomerOrderStatus.PLACED) {
+      throw new BadRequestException(
+        'Anulowanie nie jest już dostępne w tym etapie realizacji.',
+      );
+    }
+    await this.prisma.$transaction(async (tx) => {
+      for (const line of order.items) {
+        await tx.product.update({
+          where: { id: line.productId },
+          data: { stockQty: { increment: line.quantity } },
+        });
+      }
+      if (order.giftCardId && Number(order.giftCardDiscountAmount) > 0) {
+        const gc = await tx.giftCard.findUnique({
+          where: { id: order.giftCardId },
+        });
+        if (gc) {
+          const add = Number(order.giftCardDiscountAmount);
+          const next = Number(gc.balanceAmount) + add;
+          await tx.giftCard.update({
+            where: { id: order.giftCardId },
+            data: {
+              balanceAmount: new Prisma.Decimal(next.toFixed(2)),
+            },
+          });
+        }
+      }
+      if (order.promoRedemption) {
+        const pcId = order.promoRedemption.promoCodeId;
+        await tx.promoRedemption.delete({
+          where: { orderId: order.id },
+        });
+        const pc = await tx.promoCode.findUnique({ where: { id: pcId } });
+        if (pc && pc.usesCount > 0) {
+          await tx.promoCode.update({
+            where: { id: pcId },
+            data: { usesCount: { decrement: 1 } },
+          });
+        }
+      }
+      await tx.customerOrder.update({
+        where: { id: order.id },
+        data: {
+          status: CustomerOrderStatus.CANCELED,
+          paymentStatus: PaymentStatus.CANCELED,
+        },
+      });
+    });
+    return { ok: true as const, orderId: order.id };
   }
 
   async listWishlist(userId: string) {
@@ -1342,7 +1600,9 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
   }
 
   async addWishlist(userId: string, productId: string) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
     if (!product) throw new NotFoundException('Produkt nie istnieje');
     await this.prisma.wishlistItem.upsert({
       where: {
@@ -1361,4 +1621,131 @@ export class OrderService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
+  /**
+   * Ponowne zamówienie: bieżące ceny i dostępność wg stanu magazynu.
+   */
+  async getReorderPayload(userId: string, orderId: string) {
+    const order = await this.prisma.customerOrder.findFirst({
+      where: { id: orderId, userId },
+      include: { items: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    if (order.status === CustomerOrderStatus.CANCELED) {
+      throw new BadRequestException('Nie można ponowić anulowanego zamówienia');
+    }
+    const lines: Array<{
+      productId: string;
+      name: string;
+      quantityOrdered: number;
+      unitPricePln: string;
+      maxQuantityCanAdd: number;
+      canAddToCart: boolean;
+      skipReason?: string;
+    }> = [];
+    for (const item of order.items) {
+      const snap = await this.productService.getOfferSnapshot(item.productId);
+      if (!snap) {
+        lines.push({
+          productId: item.productId,
+          name: item.name,
+          quantityOrdered: item.quantity,
+          unitPricePln: item.price.toString(),
+          maxQuantityCanAdd: 0,
+          canAddToCart: false,
+          skipReason: 'Produkt został usunięty z oferty',
+        });
+        continue;
+      }
+      const maxQty = snap.canAddToCart ? snap.availableQty : 0;
+      lines.push({
+        productId: snap.id,
+        name: snap.name,
+        quantityOrdered: item.quantity,
+        unitPricePln: snap.price.toString(),
+        maxQuantityCanAdd: maxQty,
+        canAddToCart: snap.canAddToCart && maxQty > 0,
+        skipReason:
+          snap.canAddToCart && maxQty > 0
+            ? undefined
+            : 'Brak dostępności lub produkt zarezerwowany',
+      });
+    }
+    return { orderId: order.id, lines };
+  }
+
+  async createReturnRequest(userId: string, dto: CreateReturnRequestDto) {
+    const order = await this.prisma.customerOrder.findFirst({
+      where: { id: dto.orderId, userId },
+    });
+    if (!order) {
+      throw new NotFoundException('Zamówienie nie istnieje');
+    }
+    if (order.status === CustomerOrderStatus.CANCELED) {
+      throw new BadRequestException('Zwrot nie dotyczy anulowanych zamówień');
+    }
+    if (order.paymentStatus !== PaymentStatus.PAID) {
+      throw new BadRequestException(
+        'Zwrot możliwy po zaksięgowaniu płatności (status PAID)',
+      );
+    }
+    const allowedStatus: CustomerOrderStatus[] = [
+      CustomerOrderStatus.PROCESSING,
+      CustomerOrderStatus.READY,
+      CustomerOrderStatus.COMPLETED,
+    ];
+    if (!allowedStatus.includes(order.status)) {
+      throw new BadRequestException(
+        'Zwrot możliwy po rozpoczęciu realizacji zamówienia',
+      );
+    }
+    const existing = await this.prisma.returnRequest.findUnique({
+      where: { orderId: order.id },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'Dla tego zamówienia złożono już wniosek o zwrot',
+      );
+    }
+    return this.prisma.returnRequest.create({
+      data: {
+        userId,
+        orderId: order.id,
+        reason: dto.reason.trim(),
+      },
+    });
+  }
+
+  async listMyReturns(userId: string) {
+    const rows = await this.prisma.returnRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        order: {
+          select: {
+            id: true,
+            createdAt: true,
+            totalAmount: true,
+            status: true,
+          },
+        },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      orderId: r.orderId,
+      reason: r.reason,
+      status: r.status,
+      staffNote: r.staffNote,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      order: {
+        id: r.order.id,
+        createdAt: r.order.createdAt,
+        status: r.order.status,
+        totalAmount: r.order.totalAmount.toString(),
+      },
+    }));
+  }
 }

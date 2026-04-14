@@ -14,6 +14,7 @@ class CatalogFilterNotifier extends ChangeNotifier {
   AuthSession? _auth;
   bool _loading = false;
   Map<String, ({int stockQty, int reservedQty, bool canAddToCart})> _inventory = {};
+  Map<String, ({String? subtitle, bool isFeatured})> _merch = {};
 
   ProductCategory? get category => _category;
   ProductCondition? get condition => _condition;
@@ -63,6 +64,7 @@ class CatalogFilterNotifier extends ChangeNotifier {
         return;
       }
       final map = <String, ({int stockQty, int reservedQty, bool canAddToCart})>{};
+      final merch = <String, ({String? subtitle, bool isFeatured})>{};
       for (final row in arr) {
         if (row is! Map<String, dynamic>) continue;
         final id = row['id'] as String?;
@@ -72,8 +74,14 @@ class CatalogFilterNotifier extends ChangeNotifier {
           reservedQty: (row['reservedQty'] as num?)?.toInt() ?? 0,
           canAddToCart: row['canAddToCart'] as bool? ?? false,
         );
+        final sub = row['subtitle'] as String?;
+        final feat = row['isFeatured'] == true;
+        if (sub != null && sub.trim().isNotEmpty || feat) {
+          merch[id] = (subtitle: sub, isFeatured: feat);
+        }
       }
       _inventory = map;
+      _merch = merch;
     } catch (_) {
       // Brak API lub błąd sieci: zostaw fallback na statyczny katalog.
     }
@@ -81,16 +89,51 @@ class CatalogFilterNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Produkt z katalogu + bieżący stan magazynu z API (do koszyka / „ostatnio oglądane”).
+  Product? offerProductById(String productId) {
+    for (final p in mockProducts) {
+      if (p.id != productId) continue;
+      final inv = _inventory[p.id];
+      final m = _merch[p.id];
+      if (inv == null) {
+        final base = p.stockQty > 0 ? p : null;
+        if (base == null) return null;
+        if (m == null) return base;
+        return base.copyWith(subtitle: m.subtitle, isFeatured: m.isFeatured);
+      }
+      if (inv.stockQty <= 0) return null;
+      return p.copyWith(
+        stockQty: inv.stockQty,
+        reservedQty: inv.reservedQty,
+        canAddToCart: inv.canAddToCart,
+        subtitle: m?.subtitle ?? p.subtitle,
+        isFeatured: m?.isFeatured ?? p.isFeatured,
+      );
+    }
+    return null;
+  }
+
+  /// Produkty oznaczone jako polecane (API) i spełniające filtry listy.
+  List<Product> get featuredVisibleProducts {
+    return visibleProducts.where((p) => p.isFeatured).toList();
+  }
+
   List<Product> get visibleProducts {
     final merged = mockProducts
         .map((p) {
           final inv = _inventory[p.id];
-          if (inv == null) return p;
+          final m = _merch[p.id];
+          if (inv == null) {
+            final q = p.stockQty > 0 ? p : null;
+            return q?.copyWith(subtitle: m?.subtitle ?? q.subtitle, isFeatured: m?.isFeatured ?? q.isFeatured);
+          }
           if (inv.stockQty <= 0) return null;
           return p.copyWith(
             stockQty: inv.stockQty,
             reservedQty: inv.reservedQty,
             canAddToCart: inv.canAddToCart,
+            subtitle: m?.subtitle ?? p.subtitle,
+            isFeatured: m?.isFeatured ?? p.isFeatured,
           );
         })
         .whereType<Product>()

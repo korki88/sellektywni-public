@@ -125,4 +125,23 @@ export class StaffProductsService {
       pendingQuantity: 0,
     };
   }
+
+  async updateMerchandising(
+    productId: string,
+    data: { isFeatured?: boolean; subtitle?: string | null },
+  ) {
+    const p = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+    if (!p) throw new NotFoundException('Produkt nie istnieje');
+    return this.prisma.product.update({
+      where: { id: productId },
+      data: {
+        ...(data.isFeatured !== undefined
+          ? { isFeatured: data.isFeatured }
+          : {}),
+        ...(data.subtitle !== undefined ? { subtitle: data.subtitle } : {}),
+      },
+    });
+  }
 }

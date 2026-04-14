@@ -355,6 +355,9 @@ class CartNotifier extends ChangeNotifier {
     required Map<String, dynamic> shippingTarget,
     bool saveToAddressBook = true,
     String? promoCode,
+    String? giftCardCode,
+    String? referralCode,
+    String? customerNote,
   }) async {
     final auth = _auth;
     final token = auth?.accessToken;
@@ -379,6 +382,12 @@ class CartNotifier extends ChangeNotifier {
               'saveToAddressBook': saveToAddressBook,
               if (promoCode != null && promoCode.trim().isNotEmpty)
                 'promoCode': promoCode.trim(),
+              if (giftCardCode != null && giftCardCode.trim().isNotEmpty)
+                'giftCardCode': giftCardCode.trim(),
+              if (referralCode != null && referralCode.trim().isNotEmpty)
+                'referralCode': referralCode.trim(),
+              if (customerNote != null && customerNote.trim().isNotEmpty)
+                'customerNote': customerNote.trim(),
             }),
           )
           .timeout(const Duration(seconds: 12));
@@ -480,6 +489,38 @@ class CartNotifier extends ChangeNotifier {
       return 'Nie udało się zaksięgować płatności.';
     } catch (_) {
       return 'Nie udało się zaksięgować płatności.';
+    }
+  }
+
+  /// Anuluj nieopłacone zamówienie w statusie PLACED (POST `/order/my-orders/:id/cancel`).
+  Future<String?> cancelMyOrder(String orderId) async {
+    final auth = _auth;
+    final token = auth?.accessToken;
+    if (auth == null || !auth.isAuthenticated || token == null || token.isEmpty) {
+      return 'Zaloguj się, aby kontynuować.';
+    }
+    try {
+      final uri = Uri.parse('${auth.apiBase}/order/my-orders/${Uri.encodeComponent(orderId)}/cancel');
+      final r = await http
+          .post(uri, headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 12));
+      if (r.statusCode == 200 || r.statusCode == 201) {
+        return null;
+      }
+      final j = jsonDecode(r.body);
+      if (j is Map<String, dynamic>) {
+        final msg = j['message'];
+        if (msg is List && msg.isNotEmpty) {
+          final first = msg.first;
+          if (first is Map && first['message'] is String) {
+            return (first['message'] as String).trim();
+          }
+        }
+        if (msg is String && msg.trim().isNotEmpty) return msg.trim();
+      }
+      return 'Nie udało się anulować zamówienia (HTTP ${r.statusCode}).';
+    } catch (e) {
+      return e.toString();
     }
   }
 

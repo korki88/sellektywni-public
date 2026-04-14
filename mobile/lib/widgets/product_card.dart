@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/product.dart';
+import '../config/shop_market_holder.dart';
 import '../providers/catalog_filter_notifier.dart';
 import '../providers/cart_notifier.dart';
+import '../providers/compare_notifier.dart';
 import '../providers/wishlist_notifier.dart';
 import '../screens/product_details_screen.dart';
 
@@ -18,6 +20,7 @@ class ProductCard extends StatelessWidget {
     final inCart = context.watch<CartNotifier>().contains(product);
     final reserved = !product.canAddToCart;
     final inWishlist = context.watch<WishlistNotifier>().contains(product.id);
+    final inCompare = context.watch<CompareNotifier>().contains(product);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -67,6 +70,29 @@ class ProductCard extends StatelessWidget {
                   top: 12,
                   child: _Pill(text: product.condition.label),
                 ),
+                if (product.isFeatured)
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF8E1),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFFFB300)),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Text(
+                          'Polecane',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF795548),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   right: 8,
                   top: 8,
@@ -92,6 +118,32 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                Positioned(
+                  right: 8,
+                  top: 52,
+                  child: Material(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: IconButton(
+                      tooltip: inCompare ? 'Usuń z porównania' : 'Dodaj do porównania',
+                      onPressed: () {
+                        context.read<CompareNotifier>().toggle(product);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Lista porównania zaktualizowana.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        inCompare ? Icons.compare_arrows_rounded : Icons.compare_arrows_outlined,
+                        color: const Color(0xFF111111),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -113,6 +165,17 @@ class ProductCard extends StatelessWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
+                if (product.subtitle != null && product.subtitle!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    product.subtitle!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF6B6B6B),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Text(
                   '${product.pricePln.toStringAsFixed(0)} zł',
@@ -120,6 +183,30 @@ class ProductCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (ShopMarketHolder.displayCurrencies.isNotEmpty) ...[
+                  Builder(
+                    builder: (ctx) {
+                      final dc = ShopMarketHolder.displayCurrencies.first;
+                      final code = dc['code']?.toString() ?? '';
+                      final rate = (dc['rateToPrimary'] as num?)?.toDouble() ?? 0;
+                      final sec = ShopMarketHolder.formatSecondary(
+                        product.pricePln,
+                        code,
+                        rate,
+                      );
+                      if (sec == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '~ $sec',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF6B6B6B),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Text(
                   'Magazyn: ${product.stockQty} · Rezerwacje: ${product.reservedQty}',

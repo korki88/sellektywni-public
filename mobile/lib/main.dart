@@ -12,6 +12,8 @@ import 'providers/auth_session.dart';
 import 'providers/cart_notifier.dart';
 import 'providers/catalog_filter_notifier.dart';
 import 'providers/wishlist_notifier.dart';
+import 'providers/recently_viewed_notifier.dart';
+import 'providers/compare_notifier.dart';
 import 'services/push_service.dart';
 import 'overlay_main.dart' show runStaffOverlayApp;
 import 'platform/web_global_errors_stub.dart'
@@ -109,6 +111,8 @@ Future<void> main() async {
           },
         ),
         ChangeNotifierProvider(create: (_) => AppNavigation()),
+        ChangeNotifierProvider(create: (_) => RecentlyViewedNotifier()),
+        ChangeNotifierProvider(create: (_) => CompareNotifier()),
       ],
       child: const SellektywniApp(),
     ),

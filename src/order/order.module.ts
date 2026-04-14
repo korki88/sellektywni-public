@@ -6,6 +6,7 @@ import { ProductModule } from '../product/product.module';
 import { PromoModule } from '../promo/promo.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { OrderController } from './order.controller';
+import { InvoicePdfService } from './invoice-pdf.service';
 import { OrderService } from './order.service';
 
 @Module({
@@ -18,6 +19,6 @@ import { OrderService } from './order.service';
     ShippingModule,
   ],
   controllers: [OrderController],
-  providers: [OrderService],
+  providers: [OrderService, InvoicePdfService],
 })
 export class OrderModule {}

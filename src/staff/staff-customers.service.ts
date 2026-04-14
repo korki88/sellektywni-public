@@ -43,6 +43,10 @@ export class StaffCustomersService {
     } else if (dto.addPoints !== undefined) {
       data.points = { increment: dto.addPoints };
     }
+    if (dto.customerSegment !== undefined) {
+      data.customerSegment =
+        dto.customerSegment.trim().slice(0, 64) || 'DEFAULT';
+    }
 
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('Brak pól do aktualizacji');

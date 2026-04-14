@@ -6,7 +6,7 @@ export class ShippingController {
   constructor(private readonly shipping: ShippingService) {}
 
   @Get('providers')
-  async providers() {
+  providers() {
     return this.shipping.listProviders();
   }
 
