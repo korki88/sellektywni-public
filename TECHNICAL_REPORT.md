@@ -237,28 +237,8 @@ Kroki:
 
 ## 9) Publiczna analiza kodu / repo
 
-### Aktualny stan
-
-- Repo origin: `https://github.com/korki88/sellektywni.git`
-- Branch roboczy: `main-work`
-- Link do brancha: `https://github.com/korki88/sellektywni/tree/main-work`
-
-### Uwaga dot. widoczności
-
-- W tym środowisku nie było dostępnego `gh` CLI, więc nie wykonano automatycznej zmiany visibility.
-- Jeśli repo nadal jest prywatne, publiczny branch **nie będzie publicznie dostępny** bez zmiany visibility repo lub mirroru.
-
-### Instrukcja (manual) — jak upublicznić repo
-
-1. GitHub -> repo `korki88/sellektywni` -> `Settings`.
-2. `General` -> `Danger Zone` -> `Change repository visibility`.
-3. Przełącz na `Public` i potwierdź nazwą repo.
-4. Zweryfikuj dostęp do linku brancha:
-   - `https://github.com/korki88/sellektywni/tree/main-work`
-
-Alternatywa bez zmiany głównego repo:
-
-- utworzyć publiczny mirror (np. `sellektywni-public`) i push tylko bezpiecznych gałęzi (bez sekretów).
+- Publiczny mirror (branch `main-work`):
+  - `https://github.com/korki88/sellektywni-public/tree/main-work`
 
 ---
 
