@@ -1,304 +1,193 @@
-# SELLEKTYWNI.PL — Technical Report
+# SELLEKTYWNI.PL — Technical Report (AI Readiness)
 
-Data raportu: 2026-04-14 (aktualizacja po wdrożeniu Profit Guard Automation)  
-Zakres: Sprint Stabilizacyjny (Linting, AuditLog, RBAC) + wdrożenia AI (Profit Guard: UI + Cron + PUSH).
+Data: 2026-04-14  
+Cel: techniczny snapshot pod wdrożenie modułu generowania obrazów AI oraz UI podglądu kampanii.
 
 ## 1) Code Quality & Build
 
-### `npm run lint:ci` (backend)
+### Backend
 
-- Status: **PASS**
-- Wynik: **0 błędów**
+- `npm run lint:ci`: **PASS**
+- `npm run build`: **PASS**
 
-### Buildy
+### Flutter
 
-- NestJS (`npm run build`): **PASS**
-- Flutter Web (`flutter build web`): **PASS**
-- Flutter Mobile/Android (`flutter build apk --debug`): **PASS**
+- `flutter analyze`: **PASS** (0 issues)
+- `flutter build apk --debug`: **PASS**
+- `flutter build web --release --base-href=/app/`: **PASS**
 
-### Uwagi o ostrzeżeniach
+### Wniosek
 
-- `flutter analyze` (obszary dashboard/staff) po poprawkach: **PASS**.
-- `npm run lint:ci` + `npm run build` po wdrożeniu Profit Guard Automation: **PASS**.
-- Brak ostrzeżeń krytycznych blokujących uruchomienie lub publikację builda.
+- Bazowy quality gate jest zielony dla backendu i aplikacji Flutter (mobile + web).
 
 ---
 
-## 2) Identity & Security (RBAC)
+## 2) Financial Intelligence & Profit Guard
 
-### Struktura roli w bazie i kodzie
+### ProfitAnalysisService — status kalkulacji marży
 
-- Enum w Prisma: `ProfileRole`:
-  - `CUSTOMER`
-  - `STAFF`
-  - `OWNER`
-- Guard (`RolesGuard`) stosuje hierarchię:
-  - `CUSTOMER = 0`, `STAFF = 1`, `OWNER = 2`
-- Dodatkowo wspierane są:
-  - role dokładne (`@Roles(...)`),
-  - minimalna rola (`@MinimumRole(...)`).
+Stan: **zaimplementowany i aktywny**.
 
-### Ochrona endpointów `/admin` i `/staff`
+W `ProfitAnalysisService` marża liczona jest na bazie netto:
 
-- `/admin`:
-  - kontroler ma `@UseGuards(RolesGuard)` oraz `@MinimumRole(ProfileRole.OWNER)`.
-- `/staff/*`:
-  - kontrolery staff mają `@UseGuards(RolesGuard)` i role `STAFF/OWNER`,
-  - część endpointów dodatkowo ma granicę `OWNER` (np. dziennik audytu).
-- Wniosek: ochrona RBAC dla ścieżek administracyjnych działa i jest spójnie nakładana.
+- cena sprzedaży brutto -> netto przez `toNetFromGross()`,
+- marża kwotowa: `saleNet - purchasePriceNet`,
+- marża procentowa: `marginAmount / saleNet * 100`,
+- break-even brutto: `toGrossFromNet(purchasePriceNet, vatRate)`.
 
-### Metody logowania (Social Auth) — Supabase
+To jest poprawny kierunek dla e-commerce, gdzie `purchasePriceNet` i VAT muszą być rozdzielone.
 
-Stan potwierdzony w kodzie:
+### Cron Profit Guard (03:00)
 
-- **Email/hasło**:
-  - logowanie: `signInWithPassword`,
-  - rejestracja: `signUp`.
-- **Google (social)**:
-  - backend ma dedykowany flow bootstrap (`/auth/profile/bootstrap-google`) oraz walidację sesji Google w profilu.
-  - klient Flutter obecnie nie wystawia dedykowanego przycisku OAuth Google (login UI jest email/password + dev-mock).
+Stan: **zarejestrowany**.
 
-Wniosek: warstwa backend jest gotowa pod Google social flow; UI wymaga osobnego kroku, jeśli ma być pełny OAuth button.
+- Harmonogram: `@Cron('0 3 * * *', { timeZone: 'Europe/Warsaw' })`
+- Rejestracja providera: `ProfitGuardCron` w `FinancialIntelligenceModule`
+- Scheduler globalny: `ScheduleModule.forRoot()` w `AppModule`
 
----
+### AiProposals — zapis i relacja z produktami
 
-## 3) Audit Log Implementation
+Stan: **spójny**.
 
-### Model `AuditLog` (Prisma)
-
-Model zawiera:
-
-- `id` (UUID, PK),
-- `userId`,
-- `userEmail`,
-- `action`,
-- `resourceType`,
-- `resourceId`,
-- `oldValue` (JSON, opcjonalne),
-- `newValue` (JSON, opcjonalne),
-- `ipAddress` (opcjonalne),
-- `createdAt` (`now()`).
-
-Dodatkowo indeksy pod wydajny odczyt po użytkowniku, akcji, zasobie i czasie.
-
-### Co jest logowane automatycznie
-
-- Globalny interceptor audytu zapisuje log dla endpointów z rolami `STAFF`/`OWNER`.
-- Dla endpointów bez `@AuditAction` używana jest domyślna akcja HTTP (`METHOD + route`).
-- Automatyczny interceptor wzbogaca wpis o:
-  - `resourceType` (wyliczenie z trasy),
-  - `resourceId` (params/body),
-  - `ipAddress`.
-
-### Co jest logowane ręcznie (z `oldValue/newValue`)
-
-Krytyczne akcje biznesowe mają logowanie manualne:
-
-- zmiana statusu zamówienia,
-- zmiana statusu płatności zamówienia,
-- zmiana punktów/rangi klienta,
-- akceptacja rekomendacji cenowej AI.
-
-To zapewnia pełny diff operacyjny (stan przed/po).
-
-### Owner Dashboard — UI logów
-
-- Sekcja `Dziennik aktywności` dostępna tylko dla OWNER.
-- Działa:
-  - filtrowanie tekstowe (email, akcja, resourceType),
-  - szybkie filtry (`Wszystkie`, `Tylko Błędy`, `Tylko Sprzedaż`, `Tylko Lojalność`),
-  - kolorowanie semantyczne akcji,
-  - kliknięcie w wpis i podgląd JSON `oldValue/newValue`,
-  - responsywność: tabela desktop, karty na mobile.
-
-### Audit log dla Profit Guard (SYSTEM_AI)
-
-- Generowanie rekomendacji przez agenta AI logowane jest pod `userId = SYSTEM_AI`.
-- Akcje OWNER na propozycjach (akceptacja/odrzucenie) pozostają audytowalne z kontekstem zmian.
+- tabela: `ai_proposals`
+- model: `AiProposal`
+- relacja: `productId -> products.id` (`ON DELETE SET NULL`)
+- statusy: `PENDING | ACCEPTED | REJECTED`
+- użycie:
+  - Profit Guard generuje/aktualizuje propozycje,
+  - Owner Dashboard konsumuje `PENDING` oraz historię `ACCEPTED/REJECTED`.
 
 ---
 
-## 4) Interface Architecture
+## 3) Hype Maker & Social Integration
 
-### Staff Sidebar (Overlay)
+### SocialMediaIntegrator — architektura mocków
 
-Stan: **zaimplementowane**.
+Stan: **wdrożony**.
 
-- Jest osobny entrypoint overlay (`overlayMain` / `runStaffOverlayApp`).
-- Android manifest zawiera wymagane uprawnienia:
-  - `SYSTEM_ALERT_WINDOW`,
-  - `FOREGROUND_SERVICE`,
-  - `FOREGROUND_SERVICE_SPECIAL_USE`,
-  - zarejestrowany `OverlayService`.
-- Launcher overlay sprawdza i prosi o permission runtime.
+Mapowane platformy (`SocialPlatform`):
 
-### Spójność wejść Flutter dla ról
+- `INSTAGRAM`
+- `FACEBOOK`
+- `GOOGLE_ADS`
 
-- `SellektywniApp`:
-  - OWNER/STAFF (po autoryzacji) trafiają do dashboardu administracyjnego,
-  - CUSTOMER/gość trafia do sklepu (`MainStore`).
-- Architektura wejść jest spójna z modelem ról.
+`SocialMediaService`:
 
-### Owner Dashboard — moduł AI (Profit Guard)
+- pobiera klucze z `.env`,
+- zapisuje konfigurację do `social_configs`,
+- tworzy rekord kampanii w `marketing_campaigns` (`MOCK_SENT`),
+- loguje mock do konsoli + `AuditLog`.
 
-Stan: **zaimplementowane**.
+### Flow po akcji APPROVE_PROPOSAL
 
-- Wydzielony widok: `mobile/lib/admin_dashboard/widgets/ai_proposals_view.dart`.
-- Rekomendacje renderowane jako karty z akcjami:
-  - `Zatwierdź`,
-  - `Odrzuć`.
-- Integracja z API owner/admin:
-  - pobieranie propozycji (`/admin/ai/proposals`),
-  - ręczne uruchomienie analizy (`/admin/ai/proposals/generate`),
-  - odrzucenie propozycji (`/staff/financial-intelligence/proposals/:id/reject`).
+W praktyce trigger jest w `FinancialIntelligenceService.acceptAndLaunchMarketing(...)`:
 
----
+1. Aktualizacja produktu (`PROMO`, cena sugerowana, `isFeatured=true`).
+2. Aktualizacja `AiProposal` do `ACCEPTED` + metadane akceptacji.
+3. Generacja draftu marketingowego (`MarketingAutomationService`).
+4. Wywołanie `HypeMakerService.runForApprovedProposal(...)`.
+5. Hype Maker:
+   - generuje copy przez OpenAI (`gpt-4o`, fallback lokalny),
+   - wysyła PUSH segmentowy (Firebase),
+   - wywołuje `postToInstagram`, `postToFacebook`, `triggerGoogleAdsUpdate`,
+   - zapisuje audyt kampanii pod `HYPE_MAKER_AI`.
+6. Błąd Hype Makera nie blokuje core flow Ownera (graceful fallback + audit failure event).
 
-## 5) Database Schema (State)
+### MarketingCampaign — czy obsługuje wiele wersji treści?
 
-### `Product` — pola finansowe
+Aktualnie model:
 
-Stan: **obecne w schemacie**:
+- `target`, `content`, `platform`, `status`, `externalId`.
 
-- `purchasePriceNet`,
-- `vatRate`,
-- `marginTarget`,
-- `supplierId` (+ relacja do `Supplier`).
+Interpretacja:
 
-To umożliwia dalszy rozwój analiz marżowych oraz modułów AI.
+- wiele wersji kanałowych jest wspierane przez **wiele rekordów** (oddzielnie IG/FB/Ads),
+- model **nie** ma jeszcze osobnych kolumn typu `pushContent`, `facebookCaption`, `instagramCaption`, `adsHeadline`.
 
-### Prisma version
-
-- `prisma`: `^6.19.3`
-- `@prisma/client`: `^6.19.3`
-
-Potwierdzenie: projekt pozostaje na Prisma 6.x, bez migracji do v7.
-
-### AI / automatyzacja finansowa
-
-Stan: **zaimplementowane**.
-
-- `ProfitGuardAiService` analizuje:
-  - `stockAge > 30 dni`,
-  - `invoiceDueDate < 7 dni`,
-  - marżę i ryzyko.
-- Automatyczny harmonogram:
-  - `@nestjs/schedule` + Cron codziennie o `03:00` (`Europe/Warsaw`).
-- Powiadomienia PUSH dla OWNER:
-  - wysyłane przy utworzeniu nowej rekomendacji (`Firebase Admin`, topic domyślny: `owner`).
-- Konfiguracja środowiskowa:
-  - `FIREBASE_SERVICE_ACCOUNT_JSON` lub `FIREBASE_SERVICE_ACCOUNT_BASE64`,
-  - `FIREBASE_OWNER_TOPIC`.
+Wniosek: architektura działa dla MVP, ale pod AI Images + campaign preview warto dodać bardziej granularny model treści per kanał/format.
 
 ---
 
-## 6) Open Items / Nierozwiązane kwestie
+## 4) Infrastructure & Assets
 
-1. **UI logowania social**: brak jawnego przycisku OAuth Google w Flutter (backend gotowy, frontend częściowo).
-2. **Integracje przewoźników i płatności**:
-   - część adapterów działa live-first, ale realne produkcyjne podpięcie zależy od kluczy i endpointów umownych.
-3. **Rozbudowa panelu AI**:
-   - warto dodać filtry statusów/historyczne rekomendacje i bulk actions (approve/reject).
-4. **Hardening notyfikacji PUSH**:
-   - dodać telemetry dostarczeń, retry/backoff i dashboard skuteczności.
+### Storage pod assety (AI obrazy)
 
----
+Stan: **brak dedykowanego modułu storage**.
 
-## 7) `sync/` — dlaczego istnieje i jak działa (2 komputery, wielu agentów)
+- Nie znaleziono modułu backendowego dla Supabase Storage/S3/local media manager.
+- Repo ma katalog `secrets/` (placeholder), ale brak produkcyjnego pipeline uploadu assetów kampanii.
 
-Folder `sync/` jest kluczowy dla pracy na dwóch komputerach i równoległej pracy agentów:
+Rekomendacja:
 
-- `sync/AGENT_COORDINATION.md`:
-  - definiuje `AGENT_ID`,
-  - zasady branchowania i rozdziału pracy, by agenci się nie nadpisywali.
-- `sync/WORKLOG.md`:
-  - dziennik zmian i decyzji architektonicznych,
-  - szybki transfer kontekstu między maszynami.
-- `sync/MACHINE_SETUP.md`, `sync/QUICK_REFERENCE.md`:
-  - standaryzacja odtworzenia środowiska.
+- dodać `AssetStorageModule` (abstrakcja + provider `local/supabase/s3`),
+- zapisywać metadane wygenerowanych obrazów w DB (URL, hash, prompt, model, owner).
 
-Rekomendowany workflow dla Twojego modelu pracy (2 komputery):
+### Firebase integration
 
-1. Na końcu sesji: commit + push + wpis do `sync/WORKLOG.md`.
-2. Na drugim komputerze: pull + lektura najnowszego wpisu `WORKLOG`.
-3. Każdy agent pracuje z własnym `AGENT_ID` i czytelnym branch ownership.
+Stan: **częściowo gotowe do testów**.
 
-To minimalizuje konflikty i skraca czas odzyskania kontekstu.
+- gotowe topici:
+  - Owner: `FIREBASE_OWNER_TOPIC` (domyślnie `owner`),
+  - segment lojalnościowy: `${FIREBASE_LOYALTY_TOPIC_PREFIX}_${segment}` (np. `loyalty_vintage`).
+- brak dedykowanego, jawnego topicu `customers` w kodzie backendu.
+
+Wniosek: owner + segment loyalty są gotowe; globalny broadcast do `customers` wymaga dodania osobnego flow/topicu.
 
 ---
 
-## 8) Brakujące integracje + instrukcje wdrożenia
+## 5) Open Items & Risks
 
-### A) Supabase Social OAuth (Google) — pełne domknięcie UI
+### TODO/FIXME po Hype Maker
 
-Kroki:
+- W backend `src/` nie ma nowych aktywnych `TODO/FIXME` bezpośrednio po wdrożeniu Hype Maker.
+- Ryzyko pozostaje funkcjonalne, nie syntaktyczne: integracje social są w trybie mock.
 
-1. Supabase: `Authentication -> Providers -> Google` (client ID/secret + redirect URL).
-2. Flutter: dodać akcję `signInWithOAuth(Provider.google)` w ekranie logowania.
-3. Backend: po sesji wywołać bootstrap profilu Google (`/auth/profile/bootstrap-google`).
-4. Test: nowy user Google -> profil `CUSTOMER/BRONZE`, poprawny RBAC.
+### Dummy Data coverage
 
-### B) Przelewy24 live
+Stan: **niepełne pokrycie ścieżek marketingu**.
 
-Kroki:
+- `dev-mock` pokrywa autoryzację/profilowanie ról,
+- ścieżki marketingowe bazują na realnych tabelach i mock-publisherach backendowych,
+- brak pełnego end-to-end dummy środowiska dla social APIs + storage assetów obrazów.
 
-1. Uzupełnić `.env` (`P24_MERCHANT_ID`, `P24_POS_ID`, `P24_CRC`, `P24_URL_RETURN`).
-2. Potwierdzić callback/status (`P24_URL_STATUS`) i firewall/SSL.
-3. Testy E2E sandbox -> live-register fallback off.
-4. Monitoring błędów rejestracji transakcji.
+### Kluczowe ryzyka architektoniczne
 
-### C) DPD / DHL / Poczta / ORLEN — produkcyjne endpointy
-
-Kroki:
-
-1. Uzupełnić klucze i ścieżki API per provider.
-2. Zweryfikować mapowanie payloadów punktów odbioru.
-3. Ustawić TTL cache zgodnie z SLA operatora.
-4. Dodać smoke testy na `/shipping/points/suggest`.
-
-### D) Firebase PUSH (Hype Maker / segmentacja)
-
-Kroki:
-
-1. Dostarczyć konfigurację Firebase dla Android/iOS/Web.
-2. Obecnie backend wysyła powiadomienia OWNER dla nowych rekomendacji Profit Guard (topic).
-3. Rozszerzyć wysyłki segmentowane (VINTAGE/GOLD/SILVER) dla Hype Maker i kampanii post-accept.
-4. Dodać retry/backoff + telemetry wysyłek.
+1. Brak modułu storage pod obrazki AI i ich wersjonowanie.
+2. Brak realnych integracji social (na razie mock dispatch).
+3. `MarketingCampaign` ma pojedyncze pole `content` (ograniczone pod preview wielokanałowy).
+4. Brak telemetry skuteczności kampanii (delivery/open/click/conversion pipeline).
 
 ---
 
-## 9) Publiczna analiza kodu / repo
+## 6) Identity
 
-- Publiczny mirror (branch `main-work`):
-  - `https://github.com/korki88/sellektywni-public/tree/main-work`
+### Google Login + bootstrap
 
----
+Stan: **wdrożone**.
 
-## 10) Documentation Status
+- UI: przycisk `Zaloguj przez Google` na ekranie logowania Customer App.
+- OAuth: `signInWithOAuth(OAuthProvider.google)`.
+- Post-auth sync: `SupabaseAuthSync` wykrywa `signedIn` przez Google.
+- Bootstrap profilu: `AuthSession` wywołuje `POST /auth/profile/bootstrap-google`.
 
-Ocena po aktualizacji: dokumentacja techniczna ma teraz **solidny baseline operacyjny i architektoniczny**.
-
-Nowo dodane dokumenty:
-
-- `docs/DOCUMENTATION_INDEX.md` - centralny indeks dokumentacji.
-- `docs/ARCHITECTURE.md` - architektura systemu i granice modułów.
-- `docs/RBAC_AUDIT_GUIDE.md` - zasady RBAC i audytu.
-- `docs/DEPLOYMENT_RUNBOOK.md` - checklista i procedury wdrożeniowe.
-
-Dokumenty już istniejące i utrzymane:
-
-- `docs/INTEGRATIONS.md`
-- `docs/PROJECT_FRAMEWORK.md`
-- `sync/AGENT_COORDINATION.md`
-- `sync/WORKLOG.md`
+Wniosek: ścieżka identity dla Google OAuth jest kompletna technicznie i gotowa do dalszych testów E2E.
 
 ---
 
-## 11) Rekomendacje architektoniczne pod moduły AI (następny sprint)
+## 7) Readiness Pod AI Images + Campaign Preview UI
 
-1. Dodać telemetry pipeline dla AI (`proposal_generated`, `accepted`, `rejected`, `launched`, `conversion`).
-2. Ustalić SLA dla `Profit Guard` i `Hype Maker` (częstotliwość, retry, fallback).
-3. Rozszerzyć `Owner Dashboard` o historię rekomendacji i KPI skuteczności kampanii.
-4. Dodać testy kontraktowe API dla audytu i RBAC.
-5. Dodać test e2e dla zadania Cron (03:00) oraz kontrolę idempotencji generowania propozycji.
+Ocena: **średnio-wysoka gotowość backendowa**, **średnia gotowość produktowa**.
 
+Co jest gotowe:
+
+- stabilny core FI/Profit Guard/Hype Maker,
+- działający trigger po `APPROVE_PROPOSAL`,
+- audytowalność działań AI,
+- green build/lint gates.
+
+Co trzeba dowieźć przed modułem obrazów AI:
+
+1. Storage abstraction + persystencja assetów.
+2. Rozszerzenie modelu kampanii o struktury treści per kanał/format.
+3. Telemetria kampanii i status delivery.
+4. Integracja real API social (poza mock).
