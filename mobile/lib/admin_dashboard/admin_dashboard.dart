@@ -125,6 +125,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _loadingAiProposals = false;
   bool _runningAiAnalysis = false;
   List<FinancialAiProposal> _aiProposals = [];
+  bool _loadingAiProposalHistory = false;
+  List<FinancialAiProposal> _aiProposalHistory = [];
+  int _aiAcceptedThisMonth = 0;
   bool _loadingMarketingDrafts = false;
   List<MarketingDraft> _marketingDrafts = [];
 
@@ -299,7 +302,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _autoRefreshMenu(_MenuId menuId) {
     switch (menuId) {
       case _MenuId.aiAgents:
-        _loadFinancialAiProposals();
+        _refreshAiSection();
       case _MenuId.marketing:
         _loadMarketingDrafts();
       case _MenuId.catalog:
@@ -650,13 +653,66 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  Future<void> _loadFinancialAiProposalHistory() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) return;
+    setState(() {
+      _loadingAiProposalHistory = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        _api.fetchAdminAiProposals(status: 'ACCEPTED'),
+        _api.fetchAdminAiProposals(status: 'REJECTED'),
+      ]);
+      final accepted = results[0];
+      final rejected = results[1];
+      final history = [...accepted, ...rejected];
+      history.sort((a, b) {
+        final da = DateTime.tryParse(a.createdAt);
+        final db = DateTime.tryParse(b.createdAt);
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return db.compareTo(da);
+      });
+      final now = DateTime.now();
+      final acceptedThisMonth = accepted.where((row) {
+        final date = DateTime.tryParse(row.createdAt);
+        if (date == null) return false;
+        final local = date.toLocal();
+        return local.year == now.year && local.month == now.month;
+      }).length;
+
+      if (!mounted) return;
+      setState(() {
+        _aiProposalHistory = history;
+        _aiAcceptedThisMonth = acceptedThisMonth;
+        _loadingAiProposalHistory = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingAiProposalHistory = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _refreshAiSection() async {
+    await Future.wait([
+      _loadFinancialAiProposals(),
+      _loadFinancialAiProposalHistory(),
+    ]);
+  }
+
   Future<void> _runFinancialAiAnalysis() async {
     final auth = context.read<AuthSession>();
     if (!auth.isOwner || _runningAiAnalysis) return;
     setState(() => _runningAiAnalysis = true);
     try {
       final result = await _api.runProfitGuardGeneration();
-      await _loadFinancialAiProposals();
+      await _refreshAiSection();
       if (!mounted) return;
       final generated = result['generated']?.toString() ?? '0';
       final updated = result['updated']?.toString() ?? '0';
@@ -705,7 +761,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (!auth.isOwner) return;
     try {
       await _api.acceptFinancialAiProposal(proposal.id);
-      await _loadFinancialAiProposals();
+      await _refreshAiSection();
       await _loadMarketingDrafts();
       await _loadCatalog();
       if (!mounted) return;
@@ -726,7 +782,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (!auth.isOwner) return;
     try {
       await _api.rejectFinancialAiProposal(proposal.id);
-      await _loadFinancialAiProposals();
+      await _refreshAiSection();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Odrzucono propozycję Profit Guard.')),
@@ -1466,11 +1522,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final auth = context.read<AuthSession>();
     return AiProposalsView(
       isOwner: auth.isOwner,
-      loading: _loadingAiProposals,
+      loadingActive: _loadingAiProposals,
+      loadingHistory: _loadingAiProposalHistory,
       runningAnalysis: _runningAiAnalysis,
-      proposals: _aiProposals,
+      activeProposals: _aiProposals,
+      historyProposals: _aiProposalHistory,
+      acceptedThisMonth: _aiAcceptedThisMonth,
       onRunAnalysis: _runFinancialAiAnalysis,
-      onRefresh: _loadFinancialAiProposals,
+      onRefresh: _refreshAiSection,
       onApprove: _acceptAiProposal,
       onReject: _rejectAiProposal,
     );
