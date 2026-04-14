@@ -1,7 +1,7 @@
 # SELLEKTYWNI.PL — Technical Report
 
-Data raportu: 2026-04-14  
-Zakres: Sprint Stabilizacyjny (Linting, AuditLog, RBAC) + gotowość pod moduły AI.
+Data raportu: 2026-04-14 (aktualizacja po wdrożeniu Profit Guard Automation)  
+Zakres: Sprint Stabilizacyjny (Linting, AuditLog, RBAC) + wdrożenia AI (Profit Guard: UI + Cron + PUSH).
 
 ## 1) Code Quality & Build
 
@@ -18,10 +18,8 @@ Zakres: Sprint Stabilizacyjny (Linting, AuditLog, RBAC) + gotowość pod moduły
 
 ### Uwagi o ostrzeżeniach
 
-- `flutter analyze` zwraca **9 informacji** (nie krytyczne, nie blokują buildów), m.in.:
-  - `deprecated_member_use` dla `dart:html` w plikach web-helpers,
-  - `prefer_const_constructors`,
-  - `dangling_library_doc_comments`.
+- `flutter analyze` (obszary dashboard/staff) po poprawkach: **PASS**.
+- `npm run lint:ci` + `npm run build` po wdrożeniu Profit Guard Automation: **PASS**.
 - Brak ostrzeżeń krytycznych blokujących uruchomienie lub publikację builda.
 
 ---
@@ -113,6 +111,11 @@ To zapewnia pełny diff operacyjny (stan przed/po).
   - kliknięcie w wpis i podgląd JSON `oldValue/newValue`,
   - responsywność: tabela desktop, karty na mobile.
 
+### Audit log dla Profit Guard (SYSTEM_AI)
+
+- Generowanie rekomendacji przez agenta AI logowane jest pod `userId = SYSTEM_AI`.
+- Akcje OWNER na propozycjach (akceptacja/odrzucenie) pozostają audytowalne z kontekstem zmian.
+
 ---
 
 ## 4) Interface Architecture
@@ -136,6 +139,19 @@ Stan: **zaimplementowane**.
   - CUSTOMER/gość trafia do sklepu (`MainStore`).
 - Architektura wejść jest spójna z modelem ról.
 
+### Owner Dashboard — moduł AI (Profit Guard)
+
+Stan: **zaimplementowane**.
+
+- Wydzielony widok: `mobile/lib/admin_dashboard/widgets/ai_proposals_view.dart`.
+- Rekomendacje renderowane jako karty z akcjami:
+  - `Zatwierdź`,
+  - `Odrzuć`.
+- Integracja z API owner/admin:
+  - pobieranie propozycji (`/admin/ai/proposals`),
+  - ręczne uruchomienie analizy (`/admin/ai/proposals/generate`),
+  - odrzucenie propozycji (`/staff/financial-intelligence/proposals/:id/reject`).
+
 ---
 
 ## 5) Database Schema (State)
@@ -158,16 +174,33 @@ To umożliwia dalszy rozwój analiz marżowych oraz modułów AI.
 
 Potwierdzenie: projekt pozostaje na Prisma 6.x, bez migracji do v7.
 
+### AI / automatyzacja finansowa
+
+Stan: **zaimplementowane**.
+
+- `ProfitGuardAiService` analizuje:
+  - `stockAge > 30 dni`,
+  - `invoiceDueDate < 7 dni`,
+  - marżę i ryzyko.
+- Automatyczny harmonogram:
+  - `@nestjs/schedule` + Cron codziennie o `03:00` (`Europe/Warsaw`).
+- Powiadomienia PUSH dla OWNER:
+  - wysyłane przy utworzeniu nowej rekomendacji (`Firebase Admin`, topic domyślny: `owner`).
+- Konfiguracja środowiskowa:
+  - `FIREBASE_SERVICE_ACCOUNT_JSON` lub `FIREBASE_SERVICE_ACCOUNT_BASE64`,
+  - `FIREBASE_OWNER_TOPIC`.
+
 ---
 
 ## 6) Open Items / Nierozwiązane kwestie
 
-1. **Flutter analyze** ma 9 niekrytycznych infos (warto zamknąć przed release hardening).
-2. **UI logowania social**: brak jawnego przycisku OAuth Google w Flutter (backend gotowy, frontend częściowo).
-3. **Integracje przewoźników i płatności**:
+1. **UI logowania social**: brak jawnego przycisku OAuth Google w Flutter (backend gotowy, frontend częściowo).
+2. **Integracje przewoźników i płatności**:
    - część adapterów działa live-first, ale realne produkcyjne podpięcie zależy od kluczy i endpointów umownych.
-4. **Duży plik UI**:
-   - `mobile/lib/admin_dashboard/admin_dashboard.dart` jest nadal bardzo duży (wart refaktor do mniejszych widgetów/feature files).
+3. **Rozbudowa panelu AI**:
+   - warto dodać filtry statusów/historyczne rekomendacje i bulk actions (approve/reject).
+4. **Hardening notyfikacji PUSH**:
+   - dodać telemetry dostarczeń, retry/backoff i dashboard skuteczności.
 
 ---
 
@@ -228,8 +261,9 @@ Kroki:
 Kroki:
 
 1. Dostarczyć konfigurację Firebase dla Android/iOS/Web.
-2. Podpiąć realne wysyłki push (obecnie część flow przygotowuje treści draftów).
-3. Dodać retry/backoff + telemetry wysyłek.
+2. Obecnie backend wysyła powiadomienia OWNER dla nowych rekomendacji Profit Guard (topic).
+3. Rozszerzyć wysyłki segmentowane (VINTAGE/GOLD/SILVER) dla Hype Maker i kampanii post-accept.
+4. Dodać retry/backoff + telemetry wysyłek.
 
 ---
 
@@ -262,9 +296,9 @@ Dokumenty już istniejące i utrzymane:
 
 ## 11) Rekomendacje architektoniczne pod moduły AI (następny sprint)
 
-1. Zamknąć 9 info z `flutter analyze` (baseline quality gate).
-2. Wydzielić `AdminDashboard` na feature modules (`audit`, `permissions`, `ai`, `marketing`).
-3. Dodać telemetry pipeline dla AI (`proposal_generated`, `accepted`, `launched`, `conversion`).
-4. Ustalić SLA dla `Profit Guard` i `Hype Maker` (częstotliwość, retry, fallback).
-5. Dodać testy kontraktowe API dla audytu i RBAC.
+1. Dodać telemetry pipeline dla AI (`proposal_generated`, `accepted`, `rejected`, `launched`, `conversion`).
+2. Ustalić SLA dla `Profit Guard` i `Hype Maker` (częstotliwość, retry, fallback).
+3. Rozszerzyć `Owner Dashboard` o historię rekomendacji i KPI skuteczności kampanii.
+4. Dodać testy kontraktowe API dla audytu i RBAC.
+5. Dodać test e2e dla zadania Cron (03:00) oraz kontrolę idempotencji generowania propozycji.
 
