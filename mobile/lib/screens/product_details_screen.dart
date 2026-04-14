@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -183,7 +184,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               Text(
                 'Brak opinii — bądź pierwszy.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF6B6B6B),
+                      color: DesignTokens.mutedText,
                     ),
               ),
             const SizedBox(height: 8),

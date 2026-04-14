@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/design_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -173,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? 'Logowanie (tryb dev-mock — bez Supabase)'
                       : 'Logowanie',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: const Color(0xFF6B6B6B),
+                        color: DesignTokens.mutedText,
                       ),
                 ),
                 if (AppConfig.useDevMockAuth) ...[
@@ -181,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     kDevMockAccountsHint,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF6B6B6B),
+                          color: DesignTokens.mutedText,
                           height: 1.35,
                         ),
                     textAlign: TextAlign.left,

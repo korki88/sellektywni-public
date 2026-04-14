@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -685,7 +686,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Text(
                       'Brak notatek.',
                       style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF6B6B6B),
+                            color: DesignTokens.mutedText,
                           ),
                     )
                   else
@@ -950,7 +951,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           sim
               ? 'Tryb deweloperski — dane z lokalnej bazy (API /staff/analytics/summary).'
               : 'Dane na żywo z bazy: zamówienia, płatności, produkty, klienci.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
         ),
         if (s == null) ...[
           const SizedBox(height: 16),
@@ -962,7 +963,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 16),
           Text(
             'Wygenerowano: ${s['generatedAt'] ?? '—'}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
           ),
           const SizedBox(height: 12),
           _statRow(context, 'Przychód (opłacone zamówienia)', '${s['paidRevenueTotal'] ?? '0'} zł'),
@@ -1089,7 +1090,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         const SizedBox(height: 8),
         Text(
           'Obsługiwane metody zgodnie z enum PaymentMethod i PaymentsService:',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 16),
         ...kSupportedPaymentMethodCodes.map((code) {
@@ -1128,7 +1129,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         const SizedBox(height: 8),
         Text(
           'Symulacja: bez P24 w .env zwracany jest link sandbox-simulation; przelew = BANK_TRANSFER_MOCK.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
         ),
       ],
     );
@@ -1184,7 +1185,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         const SizedBox(height: 12),
         if (auth.isOwner)
           const Card(
-            color: Color(0xFFE8F0FE),
+            color: DesignTokens.infoSoft,
             child: ListTile(
               leading: Icon(Icons.admin_panel_settings_outlined),
               title: Text('Uprawnienia STAFF'),
@@ -1241,7 +1242,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Text(
           'Brak produktów oczekujących na akceptację.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: const Color(0xFF6B6B6B),
+                color: DesignTokens.mutedText,
               ),
         ),
       );
@@ -1286,7 +1287,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Text(
                   '${p.priceRaw} zł · ${p.pendingQuantity} szt. · ${p.status}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF6B6B6B),
+                        color: DesignTokens.mutedText,
                       ),
                 ),
                 if (p.subtitle != null && p.subtitle!.trim().isNotEmpty) ...[
@@ -1294,7 +1295,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   Text(
                     p.subtitle!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF6B6B6B),
+                          color: DesignTokens.mutedText,
                         ),
                   ),
                 ],
@@ -1304,7 +1305,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     '· Oznaczone jako „Polecane”',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF795548),
+                          color: DesignTokens.mutedText,
                         ),
                   ),
                 ],
@@ -1361,7 +1362,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             'Skaner HID: urządzenie symuluje klawiaturę — pole nasłuchu ma fokus w tle '
             '(działa także w oknie overlay i na WWW).',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6B6B),
+                  color: DesignTokens.mutedText,
                 ),
           ),
           const SizedBox(height: 12),
@@ -1418,7 +1419,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Text(
             'Program lojalnościowy — profil po skanie QR.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6B6B),
+                  color: DesignTokens.mutedText,
                 ),
           ),
           const SizedBox(height: 16),
@@ -1602,7 +1603,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Text(
                         'Brak zamówień do obsługi (dla wybranego filtra).',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: const Color(0xFF6B6B6B),
+                              color: DesignTokens.mutedText,
                             ),
                       ),
                     )
@@ -1640,14 +1641,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     'Status zamówienia: ${orderStatusLabelPl(o.status)} (${o.status}) · '
                     '${o.itemCount} poz. · ${o.totalAmountRaw} zł',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF6B6B6B),
+                          color: DesignTokens.mutedText,
                         ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Wysyłka: ${shippingMethodLabelPl(o.shippingMethod)}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF6B6B6B),
+                          color: DesignTokens.mutedText,
                         ),
                   ),
                   if (o.customerNote != null && o.customerNote!.trim().isNotEmpty) ...[
@@ -1655,7 +1656,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Text(
                       'Uwagi klienta: ${o.customerNote}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF3D4A5C),
+                            color: DesignTokens.mutedText,
                           ),
                     ),
                   ],
@@ -1664,7 +1665,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Text(
                       'Ostatnia notatka: ${o.staffNotePreview}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF6B6B6B),
+                            color: DesignTokens.mutedText,
                           ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1676,7 +1677,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     '${paymentProviderLabelPl(o.paymentProvider)} · '
                     '${paymentStatusLabelPl(o.paymentStatus)}',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF6B6B6B),
+                          color: DesignTokens.mutedText,
                         ),
                   ),
                   if (o.paymentReference != null && o.paymentReference!.isNotEmpty)
@@ -1685,7 +1686,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Text(
                         'Ref: ${o.paymentReference}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF6B6B6B),
+                              color: DesignTokens.mutedText,
                             ),
                       ),
                     ),
@@ -1693,7 +1694,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   Text(
                     'Data: ${o.createdAt}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF6B6B6B),
+                          color: DesignTokens.mutedText,
                         ),
                   ),
                   const SizedBox(height: 10),
@@ -1701,9 +1702,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F9FC),
+                      color: DesignTokens.panelSoft,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE0E6EF)),
+                      border: Border.all(color: DesignTokens.panelLine),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2106,7 +2107,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Treści widoczne w sklepie (regulamin, „O nas” itd.).',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         Align(
@@ -2147,7 +2148,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Zgłoszenia od klientów — odpowiedź ustawia status na „odpowiedziano”.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         if (_supportTicketsStaff.isEmpty)
@@ -2197,7 +2198,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         alignment: staff ? Alignment.centerRight : Alignment.centerLeft,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: staff ? const Color(0xFFE3F2FD) : const Color(0xFFF5F5F5),
+                            color: staff ? DesignTokens.infoSoft : DesignTokens.subtleFill,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Padding(
@@ -2254,7 +2255,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Aktywne eksperymenty przydzielają wariant przy pierwszym wejściu użytkownika.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         Align(
@@ -2334,7 +2335,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         Text(
           'Karty podarunkowe — saldo pomniejszane przy realizacji zamówienia.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6B6B)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DesignTokens.mutedText),
         ),
         const SizedBox(height: 12),
         Align(
@@ -2388,7 +2389,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Text(
           'Brak opinii do wyświetlenia.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: const Color(0xFF6B6B6B),
+                color: DesignTokens.mutedText,
               ),
         ),
       );
@@ -2472,11 +2473,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         (p) => FilterChip(
                           label: Text(p),
                           selected: u.permissions.contains(p),
-                          selectedColor: const Color(0xFFE8F0FE),
+                          selectedColor: DesignTokens.infoSoft,
                           labelStyle: TextStyle(
                             color: u.permissions.contains(p)
-                                ? const Color(0xFF0D1B2A)
-                                : const Color(0xFF111111),
+                                ? DesignTokens.ink
+                                : DesignTokens.ink,
                             fontWeight: FontWeight.w600,
                           ),
                           onSelected: u.role == 'OWNER'
@@ -2502,7 +2503,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Text(
             'Symulator Dotykačka (dev): ustawiaj stany magazynowe po idDotykacka.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6B6B),
+                  color: DesignTokens.mutedText,
                 ),
           ),
           const SizedBox(height: 10),
@@ -2630,9 +2631,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F4FD),
+            color: DesignTokens.accentInfoSoft,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFB8D4EE)),
+            border: Border.all(color: DesignTokens.accentInfoLine),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2895,7 +2896,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Column(
             children: [
               Material(
-                color: const Color(0xFFF8F8F8),
+                color: DesignTokens.subtleFill,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: Column(
@@ -2904,7 +2905,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Text(
                         'API: ${auth.apiBase}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF6B6B6B),
+                              color: DesignTokens.mutedText,
                             ),
                       ),
                       if (current == _MenuId.reservations) ...[
@@ -2920,7 +2921,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               Expanded(
                                 child: Text(
                                   _error!,
-                                  style: const TextStyle(color: Colors.red),
+                                  style: const TextStyle(color: DesignTokens.error),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -2949,7 +2950,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   padding: const EdgeInsets.only(left: 12),
                                   child: Text(
                                     _analyticsError!,
-                                    style: const TextStyle(color: Colors.red),
+                                    style: const TextStyle(color: DesignTokens.error),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -3108,7 +3109,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       return WebAppFrame(child: scaffold);
     }
     return Material(
-      color: Colors.white,
+      color: DesignTokens.white,
       child: scaffold,
     );
   }

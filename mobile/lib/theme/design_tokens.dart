@@ -10,6 +10,19 @@ final class DesignTokens {
   static const Color line = Color(0xFFEAECEE);
   static const Color mutedText = Color(0xFF69707D);
 
+  static const Color error = Color(0xFFB3261E);
+  static const Color successSoft = Color(0xFFE8F5E9);
+  static const Color warningSoft = Color(0xFFFFF3E0);
+  static const Color infoSoft = Color(0xFFE8F0FE);
+  static const Color dangerSoft = Color(0xFFFFEBEE);
+  static const Color panelSoft = Color(0xFFF7F9FC);
+  static const Color panelLine = Color(0xFFE0E6EF);
+  static const Color accentSoft = Color(0xFFFFF8E1);
+  static const Color accentLine = Color(0xFFFFB300);
+  static const Color accentInfoSoft = Color(0xFFE8F4FD);
+  static const Color accentInfoLine = Color(0xFFB8D4EE);
+  static const Color overlay = Color(0x11000000);
+
   static const double radiusSm = 10;
   static const double radiusMd = 16;
   static const double radiusLg = 24;

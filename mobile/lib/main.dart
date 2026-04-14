@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import './theme/design_tokens.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -53,13 +54,13 @@ Future<void> main() async {
       return Directionality(
         textDirection: TextDirection.ltr,
         child: Material(
-          color: Colors.white,
+          color: DesignTokens.white,
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: SelectableText(
                 'Błąd budowania widoku:\n${details.exceptionAsString()}',
-                style: const TextStyle(color: Colors.red, fontSize: 14),
+                style: const TextStyle(color: DesignTokens.error, fontSize: 14),
               ),
             ),
           ),

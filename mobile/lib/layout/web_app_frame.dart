@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 
 /// Na webie: wąska, wyśrodkowana kolumna (jak statyczny podgląd HTML), zamiast
 /// rozciągania na całą szerokość monitora.
@@ -23,7 +24,7 @@ class WebAppFrame extends StatelessWidget {
           h = MediaQuery.sizeOf(context).height;
         }
         return ColoredBox(
-          color: const Color(0xFFF0F0F0),
+          color: DesignTokens.subtleFill,
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
@@ -33,7 +34,7 @@ class WebAppFrame extends StatelessWidget {
                 maxHeight: h,
               ),
               child: Material(
-                color: Colors.white,
+                color: DesignTokens.white,
                 child: child,
               ),
             ),

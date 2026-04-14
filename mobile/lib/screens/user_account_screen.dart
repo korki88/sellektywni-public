@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -68,7 +69,7 @@ class UserAccountScreen extends StatelessWidget {
             child: Text(
               'Zaloguj się, aby zapisać konto i korzystać z programu lojalnościowego.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF6B6B6B),
+                    color: DesignTokens.mutedText,
                   ),
             ),
           ),
@@ -141,7 +142,7 @@ class UserAccountScreen extends StatelessWidget {
                     child: Text(
                       auth.role!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF6B6B6B),
+                            color: DesignTokens.mutedText,
                           ),
                     ),
                   ),
@@ -200,7 +201,7 @@ class UserAccountScreen extends StatelessWidget {
               'Właściciel: panel administracyjny — statystyki, finanse (metody płatności), pracownicy, '
               'uprawnienia STAFF, zamówienia z checklistą paragonu Dotykačka i etykiety kurierskiej.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF6B6B6B),
+                    color: DesignTokens.mutedText,
                   ),
             ),
           ),
@@ -211,7 +212,7 @@ class UserAccountScreen extends StatelessWidget {
               'Pracownik: rezerwacje, zamówienia, klienci, dostawy i symulacje integracji w trybie dev — '
               'bez zakładki uprawnień (tylko OWNER).',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF6B6B6B),
+                    color: DesignTokens.mutedText,
                   ),
             ),
           ),
@@ -272,7 +273,7 @@ class _CustomerShopInfoCard extends StatelessWidget {
               '${shippingMethodLabelPl('PARCEL_LOCKER_INPOST')}; '
               '${shippingMethodLabelPl('STORE_PICKUP')}.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF3D3D3D),
+                    color: DesignTokens.mutedText,
                   ),
             ),
             const SizedBox(height: 8),
@@ -280,7 +281,7 @@ class _CustomerShopInfoCard extends StatelessWidget {
               'Przewoźnicy obsługiwani przez API sklepu: '
               '${kCourierIntegrationRows.map((e) => e['code']).join(', ')}.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6B6B6B),
+                    color: DesignTokens.mutedText,
                   ),
             ),
             if (dev) ...[
@@ -368,7 +369,7 @@ class _MarketingAndPrivacyCardState extends State<_MarketingAndPrivacyCard> {
             Text(
               'Pobierz kopię powiązanych danych w JSON (zamówienia, adresy, lista życzeń itd.).',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6B6B6B),
+                    color: DesignTokens.mutedText,
                   ),
             ),
             const SizedBox(height: 10),
@@ -503,7 +504,7 @@ class _CustomerReturnsPanelState extends State<_CustomerReturnsPanel> {
                     child: Text(
                       'Brak zarejestrowanych wniosków o zwrot.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF6B6B6B),
+                            color: DesignTokens.mutedText,
                           ),
                     ),
                   );
@@ -557,7 +558,7 @@ class _WishlistSummaryCard extends StatelessWidget {
               Text(
                 'Brak produktów — dodaj serce na karcie w sklepie.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF6B6B6B),
+                      color: DesignTokens.mutedText,
                     ),
               )
             else
@@ -683,7 +684,7 @@ class _ExperimentsBlock extends StatelessWidget {
           return Text(
             'Brak aktywnych testów albo brak przypisań.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6B6B),
+                  color: DesignTokens.mutedText,
                 ),
           );
         }
@@ -1363,11 +1364,11 @@ class _CustomerNotificationsPanelState extends State<_CustomerNotificationsPanel
   Color _levelColor(String level) {
     switch (level) {
       case 'success':
-        return const Color(0xFFE8F5E9);
+        return DesignTokens.successSoft;
       case 'warning':
-        return const Color(0xFFFFF3E0);
+        return DesignTokens.warningSoft;
       default:
-        return const Color(0xFFE8F0FE);
+        return DesignTokens.infoSoft;
     }
   }
 
@@ -1447,7 +1448,7 @@ class _CustomerNotificationsPanelState extends State<_CustomerNotificationsPanel
                           Text(
                             at,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF6B6B6B),
+                                  color: DesignTokens.mutedText,
                                 ),
                           ),
                         ],
@@ -1721,7 +1722,7 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                       margin: const EdgeInsets.only(top: 10),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF7F9FC),
+                        color: DesignTokens.panelSoft,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1745,7 +1746,7 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                       margin: const EdgeInsets.only(top: 10),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFEAEAEA)),
+                        border: Border.all(color: DesignTokens.line),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: InkWell(
@@ -1774,7 +1775,7 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                               Text(
                                 'Uwagi: $customerNote',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: const Color(0xFF3D4A5C),
+                                      color: DesignTokens.mutedText,
                                     ),
                               ),
                             ],
@@ -1910,7 +1911,7 @@ class _CustomerOrdersPanelState extends State<_CustomerOrdersPanel> {
                                 SelectableText(
                                   JsonEncoder.withIndent('  ').convert(o['shippingSnapshot']),
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: const Color(0xFF4A4A4A),
+                                        color: DesignTokens.mutedText,
                                       ),
                                 ),
                                 const SizedBox(height: 12),

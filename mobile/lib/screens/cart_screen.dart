@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -591,7 +592,7 @@ class _CartScreenState extends State<CartScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.shopping_bag_outlined,
-                        size: 48, color: Colors.black.withValues(alpha: 0.25)),
+                        size: 48, color: DesignTokens.ink.withValues(alpha: 0.25)),
                     const SizedBox(height: 14),
                     Text(
                       'Koszyk jest pusty',
@@ -604,7 +605,7 @@ class _CartScreenState extends State<CartScreen> {
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
-                          ?.copyWith(color: const Color(0xFF6B6B6B)),
+                          ?.copyWith(color: DesignTokens.mutedText),
                     ),
                   ],
                 ),
@@ -632,7 +633,7 @@ class _CartScreenState extends State<CartScreen> {
                               errorBuilder: (_, __, ___) => Container(
                                 width: 78,
                                 height: 98,
-                                color: const Color(0xFFF4F4F4),
+                                color: DesignTokens.subtleFill,
                                 alignment: Alignment.center,
                                 child: const Icon(
                                     Icons.image_not_supported_outlined,
@@ -659,7 +660,7 @@ class _CartScreenState extends State<CartScreen> {
                                       .textTheme
                                       .bodyMedium
                                       ?.copyWith(
-                                        color: const Color(0xFF6B6B6B),
+                                        color: DesignTokens.mutedText,
                                       ),
                                 ),
                                 const SizedBox(height: 10),
@@ -763,8 +764,8 @@ class _CartScreenState extends State<CartScreen> {
                 ),
                 Container(
                   decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+                    color: DesignTokens.white,
+                    border: Border(top: BorderSide(color: DesignTokens.line)),
                   ),
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
                   child: SafeArea(
@@ -819,16 +820,16 @@ class _CartScreenState extends State<CartScreen> {
     }
     final chips = <Widget>[];
     if (s.inCartQty > 0) {
-      chips.add(_chip('W koszyku: ${s.inCartQty}', const Color(0xFFE8F0FE)));
+      chips.add(_chip('W koszyku: ${s.inCartQty}', DesignTokens.infoSoft));
     }
     if (s.pendingQty > 0) {
-      chips.add(_chip('Oczekuje: ${s.pendingQty}', const Color(0xFFFFF3E0)));
+      chips.add(_chip('Oczekuje: ${s.pendingQty}', DesignTokens.warningSoft));
     }
     if (s.acceptedQty > 0) {
-      chips.add(_chip('Zaakceptowane: ${s.acceptedQty}', const Color(0xFFE8F5E9)));
+      chips.add(_chip('Zaakceptowane: ${s.acceptedQty}', DesignTokens.successSoft));
     }
     if (s.rejectedQty > 0) {
-      chips.add(_chip('Odrzucone: ${s.rejectedQty}', const Color(0xFFFFEBEE)));
+      chips.add(_chip('Odrzucone: ${s.rejectedQty}', DesignTokens.dangerSoft));
     }
     return Wrap(spacing: 6, runSpacing: 6, children: chips);
   }

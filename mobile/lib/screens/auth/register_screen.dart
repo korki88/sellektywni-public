@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/design_tokens.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
@@ -94,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Użyj kont testowych na ekranie logowania (admin, user, client).',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF6B6B6B),
+                        color: DesignTokens.mutedText,
                       ),
                   textAlign: TextAlign.center,
                 ),
@@ -132,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Rejestracja',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: const Color(0xFF6B6B6B),
+                        color: DesignTokens.mutedText,
                       ),
                 ),
                 const SizedBox(height: 28),

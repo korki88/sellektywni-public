@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../models/product.dart';
@@ -48,7 +49,7 @@ class ProductCard extends StatelessWidget {
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
                         return Container(
-                          color: const Color(0xFFF4F4F4),
+                          color: DesignTokens.subtleFill,
                           alignment: Alignment.center,
                           child: const SizedBox(
                             width: 28,
@@ -58,7 +59,7 @@ class ProductCard extends StatelessWidget {
                         );
                       },
                       errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFF4F4F4),
+                        color: DesignTokens.subtleFill,
                         alignment: Alignment.center,
                         child: const Icon(Icons.image_not_supported_outlined),
                       ),
@@ -76,9 +77,9 @@ class ProductCard extends StatelessWidget {
                     bottom: 12,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8E1),
+                        color: DesignTokens.accentSoft,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFFFB300)),
+                        border: Border.all(color: DesignTokens.accentLine),
                       ),
                       child: const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -87,7 +88,7 @@ class ProductCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF795548),
+                            color: DesignTokens.mutedText,
                           ),
                         ),
                       ),
@@ -97,7 +98,7 @@ class ProductCard extends StatelessWidget {
                   right: 8,
                   top: 8,
                   child: Material(
-                    color: Colors.white.withValues(alpha: 0.92),
+                    color: DesignTokens.white.withValues(alpha: 0.92),
                     shape: const CircleBorder(),
                     clipBehavior: Clip.antiAlias,
                     child: IconButton(
@@ -113,7 +114,7 @@ class ProductCard extends StatelessWidget {
                       },
                       icon: Icon(
                         inWishlist ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: inWishlist ? const Color(0xFFB71C1C) : const Color(0xFF111111),
+                        color: inWishlist ? DesignTokens.error : DesignTokens.ink,
                       ),
                     ),
                   ),
@@ -122,7 +123,7 @@ class ProductCard extends StatelessWidget {
                   right: 8,
                   top: 52,
                   child: Material(
-                    color: Colors.white.withValues(alpha: 0.92),
+                    color: DesignTokens.white.withValues(alpha: 0.92),
                     shape: const CircleBorder(),
                     clipBehavior: Clip.antiAlias,
                     child: IconButton(
@@ -139,7 +140,7 @@ class ProductCard extends StatelessWidget {
                       },
                       icon: Icon(
                         inCompare ? Icons.compare_arrows_rounded : Icons.compare_arrows_outlined,
-                        color: const Color(0xFF111111),
+                        color: DesignTokens.ink,
                       ),
                     ),
                   ),
@@ -172,7 +173,7 @@ class ProductCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF6B6B6B),
+                      color: DesignTokens.mutedText,
                     ),
                   ),
                 ],
@@ -200,7 +201,7 @@ class ProductCard extends StatelessWidget {
                         child: Text(
                           '~ $sec',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF6B6B6B),
+                            color: DesignTokens.mutedText,
                           ),
                         ),
                       );
@@ -211,7 +212,7 @@ class ProductCard extends StatelessWidget {
                 Text(
                   'Magazyn: ${product.stockQty} · Rezerwacje: ${product.reservedQty}',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6B6B6B),
+                    color: DesignTokens.mutedText,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -260,14 +261,14 @@ class ProductCard extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       backgroundColor: reserved
-                          ? const Color(0xFFEFF3F8)
+                          ? DesignTokens.infoSoft
                           : inCart
-                          ? const Color(0xFF111111)
-                          : const Color(0xFFF4F4F4),
+                          ? DesignTokens.ink
+                          : DesignTokens.subtleFill,
                       foregroundColor:
                           reserved
-                              ? const Color(0xFF1A3B5D)
-                              : (inCart ? Colors.white : const Color(0xFF111111)),
+                              ? DesignTokens.ink
+                              : (inCart ? DesignTokens.white : DesignTokens.ink),
                     ),
                     child: Text(
                       reserved
@@ -294,9 +295,9 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: DesignTokens.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0x11000000)),
+        border: Border.all(color: DesignTokens.overlay),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -305,7 +306,7 @@ class _Pill extends StatelessWidget {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF111111),
+            color: DesignTokens.ink,
           ),
         ),
       ),

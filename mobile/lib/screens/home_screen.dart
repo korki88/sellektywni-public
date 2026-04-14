@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../layout/catalog_grid_layout.dart';
@@ -51,7 +52,7 @@ class HomeScreen extends StatelessWidget {
               child: Text(
                 'Wybierz kategorię i stan produktu',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF6B6B6B),
+                      color: DesignTokens.mutedText,
                     ),
               ),
             ),
@@ -281,15 +282,15 @@ class _CategoryChip extends StatelessWidget {
       selected: selected,
       onSelected: onSelected,
       showCheckmark: false,
-      selectedColor: const Color(0xFF111111),
+      selectedColor: DesignTokens.ink,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : const Color(0xFF111111),
+        color: selected ? DesignTokens.white : DesignTokens.ink,
         fontWeight: FontWeight.w600,
         fontSize: 13,
       ),
-      backgroundColor: const Color(0xFFF4F4F4),
+      backgroundColor: DesignTokens.subtleFill,
       side: BorderSide(
-          color: selected ? Colors.transparent : const Color(0x11000000)),
+          color: selected ? Colors.transparent : DesignTokens.overlay),
     );
   }
 }
@@ -306,7 +307,7 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.search_off_rounded,
-                size: 44, color: Colors.black.withValues(alpha: 0.35)),
+                size: 44, color: DesignTokens.ink.withValues(alpha: 0.35)),
             const SizedBox(height: 12),
             Text(
               'Brak produktów dla wybranych filtrów',
@@ -320,7 +321,7 @@ class _EmptyState extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
-                  ?.copyWith(color: const Color(0xFF6B6B6B)),
+                  ?.copyWith(color: DesignTokens.mutedText),
             ),
           ],
         ),
@@ -348,7 +349,7 @@ class _PushInfoSheet extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
-                ?.copyWith(color: const Color(0xFF6B6B6B)),
+                ?.copyWith(color: DesignTokens.mutedText),
           ),
           const SizedBox(height: 16),
           FilledButton(

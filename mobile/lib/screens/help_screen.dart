@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../theme/design_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -69,7 +70,7 @@ class _HelpScreenState extends State<HelpScreen> {
           Text(
             'Masz pytanie o zamówienie, zwrot lub produkt? Napisz na adres poniżej — '
             'podaj numer zamówienia lub nazwę produktu, ułatwi to odpowiedź.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF4A4A4A)),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
           ),
           const SizedBox(height: 12),
           SelectableText(
@@ -104,7 +105,7 @@ class _HelpScreenState extends State<HelpScreen> {
                 return Text(
                   'Brak opublikowanych stron CMS (skonfiguruj w panelu).',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF6B6B6B),
+                        color: DesignTokens.mutedText,
                       ),
                 );
               }
@@ -164,7 +165,7 @@ class _HelpScreenState extends State<HelpScreen> {
           Text(
             'Konto i logowanie są obsługiwane przez bezpiecznego dostawcę uwierzytelniania (Supabase). '
             'Dane zamówień przechowuje sklep w celu realizacji sprzedaży.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF4A4A4A)),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
           ),
         ],
       ),
@@ -188,7 +189,7 @@ class _Bullet extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF4A4A4A)),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DesignTokens.mutedText),
             ),
           ),
         ],
