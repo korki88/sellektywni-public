@@ -73,6 +73,39 @@ export class FinancialIntelligenceService {
     return 0;
   }
 
+  private async runHypeMakerSafely(params: {
+    proposalId: string;
+    productId: string;
+    productName: string;
+    discountPercent: Prisma.Decimal;
+    suggestedPrice: Prisma.Decimal;
+    riskScore: number;
+    ipAddress?: string | null;
+  }): Promise<void> {
+    await this.hypeMaker
+      .runForApprovedProposal({
+        proposalId: params.proposalId,
+        productId: params.productId,
+        productName: params.productName,
+        discountPercent: params.discountPercent,
+        suggestedPrice: params.suggestedPrice,
+        riskScore: params.riskScore,
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        // Kampanie AI nie mogą blokować core flow akceptacji OWNER.
+        void this.audit.logAction({
+          userId: 'HYPE_MAKER_AI',
+          userEmail: 'HYPE_MAKER_AI',
+          action: 'HYPE_MAKER_ORCHESTRATION_FAILED',
+          resourceType: 'AI_PROPOSAL',
+          resourceId: params.proposalId,
+          newValue: { message },
+          ipAddress: params.ipAddress ?? null,
+        });
+      });
+  }
+
   async analyzeCashflowRisk(): Promise<AnalyzeResult> {
     const now = new Date();
     const from30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -278,28 +311,15 @@ export class FinancialIntelligenceService {
       },
     );
 
-    await this.hypeMaker
-      .runForApprovedProposal({
-        proposalId: result.id,
-        productId: proposal.product.id,
-        productName: proposal.product.name,
-        discountPercent: result.discountPercent,
-        suggestedPrice: result.suggestedPrice,
-        riskScore: result.riskScore,
-      })
-      .catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        // Kampanie AI nie mogą blokować core flow akceptacji OWNER.
-        void this.audit.logAction({
-          userId: 'HYPE_MAKER_AI',
-          userEmail: 'HYPE_MAKER_AI',
-          action: 'HYPE_MAKER_ORCHESTRATION_FAILED',
-          resourceType: 'AI_PROPOSAL',
-          resourceId: proposalId,
-          newValue: { message },
-          ipAddress: actor.ipAddress ?? null,
-        });
-      });
+    await this.runHypeMakerSafely({
+      proposalId: result.id,
+      productId: proposal.product.id,
+      productName: proposal.product.name,
+      discountPercent: result.discountPercent,
+      suggestedPrice: result.suggestedPrice,
+      riskScore: result.riskScore,
+      ipAddress: actor.ipAddress ?? null,
+    });
 
     await this.audit.logAction({
       userId: actor.userId,

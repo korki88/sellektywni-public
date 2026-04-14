@@ -19,6 +19,13 @@ type CampaignPayload = {
   content: string;
 };
 
+type SocialMockResult = {
+  ok: true;
+  mock: true;
+  campaignId: string;
+  externalId: string | null;
+};
+
 @Injectable()
 export class SocialMediaService {
   private readonly logger = new Logger(SocialMediaService.name);
@@ -29,52 +36,46 @@ export class SocialMediaService {
     private readonly audit: AuditService,
   ) {}
 
+  private configEnvKeys(platform: SocialPlatform): {
+    accessTokenKey: string;
+    refreshTokenKey: string;
+  } {
+    switch (platform) {
+      case SocialPlatform.INSTAGRAM:
+        return {
+          accessTokenKey: 'INSTAGRAM_ACCESS_TOKEN',
+          refreshTokenKey: 'INSTAGRAM_REFRESH_TOKEN',
+        };
+      case SocialPlatform.FACEBOOK:
+        return {
+          accessTokenKey: 'FACEBOOK_ACCESS_TOKEN',
+          refreshTokenKey: 'FACEBOOK_REFRESH_TOKEN',
+        };
+      case SocialPlatform.GOOGLE_ADS:
+        return {
+          accessTokenKey: 'GOOGLE_ADS_ACCESS_TOKEN',
+          refreshTokenKey: 'GOOGLE_ADS_REFRESH_TOKEN',
+        };
+    }
+  }
+
   private configFromEnv(platform: SocialPlatform): {
     accessToken: string;
     refreshToken: string | null;
     status: SocialConfigStatus;
   } {
-    switch (platform) {
-      case SocialPlatform.INSTAGRAM: {
-        const accessToken =
-          this.config.get<string>('INSTAGRAM_ACCESS_TOKEN')?.trim() || '';
-        const refreshToken =
-          this.config.get<string>('INSTAGRAM_REFRESH_TOKEN')?.trim() || null;
-        return {
-          accessToken,
-          refreshToken,
-          status: accessToken
-            ? SocialConfigStatus.ACTIVE
-            : SocialConfigStatus.INACTIVE,
-        };
-      }
-      case SocialPlatform.FACEBOOK: {
-        const accessToken =
-          this.config.get<string>('FACEBOOK_ACCESS_TOKEN')?.trim() || '';
-        const refreshToken =
-          this.config.get<string>('FACEBOOK_REFRESH_TOKEN')?.trim() || null;
-        return {
-          accessToken,
-          refreshToken,
-          status: accessToken
-            ? SocialConfigStatus.ACTIVE
-            : SocialConfigStatus.INACTIVE,
-        };
-      }
-      case SocialPlatform.GOOGLE_ADS: {
-        const accessToken =
-          this.config.get<string>('GOOGLE_ADS_ACCESS_TOKEN')?.trim() || '';
-        const refreshToken =
-          this.config.get<string>('GOOGLE_ADS_REFRESH_TOKEN')?.trim() || null;
-        return {
-          accessToken,
-          refreshToken,
-          status: accessToken
-            ? SocialConfigStatus.ACTIVE
-            : SocialConfigStatus.INACTIVE,
-        };
-      }
-    }
+    const keys = this.configEnvKeys(platform);
+    const accessToken =
+      this.config.get<string>(keys.accessTokenKey)?.trim() || '';
+    const refreshToken =
+      this.config.get<string>(keys.refreshTokenKey)?.trim() || null;
+    return {
+      accessToken,
+      refreshToken,
+      status: accessToken
+        ? SocialConfigStatus.ACTIVE
+        : SocialConfigStatus.INACTIVE,
+    };
   }
 
   private async savePlatformConfig(platform: SocialPlatform): Promise<void> {
@@ -138,24 +139,28 @@ export class SocialMediaService {
     });
   }
 
-  async postToInstagram(
+  private actionForPlatform(platform: SocialPlatform): string {
+    switch (platform) {
+      case SocialPlatform.INSTAGRAM:
+        return 'SOCIAL_POST_INSTAGRAM_MOCK';
+      case SocialPlatform.FACEBOOK:
+        return 'SOCIAL_POST_FACEBOOK_MOCK';
+      case SocialPlatform.GOOGLE_ADS:
+        return 'SOCIAL_TRIGGER_GOOGLE_ADS_MOCK';
+    }
+  }
+
+  private async publishMock(
+    platform: SocialPlatform,
     payload: CampaignPayload,
     actor: SocialAuditActor,
-  ): Promise<{
-    ok: true;
-    mock: true;
-    campaignId: string;
-    externalId: string | null;
-  }> {
-    await this.savePlatformConfig(SocialPlatform.INSTAGRAM);
-    const campaign = await this.createMockCampaign(
-      SocialPlatform.INSTAGRAM,
-      payload,
-    );
+  ): Promise<SocialMockResult> {
+    await this.savePlatformConfig(platform);
+    const campaign = await this.createMockCampaign(platform, payload);
     await this.logMockAction(
       actor,
-      SocialPlatform.INSTAGRAM,
-      'SOCIAL_POST_INSTAGRAM_MOCK',
+      platform,
+      this.actionForPlatform(platform),
       campaign,
       payload,
     );
@@ -165,63 +170,26 @@ export class SocialMediaService {
       campaignId: campaign.id,
       externalId: campaign.externalId,
     };
+  }
+
+  async postToInstagram(
+    payload: CampaignPayload,
+    actor: SocialAuditActor,
+  ): Promise<SocialMockResult> {
+    return this.publishMock(SocialPlatform.INSTAGRAM, payload, actor);
   }
 
   async postToFacebook(
     payload: CampaignPayload,
     actor: SocialAuditActor,
-  ): Promise<{
-    ok: true;
-    mock: true;
-    campaignId: string;
-    externalId: string | null;
-  }> {
-    await this.savePlatformConfig(SocialPlatform.FACEBOOK);
-    const campaign = await this.createMockCampaign(
-      SocialPlatform.FACEBOOK,
-      payload,
-    );
-    await this.logMockAction(
-      actor,
-      SocialPlatform.FACEBOOK,
-      'SOCIAL_POST_FACEBOOK_MOCK',
-      campaign,
-      payload,
-    );
-    return {
-      ok: true,
-      mock: true,
-      campaignId: campaign.id,
-      externalId: campaign.externalId,
-    };
+  ): Promise<SocialMockResult> {
+    return this.publishMock(SocialPlatform.FACEBOOK, payload, actor);
   }
 
   async triggerGoogleAdsUpdate(
     payload: CampaignPayload,
     actor: SocialAuditActor,
-  ): Promise<{
-    ok: true;
-    mock: true;
-    campaignId: string;
-    externalId: string | null;
-  }> {
-    await this.savePlatformConfig(SocialPlatform.GOOGLE_ADS);
-    const campaign = await this.createMockCampaign(
-      SocialPlatform.GOOGLE_ADS,
-      payload,
-    );
-    await this.logMockAction(
-      actor,
-      SocialPlatform.GOOGLE_ADS,
-      'SOCIAL_TRIGGER_GOOGLE_ADS_MOCK',
-      campaign,
-      payload,
-    );
-    return {
-      ok: true,
-      mock: true,
-      campaignId: campaign.id,
-      externalId: campaign.externalId,
-    };
+  ): Promise<SocialMockResult> {
+    return this.publishMock(SocialPlatform.GOOGLE_ADS, payload, actor);
   }
 }

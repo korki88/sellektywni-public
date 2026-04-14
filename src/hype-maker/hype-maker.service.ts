@@ -21,6 +21,11 @@ type HypeMakerCopy = {
   googleAdsHeadline: string;
 };
 
+type HypeMakerActor = {
+  userId: string;
+  userEmail: string;
+};
+
 @Injectable()
 export class HypeMakerService {
   private readonly logger = new Logger(HypeMakerService.name);
@@ -123,6 +128,81 @@ export class HypeMakerService {
     }
   }
 
+  private actor(): HypeMakerActor {
+    return {
+      userId: this.systemUserId,
+      userEmail: this.systemEmail,
+    };
+  }
+
+  private async sendSegmentPush(
+    input: HypeMakerInput,
+    segment: string,
+    copy: HypeMakerCopy,
+  ): Promise<void> {
+    await this.firebasePush.sendLoyaltySegmentNotification({
+      segment,
+      title: 'Nowa oferta premium',
+      body: copy.pushShort,
+      proposalId: input.proposalId,
+      productName: input.productName,
+    });
+    await this.audit.logAction({
+      userId: this.systemUserId,
+      userEmail: this.systemEmail,
+      action: 'HYPE_MAKER_PUSH_SENT',
+      resourceType: 'AI_PROPOSAL',
+      resourceId: input.proposalId,
+      newValue: {
+        segment,
+        productId: input.productId,
+        productName: input.productName,
+        pushShort: copy.pushShort,
+      },
+    });
+  }
+
+  private async distributeSocial(
+    input: HypeMakerInput,
+    segment: string,
+    copy: HypeMakerCopy,
+  ) {
+    const actor = this.actor();
+    const target = `LOYALTY_${segment}`;
+    return Promise.all([
+      this.social.postToInstagram(
+        {
+          target,
+          content: copy.socialPost,
+        },
+        actor,
+      ),
+      this.social.postToFacebook(
+        {
+          target,
+          content: copy.socialPost,
+        },
+        actor,
+      ),
+      this.social.triggerGoogleAdsUpdate(
+        {
+          target,
+          content: copy.googleAdsHeadline,
+        },
+        actor,
+      ),
+    ]).then(([instagram, facebook, googleAds]) => ({
+      proposalId: input.proposalId,
+      segment,
+      copy,
+      distribution: {
+        instagram,
+        facebook,
+        googleAds,
+      },
+    }));
+  }
+
   private async resolveSegmentForProduct(productId: string): Promise<string> {
     const watchers = await this.prisma.wishlistItem.findMany({
       where: { productId },
@@ -160,57 +240,8 @@ export class HypeMakerService {
         return null;
       })) ?? this.fallbackCopy(input);
 
-    await this.firebasePush.sendLoyaltySegmentNotification({
-      segment,
-      title: 'Nowa oferta premium',
-      body: copy.pushShort,
-      proposalId: input.proposalId,
-      productName: input.productName,
-    });
-
-    await this.audit.logAction({
-      userId: this.systemUserId,
-      userEmail: this.systemEmail,
-      action: 'HYPE_MAKER_PUSH_SENT',
-      resourceType: 'AI_PROPOSAL',
-      resourceId: input.proposalId,
-      newValue: {
-        segment,
-        productId: input.productId,
-        productName: input.productName,
-        pushShort: copy.pushShort,
-      },
-    });
-
-    const actor = {
-      userId: this.systemUserId,
-      userEmail: this.systemEmail,
-    };
-    const target = `LOYALTY_${segment}`;
-
-    const [instagram, facebook, googleAds] = await Promise.all([
-      this.social.postToInstagram(
-        {
-          target,
-          content: copy.socialPost,
-        },
-        actor,
-      ),
-      this.social.postToFacebook(
-        {
-          target,
-          content: copy.socialPost,
-        },
-        actor,
-      ),
-      this.social.triggerGoogleAdsUpdate(
-        {
-          target,
-          content: copy.googleAdsHeadline,
-        },
-        actor,
-      ),
-    ]);
+    await this.sendSegmentPush(input, segment, copy);
+    const campaign = await this.distributeSocial(input, segment, copy);
 
     await this.audit.logAction({
       userId: this.systemUserId,
@@ -219,13 +250,7 @@ export class HypeMakerService {
       resourceType: 'AI_PROPOSAL',
       resourceId: input.proposalId,
       newValue: {
-        segment,
-        copy,
-        distribution: {
-          instagram,
-          facebook,
-          googleAds,
-        },
+        ...campaign,
       },
     });
   }
