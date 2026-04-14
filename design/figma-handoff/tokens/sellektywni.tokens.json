@@ -1,0 +1,43 @@
+{
+  "$themes": [],
+  "$metadata": {
+    "tokenSetOrder": [
+      "global"
+    ]
+  },
+  "global": {
+    "color.ink": { "value": "#0F1115", "type": "color" },
+    "color.white": { "value": "#FFFFFF", "type": "color" },
+    "color.accent": { "value": "#B89C6A", "type": "color" },
+    "color.subtleFill": { "value": "#F6F6F7", "type": "color" },
+    "color.line": { "value": "#EAECEE", "type": "color" },
+    "color.muted": { "value": "#69707D", "type": "color" },
+
+    "radius.sm": { "value": 10, "type": "borderRadius" },
+    "radius.md": { "value": 16, "type": "borderRadius" },
+    "radius.lg": { "value": 24, "type": "borderRadius" },
+    "radius.full": { "value": 999, "type": "borderRadius" },
+
+    "space.1": { "value": 4, "type": "spacing" },
+    "space.2": { "value": 8, "type": "spacing" },
+    "space.3": { "value": 12, "type": "spacing" },
+    "space.4": { "value": 16, "type": "spacing" },
+    "space.5": { "value": 20, "type": "spacing" },
+    "space.6": { "value": 24, "type": "spacing" },
+    "space.8": { "value": 32, "type": "spacing" },
+
+    "font.family.base": { "value": "Inter", "type": "fontFamilies" },
+    "font.weight.regular": { "value": "400", "type": "fontWeights" },
+    "font.weight.medium": { "value": "500", "type": "fontWeights" },
+    "font.weight.semiBold": { "value": "600", "type": "fontWeights" },
+
+    "font.h1.size": { "value": 48, "type": "fontSizes" },
+    "font.h2.size": { "value": 32, "type": "fontSizes" },
+    "font.h3.size": { "value": 24, "type": "fontSizes" },
+    "font.body.size": { "value": 16, "type": "fontSizes" },
+    "font.caption.size": { "value": 13, "type": "fontSizes" },
+
+    "lineHeight.tight": { "value": 1.2, "type": "lineHeights" },
+    "lineHeight.normal": { "value": 1.45, "type": "lineHeights" }
+  }
+}

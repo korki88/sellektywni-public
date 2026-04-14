@@ -1,0 +1,9 @@
+<svg width="1280" height="320" viewBox="0 0 1280 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="320" rx="32" fill="#FFFFFF"/>
+  <g transform="translate(24 24)">
+    <rect width="272" height="272" rx="72" fill="#0F1115"/>
+    <path d="M184 54C153 42 114 47 104 79C95 112 110 130 136 132C163 135 176 140 169 160C162 182 135 182 109 169" stroke="#B89C6A" stroke-width="28" stroke-linecap="round"/>
+    <circle cx="190" cy="52" r="11" fill="#B89C6A"/>
+  </g>
+  <text x="340" y="186" fill="#0F1115" font-size="96" font-family="Inter, SF Pro Display, Segoe UI, Arial" font-weight="600" letter-spacing="1">Sellektywni</text>
+</svg>
