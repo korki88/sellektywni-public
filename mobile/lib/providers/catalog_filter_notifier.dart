@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,7 @@ class CatalogFilterNotifier extends ChangeNotifier {
   ProductCategory? _category;
   ProductCondition? _condition;
   String _searchQuery = '';
+  Timer? _searchDebounce;
   AuthSession? _auth;
 
   bool _loading = false;
@@ -31,8 +33,20 @@ class CatalogFilterNotifier extends ChangeNotifier {
   bool get hasMore => _hasMore;
 
   void setSearchQuery(String value) {
-    _searchQuery = value.trim();
+    final normalized = value.trim();
+    if (_searchQuery == normalized) return;
+    _searchQuery = normalized;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
+      refreshFromApi();
+    });
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   void setCategory(ProductCategory? value) {
@@ -206,12 +220,10 @@ class CatalogFilterNotifier extends ChangeNotifier {
   }
 
   List<Product> get visibleProducts {
-    final q = _searchQuery.trim().toLowerCase();
     return _products.where((p) {
       final catOk = _category == null || p.category == _category;
       final condOk = _condition == null || p.condition == _condition;
-      final searchOk = q.isEmpty || p.name.toLowerCase().contains(q);
-      return catOk && condOk && searchOk;
+      return catOk && condOk;
     }).toList();
   }
 }

@@ -6,6 +6,60 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProductService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private normalizeSearchText(input: string): string {
+    return input
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private levenshtein(a: string, b: string): number {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    const curr = new Array<number>(b.length + 1).fill(0);
+    for (let i = 1; i <= a.length; i++) {
+      curr[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        curr[j] = Math.min(
+          curr[j - 1] + 1,
+          prev[j] + 1,
+          prev[j - 1] + cost,
+        );
+      }
+      for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
+    }
+    return prev[b.length];
+  }
+
+  private searchScore(queryRaw: string, nameRaw: string): number {
+    const query = this.normalizeSearchText(queryRaw);
+    const name = this.normalizeSearchText(nameRaw);
+    if (!query || !name) return 0;
+    if (name === query) return 1000;
+    if (name.startsWith(query)) return 900;
+    if (name.includes(query)) return 760;
+    const nameWords = name.split(' ').filter(Boolean);
+    const queryWords = query.split(' ').filter(Boolean);
+    if (queryWords.every((w) => nameWords.some((n) => n.startsWith(w)))) return 700;
+    let best = 0;
+    for (const nw of nameWords) {
+      const dist = this.levenshtein(query, nw);
+      const ratio = 1 - dist / Math.max(query.length, nw.length);
+      best = Math.max(best, ratio);
+    }
+    const wholeDist = this.levenshtein(query, name);
+    const wholeRatio = 1 - wholeDist / Math.max(query.length, name.length);
+    best = Math.max(best, wholeRatio);
+    if (best < 0.45) return 0;
+    return Math.round(best * 650);
+  }
+
   findByIdOrDotykacka(productId?: string, idDotykacka?: string) {
     if (productId) {
       return this.prisma.product.findUnique({ where: { id: productId } });
@@ -56,20 +110,64 @@ export class ProductService {
     limit?: number;
   }) {
     const q = opts?.search?.trim();
+    const offset = opts?.offset ?? 0;
+    const limit = opts?.limit;
     const where: Prisma.ProductWhereInput = {
       stockQty: { gt: 0 },
     };
     if (opts?.featuredOnly) {
       where.isFeatured = true;
     }
+
+    // Dla wyszukiwania „inteligentnego” pobieramy kandydatów i sortujemy po podobieństwie.
     if (q) {
-      where.name = { contains: q, mode: 'insensitive' };
+      const candidates = await this.prisma.product.findMany({
+        where,
+        orderBy: { createdAt: 'asc' },
+        include: {
+          reservations: {
+            where: {
+              status: {
+                in: [ReservationStatus.IN_CART, ReservationStatus.PENDING],
+              },
+            },
+            select: { quantity: true },
+          },
+        },
+      });
+      const scored = candidates
+        .map(({ reservations, ...p }) => {
+          const reservedQty = reservations.reduce((sum, r) => sum + r.quantity, 0);
+          const availableQty = Math.max(0, p.stockQty - reservedQty);
+          const forcedReserved =
+            p.status === ProductStatus.RESERVED && availableQty > 0;
+          const canAddToCart = availableQty > 0 && !forcedReserved;
+          const visualStatus = canAddToCart
+            ? ProductStatus.AVAILABLE
+            : ProductStatus.RESERVED;
+          const score = this.searchScore(q, p.name);
+          return {
+            ...p,
+            reservedQty,
+            availableQty,
+            canAddToCart,
+            visualStatus,
+            _score: score,
+          };
+        })
+        .filter((row) => row._score > 0)
+        .sort((a, b) => b._score - a._score || a.createdAt.getTime() - b.createdAt.getTime());
+
+      const from = Math.max(0, offset);
+      const to = limit ? from + Math.max(1, limit) : undefined;
+      return scored.slice(from, to).map(({ _score, ...rest }) => rest);
     }
+
     const products = await this.prisma.product.findMany({
       where,
       orderBy: { createdAt: 'asc' },
-      skip: opts?.offset,
-      take: opts?.limit,
+      skip: offset,
+      take: limit,
       include: {
         reservations: {
           where: {

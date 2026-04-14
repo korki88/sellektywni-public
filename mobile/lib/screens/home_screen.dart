@@ -90,17 +90,14 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Szukaj po nazwie (Enter)',
+                  hintText: 'Szukaj inteligentnie: literówki, część nazwy...',
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   isDense: true,
                 ),
                 textInputAction: TextInputAction.search,
-                onSubmitted: (v) {
-                  final n = context.read<CatalogFilterNotifier>();
-                  n.setSearchQuery(v);
-                  n.refreshFromApi();
-                },
+                onChanged: (v) => context.read<CatalogFilterNotifier>().setSearchQuery(v),
+                onSubmitted: (v) => context.read<CatalogFilterNotifier>().setSearchQuery(v),
               ),
             ),
           ),
