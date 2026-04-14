@@ -303,4 +303,51 @@ export class FinancialIntelligenceService {
       proposal: result,
     };
   }
+
+  async rejectProposal(proposalId: string, actor: AuditActor) {
+    const proposal = await this.prisma.aiProposal.findUnique({
+      where: { id: proposalId },
+      select: {
+        id: true,
+        status: true,
+        productId: true,
+        currentPrice: true,
+        suggestedPrice: true,
+      },
+    });
+    if (!proposal) {
+      throw new NotFoundException('Propozycja AI nie istnieje');
+    }
+    if (proposal.status !== AiProposalStatus.PENDING) {
+      throw new NotFoundException('Propozycja nie jest już aktywna');
+    }
+
+    const rejected = await this.prisma.aiProposal.update({
+      where: { id: proposalId },
+      data: {
+        status: AiProposalStatus.REJECTED,
+      },
+    });
+
+    await this.audit.logAction({
+      userId: actor.userId,
+      userEmail:
+        actor.userEmail?.trim() || `user-${actor.userId}@unknown.local`,
+      action: 'REJECT_AI_PRICE_RECOMMENDATION',
+      resourceType: 'AI_PROPOSAL',
+      resourceId: proposalId,
+      oldValue: {
+        status: proposal.status,
+        currentPrice: proposal.currentPrice.toString(),
+        suggestedPrice: proposal.suggestedPrice.toString(),
+      },
+      newValue: {
+        status: rejected.status,
+        productId: proposal.productId,
+      },
+      ipAddress: actor.ipAddress ?? null,
+    });
+
+    return { ok: true, proposal: rejected };
+  }
 }

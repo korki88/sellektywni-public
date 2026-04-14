@@ -63,6 +63,23 @@ export class FinancialIntelligenceController {
     });
   }
 
+  @Post('proposals/:id/reject')
+  @AuditManual()
+  @AuditAction('FINANCIAL_INTELLIGENCE_REJECT_PROPOSAL')
+  @AuditResourceType('AI_PROPOSAL')
+  @AuditResourceParam('id')
+  rejectProposal(@Param('id') proposalId: string, @Req() req: Request) {
+    const ownerUserId = req.profile?.userId;
+    if (!ownerUserId) {
+      throw new UnauthorizedException('Brak profilu użytkownika');
+    }
+    return this.financial.rejectProposal(proposalId, {
+      userId: ownerUserId,
+      userEmail: req.profile?.email ?? req.supabaseJwt?.email ?? null,
+      ipAddress: this.resolveIpAddress(req),
+    });
+  }
+
   private resolveIpAddress(req: Request): string | null {
     const forwarded = req.headers['x-forwarded-for'];
     if (typeof forwarded === 'string' && forwarded.trim().length > 0) {

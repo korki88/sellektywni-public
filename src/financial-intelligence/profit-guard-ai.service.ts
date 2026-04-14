@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AiProposalStatus, Prisma } from '@prisma/client';
 import OpenAI from 'openai';
 import { AuditService } from '../audit/audit.service';
+import { FirebasePushService } from '../notifications/firebase-push.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 type ProfitGuardDecision = {
@@ -27,6 +28,7 @@ export class ProfitGuardAiService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly firebasePush: FirebasePushService,
   ) {}
 
   private toMoney(value: number): Prisma.Decimal {
@@ -286,6 +288,11 @@ export class ProfitGuardAiService {
           },
         });
         proposalId = createdRow.id;
+        await this.firebasePush.sendOwnerProfitGuardNotification({
+          proposalId: createdRow.id,
+          productName: product.name,
+          suggestedDiscountPercent: decision.suggestedDiscountPercent,
+        });
         generated += 1;
       }
 
@@ -316,9 +323,12 @@ export class ProfitGuardAiService {
     };
   }
 
-  async listProfitGuardProposals() {
+  async listProfitGuardProposals(status?: AiProposalStatus) {
     return this.prisma.aiProposal.findMany({
-      where: { type: 'PROFIT_GUARD_DISCOUNT' },
+      where: {
+        type: 'PROFIT_GUARD_DISCOUNT',
+        ...(status ? { status } : {}),
+      },
       include: {
         product: {
           select: {

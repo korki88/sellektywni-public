@@ -19,6 +19,7 @@ import '../staff/staff_models.dart';
 import '../theme/app_theme.dart';
 import 'hid_qr_scanner_layer.dart';
 import 'staff_overlay_launcher.dart';
+import 'widgets/ai_proposals_view.dart';
 import 'widgets/audit_log_view.dart';
 import 'widgets/loyalty_manager.dart';
 import 'widgets/product_manager.dart';
@@ -634,7 +635,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _error = null;
     });
     try {
-      final rows = await _api.fetchFinancialAiProposals(status: 'PENDING');
+      final rows = await _api.fetchAdminAiProposals(status: 'PENDING');
       if (!mounted) return;
       setState(() {
         _aiProposals = rows;
@@ -654,11 +655,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (!auth.isOwner || _runningAiAnalysis) return;
     setState(() => _runningAiAnalysis = true);
     try {
-      final result = await _api.runFinancialIntelligenceAnalysis();
+      final result = await _api.runProfitGuardGeneration();
       await _loadFinancialAiProposals();
       if (!mounted) return;
-      final generated = result['generatedProposals']?.toString() ?? '0';
-      final updated = result['updatedExistingProposals']?.toString() ?? '0';
+      final generated = result['generated']?.toString() ?? '0';
+      final updated = result['updated']?.toString() ?? '0';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -711,6 +712,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Zaakceptowano propozycję i uruchomiono marketing.')),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
+  Future<void> _rejectAiProposal(FinancialAiProposal proposal) async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) return;
+    try {
+      await _api.rejectFinancialAiProposal(proposal.id);
+      await _loadFinancialAiProposals();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Odrzucono propozycję Profit Guard.')),
       );
     } on StaffApiException catch (e) {
       if (!mounted) return;
@@ -1445,117 +1464,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildAiAgentsPanel() {
     final auth = context.read<AuthSession>();
-    if (!auth.isOwner) {
-      return Center(
-        child: Text(
-          'Sekcja dostępna tylko dla OWNER.',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: DesignTokens.mutedText,
-              ),
-        ),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text(
-          'Agenci AI',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'FinancialIntelligence analizuje rotację i terminy płatności dostawców, aby wykryć ryzyko płynności.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: DesignTokens.mutedText,
-              ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            FilledButton.icon(
-              onPressed: _runningAiAnalysis ? null : _runFinancialAiAnalysis,
-              icon: _runningAiAnalysis
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_graph_outlined),
-              label: Text(
-                  _runningAiAnalysis ? 'Analizowanie...' : 'Uruchom analizę'),
-            ),
-            const SizedBox(width: 10),
-            FilledButton.tonal(
-              onPressed: _loadFinancialAiProposals,
-              child: const Text('Odśwież propozycje'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (_loadingAiProposals)
-          const Center(child: CircularProgressIndicator())
-        else if (_aiProposals.isEmpty)
-          Text(
-            'Brak aktywnych propozycji cashflow.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          )
-        else
-          ..._aiProposals.map(
-            (p) => Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p.productName ?? p.productId ?? 'Produkt',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Risk score: ${p.riskScore} · '
-                      'Cena: ${p.currentPriceRaw} zł -> ${p.suggestedPriceRaw} zł '
-                      '(-${p.discountPercentRaw}%)',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (p.supplierName != null ||
-                        p.paymentTermsDays != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Dostawca: ${p.supplierName ?? "—"} · '
-                        'Termin płatności: ${p.paymentTermsDays?.toString() ?? "—"} dni',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: DesignTokens.mutedText,
-                            ),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Text(
-                      p.rationale,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: DesignTokens.mutedText,
-                          ),
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton(
-                        onPressed: () => _acceptAiProposal(p),
-                        child: const Text('AKCEPTUJ I URUCHOM MARKETING'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
+    return AiProposalsView(
+      isOwner: auth.isOwner,
+      loading: _loadingAiProposals,
+      runningAnalysis: _runningAiAnalysis,
+      proposals: _aiProposals,
+      onRunAnalysis: _runFinancialAiAnalysis,
+      onRefresh: _loadFinancialAiProposals,
+      onApprove: _acceptAiProposal,
+      onReject: _rejectAiProposal,
     );
   }
 
