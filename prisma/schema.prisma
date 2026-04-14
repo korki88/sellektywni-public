@@ -242,6 +242,21 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model FinancialGoal {
+  id           String   @id @default(uuid())
+  month        String   @unique @db.VarChar(7)
+  revenueTarget Decimal @map("revenue_target") @db.Decimal(12, 2)
+  profitTarget Decimal  @map("profit_target") @db.Decimal(12, 2)
+  fixedCosts   Decimal  @map("fixed_costs") @db.Decimal(12, 2)
+  burnRate     Decimal  @map("burn_rate") @db.Decimal(12, 2)
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([month])
+  @@map("financial_goals")
+}
+
 model Supplier {
   id               String    @id @default(uuid())
   name             String    @unique
