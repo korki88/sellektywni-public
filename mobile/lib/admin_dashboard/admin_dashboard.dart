@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../theme/design_tokens.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,28 +45,38 @@ enum _MenuId {
   stats,
   finance,
   aiAgents,
+  marketing,
   employees,
+  catalog,
   reservations,
   orders,
-  shipping,
   cms,
   supportDesk,
   experiments,
   giftCards,
   reviews,
   permissions,
+  operationHistory,
   dotykackaDev,
   scanner,
   loyalty,
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  static const double _sectionScrollableListHeight = 320;
+
   int _railIndex = 0;
   final _scanFocus = FocusNode();
   final _scanController = TextEditingController();
   final _manualIdController = TextEditingController();
   final _dotykackaIdController = TextEditingController();
   final _dotykackaQtyController = TextEditingController(text: '0');
+  final _catalogQueryController = TextEditingController();
+  final _auditActionFilterController = TextEditingController();
+  final _auditUserIdFilterController = TextEditingController();
+  final _auditResourceTypeFilterController = TextEditingController();
+  bool _uploadingCostingSheet = false;
+  StaffCostingImportResult? _lastCostingImport;
 
   List<StaffProduct> _queue = [];
   List<StaffOrder> _orders = [];
@@ -77,15 +88,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _loadingQueue = false;
   bool _loadingOrders = false;
   bool _loadingPermissions = false;
-  bool _loadingShipping = false;
+  bool _loadingCatalog = false;
   bool _loadingCustomer = false;
   bool _loadingDotykackaDev = false;
   bool _dotykackaDevEnabled = false;
   String? _error;
   List<DotykackaDevStockRow> _dotykackaRows = [];
-  List<Map<String, dynamic>> _shippingProviders = [];
-  /// Klucze: INPOST, DPD, DHL, POCZTA_POLSKA — lista punktów z API (live-first + fallback).
-  Map<String, dynamic>? _shippingSuggest;
+  List<Map<String, dynamic>> _catalogRows = [];
   _MenuId? _lastAutoLoadedMenu;
   Map<String, dynamic>? _analyticsSummary;
   List<Map<String, dynamic>> _lowStockRows = [];
@@ -102,6 +111,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _loadingGiftCardsStaff = false;
   List<Map<String, dynamic>> _reviewRows = [];
   bool _loadingReviews = false;
+  final List<StaffAuditLog> _auditRows = [];
+  bool _loadingAuditLogs = false;
+  bool _loadingMoreAuditLogs = false;
+  bool _auditHasMore = true;
+  int _auditTotal = 0;
+  int _auditOffset = 0;
+  static const int _auditPageSize = 50;
+  bool _loadingAiProposals = false;
+  bool _runningAiAnalysis = false;
+  List<FinancialAiProposal> _aiProposals = [];
+  bool _loadingMarketingDrafts = false;
+  List<MarketingDraft> _marketingDrafts = [];
 
   List<_MenuId> _menuForRole(AuthSession auth) {
     final menu = <_MenuId>[];
@@ -109,16 +130,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
       menu.addAll(const [_MenuId.stats, _MenuId.finance]);
     }
     if (auth.isOwner) {
-      menu.addAll(const [_MenuId.aiAgents, _MenuId.employees]);
+      menu.addAll(const [_MenuId.aiAgents, _MenuId.marketing, _MenuId.employees]);
+    }
+    if (auth.hasPermission('manage.catalog')) {
+      menu.add(_MenuId.catalog);
     }
     if (auth.hasPermission('manage.reservations')) {
       menu.add(_MenuId.reservations);
     }
     if (auth.hasPermission('manage.orders')) {
       menu.add(_MenuId.orders);
-    }
-    if (auth.hasPermission('manage.orders')) {
-      menu.add(_MenuId.shipping);
     }
     if (auth.hasPermission('manage.cms')) {
       menu.add(_MenuId.cms);
@@ -138,6 +159,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (auth.hasPermission('manage.permissions')) {
       menu.add(_MenuId.permissions);
     }
+    if (auth.isOwner) {
+      menu.add(_MenuId.operationHistory);
+    }
     if (auth.hasPermission('manage.dotykacka')) {
       menu.add(_MenuId.dotykackaDev);
     }
@@ -155,16 +179,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return 'Finanse';
       case _MenuId.aiAgents:
         return 'Agenci AI';
+      case _MenuId.marketing:
+        return 'Marketing';
       case _MenuId.employees:
         return 'Pracownicy';
+      case _MenuId.catalog:
+        return 'Katalog';
       case _MenuId.reservations:
         return 'Rezerwacje';
       case _MenuId.orders:
         return 'Zamówienia';
       case _MenuId.permissions:
         return 'Uprawnienia';
-      case _MenuId.shipping:
-        return 'Dostawy';
+      case _MenuId.operationHistory:
+        return 'Dziennik aktywności';
       case _MenuId.cms:
         return 'CMS';
       case _MenuId.supportDesk:
@@ -192,16 +220,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return selected ? Icons.account_balance : Icons.account_balance_outlined;
       case _MenuId.aiAgents:
         return selected ? Icons.smart_toy : Icons.smart_toy_outlined;
+      case _MenuId.marketing:
+        return selected ? Icons.campaign : Icons.campaign_outlined;
       case _MenuId.employees:
         return selected ? Icons.groups : Icons.groups_outlined;
+      case _MenuId.catalog:
+        return selected ? Icons.storefront : Icons.storefront_outlined;
       case _MenuId.reservations:
         return selected ? Icons.event_note : Icons.event_note_outlined;
       case _MenuId.orders:
         return selected ? Icons.receipt_long : Icons.receipt_long_outlined;
       case _MenuId.permissions:
         return selected ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined;
-      case _MenuId.shipping:
-        return selected ? Icons.local_shipping : Icons.local_shipping_outlined;
+      case _MenuId.operationHistory:
+        return selected ? Icons.history : Icons.history_outlined;
       case _MenuId.cms:
         return selected ? Icons.article : Icons.article_outlined;
       case _MenuId.supportDesk:
@@ -237,6 +269,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _manualIdController.dispose();
     _dotykackaIdController.dispose();
     _dotykackaQtyController.dispose();
+    _catalogQueryController.dispose();
+    _auditActionFilterController.dispose();
+    _auditUserIdFilterController.dispose();
+    _auditResourceTypeFilterController.dispose();
     super.dispose();
   }
 
@@ -251,12 +287,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _autoRefreshMenu(_MenuId menuId) {
     switch (menuId) {
+      case _MenuId.aiAgents:
+        _loadFinancialAiProposals();
+      case _MenuId.marketing:
+        _loadMarketingDrafts();
+      case _MenuId.catalog:
+        _loadCatalog();
       case _MenuId.reservations:
         _loadQueue();
       case _MenuId.orders:
         _loadOrders();
-      case _MenuId.shipping:
-        _loadShipping();
       case _MenuId.permissions:
         _loadPermissions();
       case _MenuId.dotykackaDev:
@@ -273,6 +313,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _loadGiftCardsStaff();
       case _MenuId.reviews:
         _loadReviews();
+      case _MenuId.operationHistory:
+        _loadAuditLogs(reset: true);
       default:
         break;
     }
@@ -388,26 +430,81 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  Future<void> _loadShipping() async {
+  Future<void> _loadCatalog() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.hasPermission('manage.catalog')) return;
     setState(() {
-      _loadingShipping = true;
+      _loadingCatalog = true;
       _error = null;
     });
     try {
-      final providers = await _api.fetchShippingProviders();
-      final suggest = await _api.fetchShippingPointsSuggest();
+      final rows = await _api.fetchCatalogProducts(
+        q: _catalogQueryController.text.trim(),
+      );
       if (!mounted) return;
       setState(() {
-        _shippingProviders = providers;
-        _shippingSuggest = suggest;
-        _loadingShipping = false;
+        _catalogRows = rows;
+        _loadingCatalog = false;
       });
     } on StaffApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _loadingShipping = false;
+        _loadingCatalog = false;
         _error = e.toString();
       });
+    }
+  }
+
+  Future<void> _importCostingFromSheet() async {
+    if (_uploadingCostingSheet) return;
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Import danych kosztowych jest dostępny tylko dla OWNER.')),
+      );
+      return;
+    }
+    final picked = await FilePicker.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const ['csv', 'xlsx', 'xls'],
+    );
+    if (picked == null || picked.files.isEmpty) return;
+    final file = picked.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nie udało się odczytać pliku.')),
+      );
+      return;
+    }
+    setState(() => _uploadingCostingSheet = true);
+    try {
+      final result = await _api.importCostingFile(
+        bytes: bytes,
+        fileName: file.name,
+      );
+      if (!mounted) return;
+      setState(() {
+        _lastCostingImport = result;
+        _uploadingCostingSheet = false;
+      });
+      await _loadCatalog();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Import zakończony: zaktualizowano ${result.updatedProducts} produktów.',
+          ),
+        ),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingCostingSheet = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
   }
 
@@ -466,6 +563,143 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _loadingPermissions = false;
         _error = e.toString();
       });
+    }
+  }
+
+  Future<void> _loadAuditLogs({bool reset = false}) async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) return;
+    if (_loadingAuditLogs || _loadingMoreAuditLogs) return;
+    if (!reset && !_auditHasMore) return;
+    final nextOffset = reset ? 0 : _auditOffset;
+    setState(() {
+      if (reset) {
+        _loadingAuditLogs = true;
+      } else {
+        _loadingMoreAuditLogs = true;
+      }
+      _error = null;
+    });
+    try {
+      final page = await _api.fetchAuditLogs(
+        offset: nextOffset,
+        limit: _auditPageSize,
+        userEmail: _auditUserIdFilterController.text.trim(),
+        action: _auditActionFilterController.text.trim(),
+        resourceType: _auditResourceTypeFilterController.text.trim(),
+      );
+      if (!mounted) return;
+      final merged = reset ? page.rows : [..._auditRows, ...page.rows];
+      setState(() {
+        _auditRows
+          ..clear()
+          ..addAll(merged);
+        _auditTotal = page.total;
+        _auditOffset = merged.length;
+        _auditHasMore = _auditRows.length < _auditTotal;
+        _loadingAuditLogs = false;
+        _loadingMoreAuditLogs = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingAuditLogs = false;
+        _loadingMoreAuditLogs = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadFinancialAiProposals() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) return;
+    setState(() {
+      _loadingAiProposals = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchFinancialAiProposals(status: 'PENDING');
+      if (!mounted) return;
+      setState(() {
+        _aiProposals = rows;
+        _loadingAiProposals = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingAiProposals = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _runFinancialAiAnalysis() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner || _runningAiAnalysis) return;
+    setState(() => _runningAiAnalysis = true);
+    try {
+      final result = await _api.runFinancialIntelligenceAnalysis();
+      await _loadFinancialAiProposals();
+      if (!mounted) return;
+      final generated = result['generatedProposals']?.toString() ?? '0';
+      final updated = result['updatedExistingProposals']?.toString() ?? '0';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Analiza zakończona. Nowe propozycje: $generated, zaktualizowane: $updated.',
+          ),
+        ),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _runningAiAnalysis = false);
+    }
+  }
+
+  Future<void> _loadMarketingDrafts() async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) return;
+    setState(() {
+      _loadingMarketingDrafts = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.fetchMarketingDrafts();
+      if (!mounted) return;
+      setState(() {
+        _marketingDrafts = rows;
+        _loadingMarketingDrafts = false;
+      });
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingMarketingDrafts = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _acceptAiProposal(FinancialAiProposal proposal) async {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) return;
+    try {
+      await _api.acceptFinancialAiProposal(proposal.id);
+      await _loadFinancialAiProposals();
+      await _loadMarketingDrafts();
+      await _loadCatalog();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Zaakceptowano propozycję i uruchomiono marketing.')),
+      );
+    } on StaffApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
   }
 
@@ -633,6 +867,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         subtitle: trimmed.isEmpty ? null : trimmed,
       );
       await _loadQueue();
+      await _loadCatalog();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Zapisano ustawienia witryny.')),
@@ -1034,12 +1269,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          ..._lowStockRows.map(
-            (r) => Card(
-              child: ListTile(
-                title: Text(r['name']?.toString() ?? ''),
-                subtitle: Text('Stan: ${r['stockQty']} · Dotykačka: ${r['idDotykacka'] ?? '—'}'),
-              ),
+          SizedBox(
+            height: _sectionScrollableListHeight,
+            child: ListView.builder(
+              itemCount: _lowStockRows.length,
+              itemBuilder: (context, i) {
+                final r = _lowStockRows[i];
+                return Card(
+                  child: ListTile(
+                    title: Text(r['name']?.toString() ?? ''),
+                    subtitle: Text('Stan: ${r['stockQty']} · Dotykačka: ${r['idDotykacka'] ?? '—'}'),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -1136,7 +1378,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildAiAgentsPanel() {
-    final sim = _devIntegrationSimulation(context);
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) {
+      return Center(
+        child: Text(
+          'Sekcja dostępna tylko dla OWNER.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: DesignTokens.mutedText,
+              ),
+        ),
+      );
+    }
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -1144,19 +1396,189 @@ class _AdminDashboardState extends State<AdminDashboard> {
           'Agenci AI',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
+        const SizedBox(height: 10),
+        Text(
+          'FinancialIntelligence analizuje rotację i terminy płatności dostawców, aby wykryć ryzyko płynności.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: DesignTokens.mutedText,
+              ),
+        ),
         const SizedBox(height: 12),
-        _infoCard(
-          context,
-          icon: Icons.smart_toy_outlined,
-          title: 'Status integracji',
-          lines: [
-            if (sim)
-              'Tryb deweloperski: brak połączenia z zewnętrznym modelem — żadne dane zamówień nie są wysyłane poza API sklepu.'
-            else
-              'Konfiguracja agentów (np. asystent obsługi, podsumowania zamówień) nie jest jeszcze ujęta w tym repozytorium.',
-            'Docelowo: bezpieczny kanał tylko po stronie serwera (sekrety w .env, nie w aplikacji mobilnej).',
+        Row(
+          children: [
+            FilledButton.icon(
+              onPressed: _runningAiAnalysis ? null : _runFinancialAiAnalysis,
+              icon: _runningAiAnalysis
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_graph_outlined),
+              label: Text(_runningAiAnalysis ? 'Analizowanie...' : 'Uruchom analizę'),
+            ),
+            const SizedBox(width: 10),
+            FilledButton.tonal(
+              onPressed: _loadFinancialAiProposals,
+              child: const Text('Odśwież propozycje'),
+            ),
           ],
         ),
+        const SizedBox(height: 16),
+        if (_loadingAiProposals)
+          const Center(child: CircularProgressIndicator())
+        else if (_aiProposals.isEmpty)
+          Text(
+            'Brak aktywnych propozycji cashflow.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          )
+        else
+          ..._aiProposals.map(
+            (p) => Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.productName ?? p.productId ?? 'Produkt',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Risk score: ${p.riskScore} · '
+                      'Cena: ${p.currentPriceRaw} zł -> ${p.suggestedPriceRaw} zł '
+                      '(-${p.discountPercentRaw}%)',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (p.supplierName != null || p.paymentTermsDays != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Dostawca: ${p.supplierName ?? "—"} · '
+                        'Termin płatności: ${p.paymentTermsDays?.toString() ?? "—"} dni',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: DesignTokens.mutedText,
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      p.rationale,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: DesignTokens.mutedText,
+                          ),
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton(
+                        onPressed: () => _acceptAiProposal(p),
+                        child: const Text('AKCEPTUJ I URUCHOM MARKETING'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMarketingTab() {
+    final auth = context.read<AuthSession>();
+    if (!auth.isOwner) {
+      return Center(
+        child: Text(
+          'Sekcja dostępna tylko dla OWNER.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: DesignTokens.mutedText,
+              ),
+        ),
+      );
+    }
+    if (_loadingMarketingDrafts) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          'Marketing',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Szkice automatycznie tworzone po akceptacji propozycji AI.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: DesignTokens.mutedText,
+              ),
+        ),
+        const SizedBox(height: 14),
+        if (_marketingDrafts.isEmpty)
+          Text(
+            'Brak szkiców marketingowych.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          )
+        else
+          ..._marketingDrafts.map(
+            (d) => Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      d.productName ?? 'Produkt',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Status draftu: ${d.status}'
+                      '${d.discountPercentRaw != null ? ' · Obniżka: -${d.discountPercentRaw}%' : ''}'
+                      '${d.riskScore != null ? ' · Risk: ${d.riskScore}' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: DesignTokens.mutedText,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Caption:\n${d.caption}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Suggest image:\n${d.suggestImage}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'PUSH VINTAGE: ${d.pushVintage}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'PUSH GOLD: ${d.pushGold}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'PUSH SILVER: ${d.pushSilver}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -1229,6 +1651,168 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  StaffProduct _staffProductFromCatalog(Map<String, dynamic> row) {
+    return StaffProduct(
+      id: row['id']?.toString() ?? '',
+      idDotykacka: row['idDotykacka']?.toString() ?? '',
+      name: row['name']?.toString() ?? 'Produkt',
+      priceRaw: row['price']?.toString() ?? '0',
+      status: row['status']?.toString() ?? '',
+      pendingQuantity: 0,
+      subtitle: row['subtitle']?.toString(),
+      isFeatured: row['isFeatured'] == true,
+    );
+  }
+
+  Widget _buildCatalogTab() {
+    final auth = context.read<AuthSession>();
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Katalog i merchandising. Zarządzaj widocznością produktów oraz podtytułami kart.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DesignTokens.mutedText,
+                ),
+          ),
+          const SizedBox(height: 12),
+          if (auth.isOwner) ...[
+            Card(
+              color: DesignTokens.infoSoft,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Migracja danych kosztowych (CSV/Excel)',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Kolumny: productId lub idDotykacka oraz purchasePriceNet, vatRate, marginTarget, supplier, paymentTermsDays.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    FilledButton.tonalIcon(
+                      onPressed: _uploadingCostingSheet ? null : _importCostingFromSheet,
+                      icon: _uploadingCostingSheet
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload_file_outlined),
+                      label: Text(
+                        _uploadingCostingSheet
+                            ? 'Importowanie...'
+                            : 'Importuj CSV / Excel',
+                      ),
+                    ),
+                    if (_lastCostingImport != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Ostatni import: ${_lastCostingImport!.fileName}\n'
+                        'Wiersze: ${_lastCostingImport!.rowsTotal} · '
+                        'Produkty: ${_lastCostingImport!.updatedProducts} · '
+                        'Dostawcy: ${_lastCostingImport!.upsertedSuppliers}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (_lastCostingImport!.warnings.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 110,
+                          child: ListView.builder(
+                            itemCount: _lastCostingImport!.warnings.length,
+                            itemBuilder: (context, i) => Text(
+                              '• ${_lastCostingImport!.warnings[i]}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: DesignTokens.mutedText),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _catalogQueryController,
+                  onSubmitted: (_) => _loadCatalog(),
+                  decoration: const InputDecoration(
+                    labelText: 'Szukaj produktu (nazwa, fraza)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.tonal(
+                onPressed: _loadCatalog,
+                child: const Text('Szukaj'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _loadingCatalog
+                ? const Center(child: CircularProgressIndicator())
+                : _catalogRows.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Brak produktów dla bieżącego filtra.',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: DesignTokens.mutedText,
+                              ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: _catalogRows.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, i) {
+                          final row = _catalogRows[i];
+                          final p = _staffProductFromCatalog(row);
+                          return Card(
+                            child: ListTile(
+                              title: Text(p.name),
+                              subtitle: Text(
+                                'ID: ${p.id} · Cena: ${p.priceRaw} zł'
+                                '${p.subtitle != null && p.subtitle!.trim().isNotEmpty ? '\nPodtytuł: ${p.subtitle}' : ''}',
+                              ),
+                              isThreeLine: p.subtitle != null && p.subtitle!.trim().isNotEmpty,
+                              trailing: Wrap(
+                                spacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (p.isFeatured) const Chip(label: Text('Polecane')),
+                                  OutlinedButton.icon(
+                                    onPressed: () => _showMerchandisingDialog(p),
+                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    label: const Text('Edytuj'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
       ),
     );
   }
@@ -1522,44 +2106,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                 ),
                 const SizedBox(height: 8),
-                ..._returnRequests.map((r) {
-                  final id = r['id']?.toString() ?? '';
-                  final st = r['status']?.toString() ?? '';
-                  final reason = r['reason']?.toString() ?? '';
-                  final order = r['order'] as Map<String, dynamic>?;
-                  final oid = order?['id']?.toString() ?? '';
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text('Zamówienie $oid · $st'),
-                      subtitle: Text(reason),
-                      isThreeLine: true,
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (v) async {
-                          try {
-                            await _api.patchReturnRequest(id, status: v);
-                            await _loadOrders();
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Status zwrotu: $v')),
-                            );
-                          } on StaffApiException catch (e) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
-                            );
-                          }
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'APPROVED', child: Text('Zatwierdź')),
-                          PopupMenuItem(value: 'REJECTED', child: Text('Odrzuć')),
-                          PopupMenuItem(value: 'RECEIVED', child: Text('Przyjęto towar')),
-                          PopupMenuItem(value: 'PENDING', child: Text('Oczekuje')),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                SizedBox(
+                  height: 220,
+                  child: ListView.builder(
+                    itemCount: _returnRequests.length,
+                    itemBuilder: (context, i) {
+                      final r = _returnRequests[i];
+                      final id = r['id']?.toString() ?? '';
+                      final st = r['status']?.toString() ?? '';
+                      final reason = r['reason']?.toString() ?? '';
+                      final order = r['order'] as Map<String, dynamic>?;
+                      final oid = order?['id']?.toString() ?? '';
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text('Zamówienie $oid · $st'),
+                          subtitle: Text(reason),
+                          isThreeLine: true,
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (v) async {
+                              try {
+                                await _api.patchReturnRequest(id, status: v);
+                                await _loadOrders();
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  SnackBar(content: Text('Status zwrotu: $v')),
+                                );
+                              } on StaffApiException catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  SnackBar(content: Text(e.toString())),
+                                );
+                              }
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'APPROVED', child: Text('Zatwierdź')),
+                              PopupMenuItem(value: 'REJECTED', child: Text('Odrzuć')),
+                              PopupMenuItem(value: 'RECEIVED', child: Text('Przyjęto towar')),
+                              PopupMenuItem(value: 'PENDING', child: Text('Oczekuje')),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -2121,20 +2712,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (_cmsPagesStaff.isEmpty)
           Text('Brak stron.', style: Theme.of(context).textTheme.bodyMedium)
         else
-          ..._cmsPagesStaff.map((p) {
-            final slug = p['slug']?.toString() ?? '';
-            final title = p['title']?.toString() ?? slug;
-            final pub = p['published'] == true;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title: Text(title),
-                subtitle: Text('$slug · ${pub ? "opublikowana" : "szkic"}'),
-                trailing: const Icon(Icons.edit_outlined),
-                onTap: () => _openCmsEditorDialog(existing: p),
-              ),
-            );
-          }),
+          SizedBox(
+            height: _sectionScrollableListHeight,
+            child: ListView.builder(
+              itemCount: _cmsPagesStaff.length,
+              itemBuilder: (context, i) {
+                final p = _cmsPagesStaff[i];
+                final slug = p['slug']?.toString() ?? '';
+                final title = p['title']?.toString() ?? slug;
+                final pub = p['published'] == true;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(title),
+                    subtitle: Text('$slug · ${pub ? "opublikowana" : "szkic"}'),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => _openCmsEditorDialog(existing: p),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -2154,20 +2752,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (_supportTicketsStaff.isEmpty)
           Text('Brak zgłoszeń.', style: Theme.of(context).textTheme.bodyMedium)
         else
-          ..._supportTicketsStaff.map((t) {
-            final id = t['id']?.toString() ?? '';
-            final subj = t['subject']?.toString() ?? '';
-            final st = t['status']?.toString() ?? '';
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title: Text(subj),
-                subtitle: Text('Status: $st · $id'),
-                trailing: const Icon(Icons.reply_outlined),
-                onTap: () => _openSupportReplyDialog(id, subj),
-              ),
-            );
-          }),
+          SizedBox(
+            height: _sectionScrollableListHeight,
+            child: ListView.builder(
+              itemCount: _supportTicketsStaff.length,
+              itemBuilder: (context, i) {
+                final t = _supportTicketsStaff[i];
+                final id = t['id']?.toString() ?? '';
+                final subj = t['subject']?.toString() ?? '';
+                final st = t['status']?.toString() ?? '';
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(subj),
+                    subtitle: Text('Status: $st · $id'),
+                    trailing: const Icon(Icons.reply_outlined),
+                    onTap: () => _openSupportReplyDialog(id, subj),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -2269,59 +2874,66 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (_experimentsStaff.isEmpty)
           Text('Brak rekordów.', style: Theme.of(context).textTheme.bodyMedium)
         else
-          ..._experimentsStaff.map((e) {
-            final key = e['key']?.toString() ?? '';
-            final active = e['active'] == true;
-            final rawV = e['variants'];
-            final vLabel = rawV is List ? rawV.join(', ') : '$rawV';
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+          SizedBox(
+            height: _sectionScrollableListHeight,
+            child: ListView.builder(
+              itemCount: _experimentsStaff.length,
+              itemBuilder: (context, i) {
+                final e = _experimentsStaff[i];
+                final key = e['key']?.toString() ?? '';
+                final active = e['active'] == true;
+                final rawV = e['variants'];
+                final vLabel = rawV is List ? rawV.join(', ') : '$rawV';
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            key,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                key,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                            Switch(
+                              value: active,
+                              onChanged: (v) async {
+                                try {
+                                  await _api.patchExperimentActive(key, v);
+                                  await _loadExperimentsStaff();
+                                } on StaffApiException catch (err) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(content: Text(err.toString())),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                        Switch(
-                          value: active,
-                          onChanged: (v) async {
-                            try {
-                              await _api.patchExperimentActive(key, v);
-                              await _loadExperimentsStaff();
-                            } on StaffApiException catch (err) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(err.toString())),
-                              );
-                            }
-                          },
+                        const SizedBox(height: 4),
+                        Text('Warianty: $vLabel', style: Theme.of(context).textTheme.bodySmall),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _openExperimentStaffDialog(existing: e),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: const Text('Edytuj listę wariantów'),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text('Warianty: $vLabel', style: Theme.of(context).textTheme.bodySmall),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: () => _openExperimentStaffDialog(existing: e),
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: const Text('Edytuj listę wariantów'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -2349,33 +2961,40 @@ class _AdminDashboardState extends State<AdminDashboard> {
         if (_giftCardsStaff.isEmpty)
           Text('Brak kart.', style: Theme.of(context).textTheme.bodyMedium)
         else
-          ..._giftCardsStaff.map((g) {
-            final code = g['code']?.toString() ?? '';
-            final bal = g['balanceAmount']?.toString() ?? '';
-            final act = g['active'] == true;
-            final id = g['id']?.toString() ?? '';
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title: Text(code),
-                subtitle: Text('Saldo: $bal PLN'),
-                trailing: Switch(
-                  value: act,
-                  onChanged: (v) async {
-                    try {
-                      await _api.patchGiftCardActive(id, v);
-                      await _loadGiftCardsStaff();
-                    } on StaffApiException catch (err) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(err.toString())),
-                      );
-                    }
-                  },
-                ),
-              ),
-            );
-          }),
+          SizedBox(
+            height: _sectionScrollableListHeight,
+            child: ListView.builder(
+              itemCount: _giftCardsStaff.length,
+              itemBuilder: (context, i) {
+                final g = _giftCardsStaff[i];
+                final code = g['code']?.toString() ?? '';
+                final bal = g['balanceAmount']?.toString() ?? '';
+                final act = g['active'] == true;
+                final id = g['id']?.toString() ?? '';
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(code),
+                    subtitle: Text('Saldo: $bal PLN'),
+                    trailing: Switch(
+                      value: act,
+                      onChanged: (v) async {
+                        try {
+                          await _api.patchGiftCardActive(id, v);
+                          await _loadGiftCardsStaff();
+                        } on StaffApiException catch (err) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(content: Text(err.toString())),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -2434,6 +3053,125 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         );
       },
+    );
+  }
+
+  String _formatAuditDate(String raw) {
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+    final dt = parsed.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}:${two(dt.second)}';
+  }
+
+  Widget _buildOperationHistoryTab() {
+    if (_loadingAuditLogs) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Dziennik aktywności (tylko Owner Dashboard).',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: DesignTokens.mutedText,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: 320,
+              child: TextField(
+                controller: _auditUserIdFilterController,
+                decoration: const InputDecoration(
+                  labelText: 'Kto (email)',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _loadAuditLogs(reset: true),
+              ),
+            ),
+            SizedBox(
+              width: 360,
+              child: TextField(
+                controller: _auditActionFilterController,
+                decoration: const InputDecoration(
+                  labelText: 'Akcja (np. CHANGE_ORDER_STATUS)',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _loadAuditLogs(reset: true),
+              ),
+            ),
+            SizedBox(
+              width: 260,
+              child: TextField(
+                controller: _auditResourceTypeFilterController,
+                decoration: const InputDecoration(
+                  labelText: 'Obiekt (ORDER, PRODUCT...)',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _loadAuditLogs(reset: true),
+              ),
+            ),
+            FilledButton.tonal(
+              onPressed: () => _loadAuditLogs(reset: true),
+              child: const Text('Filtruj'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Wyniki: ${_auditRows.length} / $_auditTotal',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        if (_auditRows.isEmpty)
+          Text(
+            'Brak wpisów dla wybranego filtra.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          )
+        else
+          SizedBox(
+            height: 520,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Kto')),
+                  DataColumn(label: Text('Akcja')),
+                  DataColumn(label: Text('Obiekt')),
+                  DataColumn(label: Text('Data')),
+                ],
+                rows: _auditRows
+                    .map(
+                      (row) => DataRow(
+                        cells: [
+                          DataCell(
+                            Text(row.userEmail.isNotEmpty ? row.userEmail : row.userId),
+                          ),
+                          DataCell(Text(row.action)),
+                          DataCell(Text('${row.resourceType}:${row.resourceId}')),
+                          DataCell(Text(_formatAuditDate(row.createdAt))),
+                        ],
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
+        if (_loadingMoreAuditLogs)
+          const Center(child: CircularProgressIndicator())
+        else if (_auditHasMore)
+          Center(
+            child: FilledButton.tonal(
+              onPressed: () => _loadAuditLogs(),
+              child: const Text('Wczytaj więcej'),
+            ),
+          ),
+      ],
     );
   }
 
@@ -2558,169 +3296,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else
-            ..._dotykackaRows.map(
-              (r) => ListTile(
-                dense: true,
-                title: Text(r.idDotykacka),
-                trailing: Text('${r.stockQty} szt.'),
+            SizedBox(
+              height: _sectionScrollableListHeight,
+              child: ListView.builder(
+                itemCount: _dotykackaRows.length,
+                itemBuilder: (context, i) {
+                  final r = _dotykackaRows[i];
+                  return ListTile(
+                    dense: true,
+                    title: Text(r.idDotykacka),
+                    trailing: Text('${r.stockQty} szt.'),
+                  );
+                },
               ),
             ),
         ],
       ),
-    );
-  }
-
-  List<Widget> _buildShippingSuggestSections(Map<String, dynamic> suggest) {
-    const order = <List<String>>[
-      ['INPOST', 'InPost'],
-      ['ORLEN_PACZKA', 'ORLEN Paczka'],
-      ['DPD', 'DPD Pickup'],
-      ['DHL', 'DHL POP / punkt'],
-      ['POCZTA_POLSKA', 'Poczta Polska'],
-    ];
-    final out = <Widget>[];
-    for (final entry in order) {
-      final key = entry[0];
-      final label = entry[1];
-      final raw = suggest[key];
-      final list = raw is List<dynamic> ? raw : const <dynamic>[];
-      out.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 6),
-          child: Text(
-            '$label (${list.length})',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-        ),
-      );
-      if (list.isEmpty) {
-        out.add(
-          Text(
-            'Brak punktów (sprawdź konfigurację API lub sieć).',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        );
-        continue;
-      }
-      for (final p in list) {
-        if (p is! Map) continue;
-        final m = Map<String, dynamic>.from(p);
-        out.add(
-          ListTile(
-            dense: true,
-            title: Text('${m['id']} · ${m['name'] ?? ''}'),
-            subtitle: Text(
-              '${m['address'] ?? ''}, ${m['postalCode'] ?? ''} ${m['city'] ?? ''}',
-            ),
-          ),
-        );
-      }
-    }
-    return out;
-  }
-
-  Widget _buildShippingTab() {
-    if (_loadingShipping) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final sim = _devIntegrationSimulation(context);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: DesignTokens.accentInfoSoft,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: DesignTokens.accentInfoLine),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Proces wysyłki (operacyjnie)',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '• Klient wybiera metodę w koszyku: kurier, paczkomat InPost lub odbiór w salonie.\n'
-                '• Backend: GET /shipping/providers — dostępni przewoźnicy; GET /shipping/points/* — punkty; '
-                'przy braku kluczy API zwracane są dane fallback / symulacja (dev).\n'
-                '• Po opłaceniu zamówienia pakuj: najpierw paragon z kasy (Dotykačka), potem — jeśli wysyłka — etykieta kurierska.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              if (sim) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Tryb deweloperski: brak rzeczywistych wywołań kurierskich przy braku konfiguracji — użyj zakładki „Dotykačka DEV” do stanów testowych.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Integracje kurierskie (API w backendzie): cennik, punkty odbioru, sugestie dla checkout.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 8),
-        ...kCourierIntegrationRows.map(
-          (row) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('• '),
-                Expanded(
-                  child: Text(
-                    '${row['name']} — kod ${row['code']}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.tonal(
-          onPressed: _loadShipping,
-          child: const Text('Odśwież dane przewoźników'),
-        ),
-        const SizedBox(height: 16),
-        Text('Dostępni przewoźnicy', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        if (_shippingProviders.isEmpty)
-          const Text('Brak danych')
-        else
-          ..._shippingProviders.map(
-            (p) => Card(
-              child: ListTile(
-                title: Text('${p['name'] ?? p['code'] ?? 'Przewoźnik'}'),
-                subtitle: Text(
-                  'Code: ${p['code'] ?? '-'} · '
-                  'Punkty: ${p['supportsMapPoints'] == true ? 'tak' : 'nie'} · '
-                  'Paczkomat: ${p['supportsParcelLocker'] == true ? 'tak' : 'nie'} · '
-                  'API: ${p['apiConfigured'] == true ? 'skonfigurowane' : 'symulacja / offline'}',
-                ),
-              ),
-            ),
-          ),
-        const SizedBox(height: 16),
-        Text(
-          'Sugestie punktów (live-first: InPost z sieci; DPD/DHL/Poczta po podaniu URL + klucza w .env)',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        if (_shippingSuggest == null)
-          const Text('Brak danych')
-        else
-          ..._buildShippingSuggestSections(_shippingSuggest!),
-      ],
     );
   }
 
@@ -2803,14 +3394,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return _buildFinancePanel();
       case _MenuId.aiAgents:
         return _buildAiAgentsPanel();
+      case _MenuId.marketing:
+        return _buildMarketingTab();
       case _MenuId.employees:
         return _buildEmployeesPanel();
+      case _MenuId.catalog:
+        return _buildCatalogTab();
       case _MenuId.reservations:
         return _buildQueueTab();
       case _MenuId.orders:
         return _buildOrdersTab();
-      case _MenuId.shipping:
-        return _buildShippingTab();
       case _MenuId.cms:
         return _buildCmsStaffTab();
       case _MenuId.supportDesk:
@@ -2823,6 +3416,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return _buildReviewsStaffTab();
       case _MenuId.permissions:
         return _buildPermissionsTab();
+      case _MenuId.operationHistory:
+        return _buildOperationHistoryTab();
       case _MenuId.dotykackaDev:
         return _buildDotykackaDevTab();
       case _MenuId.scanner:
@@ -2884,8 +3479,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
 
     final title = widget.presentation == AdminDashboardPresentation.overlaySidebar
-        ? 'Panel'
-        : (auth.isOwner ? 'Panel — właściciel' : 'Panel — pracownik');
+        ? 'Staff Sidebar'
+        : (auth.isOwner ? 'Owner Dashboard' : 'Staff Sidebar');
 
     final mainPanel = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2927,6 +3522,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 ),
                               ),
                           ],
+                        ),
+                      ],
+                      if (current == _MenuId.catalog) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadCatalog,
+                          child: const Text('Odśwież katalog'),
+                        ),
+                      ],
+                      if (current == _MenuId.marketing) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadMarketingDrafts,
+                          child: const Text('Odśwież marketing'),
+                        ),
+                      ],
+                      if (current == _MenuId.aiAgents) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: _loadFinancialAiProposals,
+                          child: const Text('Odśwież propozycje AI'),
                         ),
                       ],
                       if (current == _MenuId.orders) ...[
@@ -2999,6 +3615,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         FilledButton.tonal(
                           onPressed: _loadPermissions,
                           child: const Text('Odśwież uprawnienia'),
+                        ),
+                      ],
+                      if (current == _MenuId.operationHistory) ...[
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: () => _loadAuditLogs(reset: true),
+                          child: const Text('Odśwież historię'),
                         ),
                       ],
                     ],

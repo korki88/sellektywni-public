@@ -22,12 +22,21 @@ import { StaffSupportController } from './staff-support.controller';
 import { StaffExperimentsController } from './staff-experiments.controller';
 import { StaffGiftCardsController } from './staff-gift-cards.controller';
 import { StaffGiftCardsService } from './staff-gift-cards.service';
+import { StaffAuditController } from './staff-audit.controller';
+import { StaffAuditService } from './staff-audit.service';
 import { CmsModule } from '../cms/cms.module';
 import { SupportModule } from '../support/support.module';
 import { ExperimentsModule } from '../experiments/experiments.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [AuthModule, CmsModule, SupportModule, ExperimentsModule],
+  imports: [
+    AuthModule,
+    CmsModule,
+    SupportModule,
+    ExperimentsModule,
+    AuditModule,
+  ],
   controllers: [
     StaffController,
     StaffProductsController,
@@ -38,6 +47,7 @@ import { ExperimentsModule } from '../experiments/experiments.module';
     StaffSupportController,
     StaffExperimentsController,
     StaffGiftCardsController,
+    StaffAuditController,
     StaffReviewsController,
     StaffPermissionsController,
     StaffPromoController,
@@ -52,6 +62,7 @@ import { ExperimentsModule } from '../experiments/experiments.module';
     StaffPromoService,
     StaffAnalyticsService,
     StaffGiftCardsService,
+    StaffAuditService,
     StaffReviewsService,
   ],
 })

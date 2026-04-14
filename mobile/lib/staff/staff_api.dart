@@ -192,6 +192,118 @@ class StaffApi {
     return jsonDecode(r.body) as Map<String, dynamic>;
   }
 
+  Future<StaffCostingImportResult> importCostingFile({
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    final t = _session.accessToken;
+    if (t == null || t.isEmpty) {
+      throw StaffApiException(401, 'Brak tokenu dostępu');
+    }
+    final uri = Uri.parse('${_session.apiBase}/staff/products/costing/import');
+    final req = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $t'
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName,
+        ),
+      );
+    final streamed = await req.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw StaffApiException(response.statusCode, response.body);
+    }
+    final j = jsonDecode(response.body);
+    if (j is! Map<String, dynamic>) {
+      throw StaffApiException(500, 'Nieprawidłowa odpowiedź importu');
+    }
+    return StaffCostingImportResult.fromJson(j);
+  }
+
+  Future<Map<String, dynamic>> runFinancialIntelligenceAnalysis() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/financial-intelligence/analyze');
+    final r = await http.post(uri, headers: _headers());
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is! Map<String, dynamic>) return const {};
+    return j;
+  }
+
+  Future<List<FinancialAiProposal>> fetchFinancialAiProposals({
+    String? status,
+  }) async {
+    final uri = Uri.parse('${_session.apiBase}/staff/financial-intelligence/proposals')
+        .replace(
+      queryParameters: (status != null && status.trim().isNotEmpty)
+          ? {'status': status.trim()}
+          : null,
+    );
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(FinancialAiProposal.fromJson)
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> acceptFinancialAiProposal(String proposalId) async {
+    final uri = Uri.parse(
+      '${_session.apiBase}/staff/financial-intelligence/proposals/${Uri.encodeComponent(proposalId)}/accept-and-launch-marketing',
+    );
+    final r = await http.post(uri, headers: _headers());
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is! Map<String, dynamic>) return const {};
+    return j;
+  }
+
+  Future<List<MarketingDraft>> fetchMarketingDrafts() async {
+    final uri = Uri.parse('${_session.apiBase}/staff/marketing/drafts');
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(MarketingDraft.fromJson)
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCatalogProducts({
+    String? q,
+    int limit = 120,
+  }) async {
+    final query = <String, String>{
+      'offset': '0',
+      'limit': '${limit.clamp(1, 200)}',
+    };
+    if (q != null && q.trim().isNotEmpty) {
+      query['q'] = q.trim();
+    }
+    final uri = Uri.parse('${_session.apiBase}/products').replace(
+      queryParameters: query,
+    );
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final list = jsonDecode(r.body);
+    if (list is! List) return const [];
+    return list.whereType<Map<String, dynamic>>().toList();
+  }
+
   Future<List<Map<String, dynamic>>> fetchReviewsModeration() async {
     final uri = Uri.parse('${_session.apiBase}/staff/reviews');
     final r = await http.get(uri, headers: _headers());
@@ -386,6 +498,44 @@ class StaffApi {
       throw StaffApiException(r.statusCode, r.body);
     }
     return StaffPermissionUser.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+  }
+
+  Future<StaffAuditLogsPage> fetchAuditLogs({
+    int offset = 0,
+    int limit = 50,
+    String? userId,
+    String? userEmail,
+    String? action,
+    String? resourceType,
+  }) async {
+    final query = <String, String>{
+      'offset': '${offset < 0 ? 0 : offset}',
+      'limit': '${limit.clamp(1, 200)}',
+    };
+    if (userId != null && userId.trim().isNotEmpty) {
+      query['userId'] = userId.trim();
+    }
+    if (userEmail != null && userEmail.trim().isNotEmpty) {
+      query['userEmail'] = userEmail.trim();
+    }
+    if (action != null && action.trim().isNotEmpty) {
+      query['action'] = action.trim();
+    }
+    if (resourceType != null && resourceType.trim().isNotEmpty) {
+      query['resourceType'] = resourceType.trim();
+    }
+    final uri = Uri.parse('${_session.apiBase}/staff/audit-logs').replace(
+      queryParameters: query,
+    );
+    final r = await http.get(uri, headers: _headers());
+    if (r.statusCode != 200) {
+      throw StaffApiException(r.statusCode, r.body);
+    }
+    final j = jsonDecode(r.body);
+    if (j is! Map<String, dynamic>) {
+      return const StaffAuditLogsPage(total: 0, offset: 0, limit: 0, rows: []);
+    }
+    return StaffAuditLogsPage.fromJson(j);
   }
 
   // --- CMS / support / experiments / gift cards (uprawnienia manage.*) ---

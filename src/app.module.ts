@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CmsModule } from './cms/cms.module';
@@ -34,8 +35,15 @@ import { StaffSupportController } from './staff/staff-support.controller';
 import { StaffExperimentsController } from './staff/staff-experiments.controller';
 import { StaffGiftCardsController } from './staff/staff-gift-cards.controller';
 import { StaffReviewsController } from './staff/staff-reviews.controller';
+import { StaffAuditController } from './staff/staff-audit.controller';
 import { SupportController } from './support/support.controller';
 import { SupportModule } from './support/support.module';
+import { StaffAuditInterceptor } from './audit/staff-audit.interceptor';
+import { AuditModule } from './audit/audit.module';
+import { FinancialIntelligenceModule } from './financial-intelligence/financial-intelligence.module';
+import { FinancialIntelligenceController } from './financial-intelligence/financial-intelligence.controller';
+import { MarketingAutomationModule } from './marketing-automation/marketing-automation.module';
+import { MarketingAutomationController } from './marketing-automation/marketing-automation.controller';
 
 @Module({
   imports: [
@@ -52,10 +60,20 @@ import { SupportModule } from './support/support.module';
     ShippingModule,
     CmsModule,
     SupportModule,
+    AuditModule,
+    FinancialIntelligenceModule,
+    MarketingAutomationModule,
     ExperimentsModule,
     ScheduledTasksModule,
   ],
-  providers: [SupabaseJwtMiddleware, LoadProfileMiddleware],
+  providers: [
+    SupabaseJwtMiddleware,
+    LoadProfileMiddleware,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: StaffAuditInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -79,6 +97,9 @@ export class AppModule implements NestModule {
         StaffExperimentsController,
         StaffGiftCardsController,
         StaffReviewsController,
+        StaffAuditController,
+        FinancialIntelligenceController,
+        MarketingAutomationController,
         DotykackaDevController,
         OrderController,
         ShippingController,

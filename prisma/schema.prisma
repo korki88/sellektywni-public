@@ -9,6 +9,7 @@ datasource db {
 
 enum ProductStatus {
   AVAILABLE
+  PROMO
   RESERVED
   PENDING_APPROVAL
   SOLD
@@ -94,6 +95,18 @@ enum SupportTicketStatus {
   OPEN
   ANSWERED
   CLOSED
+}
+
+enum AiProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum MarketingDraftStatus {
+  DRAFT
+  READY
+  LAUNCHED
 }
 
 /// Profil aplikacji — `userId` = `sub` z JWT Supabase (UUID użytkownika).
@@ -210,6 +223,80 @@ model ExperimentAssignment {
   @@map("experiment_assignments")
 }
 
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id") @db.Uuid
+  userEmail    String   @map("user_email")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String   @map("resource_id")
+  oldValue     Json?    @map("old_value")
+  newValue     Json?    @map("new_value")
+  ipAddress    String?  @map("ip_address")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([resourceType, resourceId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Supplier {
+  id               String    @id @default(uuid())
+  name             String    @unique
+  paymentTermsDays Int?      @map("payment_terms_days")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  products         Product[]
+
+  @@map("suppliers")
+}
+
+model AiProposal {
+  id               String           @id @default(uuid())
+  type             String
+  status           AiProposalStatus @default(PENDING)
+  productId        String?          @map("product_id")
+  product          Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  currentPrice     Decimal          @map("current_price") @db.Decimal(12, 2)
+  suggestedPrice   Decimal          @map("suggested_price") @db.Decimal(12, 2)
+  discountPercent  Decimal          @map("discount_percent") @db.Decimal(5, 2)
+  riskScore        Int              @map("risk_score")
+  rationale        String           @db.Text
+  acceptedAt       DateTime?        @map("accepted_at")
+  acceptedByUserId String?          @map("accepted_by_user_id") @db.Uuid
+  marketingLaunchedAt DateTime?     @map("marketing_launched_at")
+  marketingDraft   MarketingDraft?
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([productId, status])
+  @@map("ai_proposals")
+}
+
+model MarketingDraft {
+  id             String              @id @default(uuid())
+  aiProposalId   String              @unique @map("ai_proposal_id")
+  productId      String              @map("product_id")
+  status         MarketingDraftStatus @default(DRAFT)
+  caption        String              @db.Text
+  suggestImage   String              @map("suggest_image")
+  pushVintage    String              @map("push_vintage") @db.Text
+  pushGold       String              @map("push_gold") @db.Text
+  pushSilver     String              @map("push_silver") @db.Text
+  launchedAt     DateTime?           @map("launched_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  aiProposal     AiProposal          @relation(fields: [aiProposalId], references: [id], onDelete: Cascade)
+  product        Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([productId, createdAt])
+  @@map("marketing_drafts")
+}
+
 /// Produkt zsynchronizowany z Dotykačką (id_dotykacka = identyfikator w chmurze Dotykačka).
 model Product {
   id          String        @id @default(uuid())
@@ -218,6 +305,11 @@ model Product {
   /// Krótki podtytuł na kafelku (jak w Shopify/Woo).
   subtitle    String?       @db.VarChar(512)
   price       Decimal       @db.Decimal(12, 2)
+  purchasePriceNet Decimal? @map("purchase_price_net") @db.Decimal(12, 2)
+  vatRate     Decimal?      @map("vat_rate") @db.Decimal(5, 2)
+  marginTarget Decimal?     @map("margin_target") @db.Decimal(5, 2)
+  supplierId  String?       @map("supplier_id")
+  supplier    Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   stockQty    Int           @default(1) @map("stock_qty")
   status      ProductStatus @default(AVAILABLE)
   /// Sekcja „Polecane” na stronie głównej.
@@ -227,9 +319,12 @@ model Product {
   availabilityWatches AvailabilityWatch[]
   wishlistItems WishlistItem[]
   reviews      ProductReview[]
+  aiProposals  AiProposal[]
+  marketingDrafts MarketingDraft[]
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
+  @@index([supplierId])
   @@map("products")
 }
 

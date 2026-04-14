@@ -4,11 +4,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CustomerOrderStatus, PaymentStatus } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+type AuditActor = {
+  userId: string;
+  userEmail?: string | null;
+  ipAddress?: string | null;
+};
 
 @Injectable()
 export class StaffOrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   private parseOrderStatusFilter(
     raw?: string,
@@ -142,29 +152,61 @@ export class StaffOrdersService {
     });
   }
 
-  async updateOrderStatus(orderId: string, status: CustomerOrderStatus) {
+  async updateOrderStatus(
+    orderId: string,
+    status: CustomerOrderStatus,
+    actor: AuditActor,
+  ) {
     const exists = await this.prisma.customerOrder.findUnique({
       where: { id: orderId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!exists) throw new NotFoundException('Zamówienie nie istnieje');
-    return this.prisma.customerOrder.update({
+    const updated = await this.prisma.customerOrder.update({
       where: { id: orderId },
       data: { status },
       include: { items: true },
     });
+    await this.audit.logAction({
+      userId: actor.userId,
+      userEmail:
+        actor.userEmail?.trim() || `user-${actor.userId}@unknown.local`,
+      action: 'CHANGE_ORDER_STATUS',
+      resourceType: 'ORDER',
+      resourceId: orderId,
+      oldValue: { status: exists.status },
+      newValue: { status: updated.status },
+      ipAddress: actor.ipAddress ?? null,
+    });
+    return updated;
   }
 
-  async updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus) {
+  async updatePaymentStatus(
+    orderId: string,
+    paymentStatus: PaymentStatus,
+    actor: AuditActor,
+  ) {
     const exists = await this.prisma.customerOrder.findUnique({
       where: { id: orderId },
-      select: { id: true },
+      select: { id: true, paymentStatus: true },
     });
     if (!exists) throw new NotFoundException('Zamówienie nie istnieje');
-    return this.prisma.customerOrder.update({
+    const updated = await this.prisma.customerOrder.update({
       where: { id: orderId },
       data: { paymentStatus },
       include: { items: true },
     });
+    await this.audit.logAction({
+      userId: actor.userId,
+      userEmail:
+        actor.userEmail?.trim() || `user-${actor.userId}@unknown.local`,
+      action: 'CHANGE_ORDER_PAYMENT_STATUS',
+      resourceType: 'ORDER',
+      resourceId: orderId,
+      oldValue: { paymentStatus: exists.paymentStatus },
+      newValue: { paymentStatus: updated.paymentStatus },
+      ipAddress: actor.ipAddress ?? null,
+    });
+    return updated;
   }
 }
