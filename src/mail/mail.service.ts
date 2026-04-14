@@ -57,7 +57,8 @@ export class MailService {
       });
       return true;
     } catch (e) {
-      this.log.warn(`SMTP error: ${e}`);
+      const message = e instanceof Error ? e.message : String(e);
+      this.log.warn(`SMTP error: ${message}`);
       return false;
     }
   }

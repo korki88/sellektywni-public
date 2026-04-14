@@ -8,7 +8,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 @Controller('admin')
 export class AdminController {
   @Get('ping')
-  ping() {
+  ping(): { ok: true; scope: 'admin' } {
     return { ok: true, scope: 'admin' };
   }
 }

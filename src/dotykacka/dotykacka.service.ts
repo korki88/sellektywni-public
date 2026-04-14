@@ -86,8 +86,9 @@ export class DotykackaService {
       const remote = this.extractStockQty(payload);
       return remote ?? product.stockQty;
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       this.logger.warn(
-        `Dotykačka stock fallback for ${product.idDotykacka}: ${e}`,
+        `Dotykačka stock fallback for ${product.idDotykacka}: ${message}`,
       );
       return product.stockQty;
     }

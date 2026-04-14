@@ -7,10 +7,16 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Profile } from '@prisma/client';
 import type { Request } from 'express';
 import { ProfilesService } from '../profiles/profiles.service';
 import { NewsletterOptInDto } from './dto/newsletter-opt-in.dto';
 import { PreferredLocaleDto } from './dto/preferred-locale.dto';
+
+type ProfileLookupResult = Profile | null;
+type PersonalDataExport = Awaited<
+  ReturnType<ProfilesService['exportPersonalData']>
+>;
 
 @Controller('auth')
 export class AuthController {
@@ -20,7 +26,7 @@ export class AuthController {
    * Aktualny profil (rola RBAC) na podstawie Bearer JWT — bez wymogu wcześniejszego middleware profilu.
    */
   @Get('me')
-  async me(@Req() req: Request) {
+  async me(@Req() req: Request): Promise<{ profile: ProfileLookupResult }> {
     const jwtPayload = req.supabaseJwt;
     if (!jwtPayload) {
       throw new UnauthorizedException();
@@ -33,7 +39,7 @@ export class AuthController {
    * Wywołaj z klienta zaraz po pierwszym zalogowaniu przez Google (access token Supabase w Bearer).
    */
   @Post('profile/bootstrap-google')
-  async bootstrapGoogle(@Req() req: Request) {
+  async bootstrapGoogle(@Req() req: Request): Promise<Profile> {
     const jwtPayload = req.supabaseJwt;
     if (!jwtPayload) {
       throw new UnauthorizedException();
@@ -45,7 +51,7 @@ export class AuthController {
    * Po rejestracji/logowaniu e-mail: utwórz profil sklepu, jeśli nie istnieje (CUSTOMER / BRONZE).
    */
   @Post('profile/ensure')
-  async ensureProfile(@Req() req: Request) {
+  async ensureProfile(@Req() req: Request): Promise<Profile> {
     const jwtPayload = req.supabaseJwt;
     if (!jwtPayload) {
       throw new UnauthorizedException();
@@ -55,7 +61,10 @@ export class AuthController {
 
   /** Zgoda marketingowa (newsletter / oferty). */
   @Patch('me/newsletter')
-  async patchNewsletter(@Body() dto: NewsletterOptInDto, @Req() req: Request) {
+  async patchNewsletter(
+    @Body() dto: NewsletterOptInDto,
+    @Req() req: Request,
+  ): Promise<{ profile: Profile }> {
     const jwtPayload = req.supabaseJwt;
     if (!jwtPayload) {
       throw new UnauthorizedException();
@@ -70,7 +79,10 @@ export class AuthController {
 
   /** Preferowany język UI (np. pl, en). */
   @Patch('me/locale')
-  async patchLocale(@Body() dto: PreferredLocaleDto, @Req() req: Request) {
+  async patchLocale(
+    @Body() dto: PreferredLocaleDto,
+    @Req() req: Request,
+  ): Promise<{ profile: Profile }> {
     const jwtPayload = req.supabaseJwt;
     if (!jwtPayload) {
       throw new UnauthorizedException();
@@ -85,7 +97,7 @@ export class AuthController {
 
   /** Eksport danych osobowych (RODO) — JSON. */
   @Get('me/data-export')
-  async dataExport(@Req() req: Request) {
+  async dataExport(@Req() req: Request): Promise<PersonalDataExport> {
     const jwtPayload = req.supabaseJwt;
     if (!jwtPayload) {
       throw new UnauthorizedException();

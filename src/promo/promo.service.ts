@@ -58,25 +58,26 @@ export class PromoService {
       );
     }
 
-    let discount = 0;
-    if (promo.discountType === PromoDiscountType.PERCENT) {
-      const p = promo.percentOff ? Number(promo.percentOff) : 0;
-      if (p <= 0 || p > 100) {
-        throw new BadRequestException(
-          'Błędna konfiguracja kodu rabatowego (procent).',
-        );
-      }
-      discount = Math.round(subtotal * (p / 100) * 100) / 100;
-    } else {
-      const f = promo.fixedOff ? Number(promo.fixedOff) : 0;
-      if (f <= 0) {
-        throw new BadRequestException(
-          'Błędna konfiguracja kodu rabatowego (kwota).',
-        );
-      }
-      discount = Math.min(f, subtotal);
-    }
-    discount = Math.round(discount * 100) / 100;
+    const discount =
+      promo.discountType === PromoDiscountType.PERCENT
+        ? (() => {
+            const p = promo.percentOff ? Number(promo.percentOff) : 0;
+            if (p <= 0 || p > 100) {
+              throw new BadRequestException(
+                'Błędna konfiguracja kodu rabatowego (procent).',
+              );
+            }
+            return Math.round(subtotal * (p / 100) * 100) / 100;
+          })()
+        : (() => {
+            const f = promo.fixedOff ? Number(promo.fixedOff) : 0;
+            if (f <= 0) {
+              throw new BadRequestException(
+                'Błędna konfiguracja kodu rabatowego (kwota).',
+              );
+            }
+            return Math.min(f, subtotal);
+          })();
     if (discount <= 0) {
       throw new BadRequestException('Rabat z tego kodu wynosi 0 zł.');
     }

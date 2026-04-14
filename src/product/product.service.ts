@@ -26,11 +26,7 @@ export class ProductService {
       curr[0] = i;
       for (let j = 1; j <= b.length; j++) {
         const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        curr[j] = Math.min(
-          curr[j - 1] + 1,
-          prev[j] + 1,
-          prev[j - 1] + cost,
-        );
+        curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
       }
       for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
     }
@@ -46,7 +42,8 @@ export class ProductService {
     if (name.includes(query)) return 760;
     const nameWords = name.split(' ').filter(Boolean);
     const queryWords = query.split(' ').filter(Boolean);
-    if (queryWords.every((w) => nameWords.some((n) => n.startsWith(w)))) return 700;
+    if (queryWords.every((w) => nameWords.some((n) => n.startsWith(w))))
+      return 700;
     let best = 0;
     for (const nw of nameWords) {
       const dist = this.levenshtein(query, nw);
@@ -137,7 +134,10 @@ export class ProductService {
       });
       const scored = candidates
         .map(({ reservations, ...p }) => {
-          const reservedQty = reservations.reduce((sum, r) => sum + r.quantity, 0);
+          const reservedQty = reservations.reduce(
+            (sum, r) => sum + r.quantity,
+            0,
+          );
           const availableQty = Math.max(0, p.stockQty - reservedQty);
           const forcedReserved =
             p.status === ProductStatus.RESERVED && availableQty > 0;
@@ -156,11 +156,19 @@ export class ProductService {
           };
         })
         .filter((row) => row._score > 0)
-        .sort((a, b) => b._score - a._score || a.createdAt.getTime() - b.createdAt.getTime());
+        .sort(
+          (a, b) =>
+            b._score - a._score ||
+            a.createdAt.getTime() - b.createdAt.getTime(),
+        );
 
       const from = Math.max(0, offset);
       const to = limit ? from + Math.max(1, limit) : undefined;
-      return scored.slice(from, to).map(({ _score, ...rest }) => rest);
+      return scored.slice(from, to).map((row) => {
+        const { _score, ...rest } = row;
+        void _score;
+        return rest;
+      });
     }
 
     const products = await this.prisma.product.findMany({

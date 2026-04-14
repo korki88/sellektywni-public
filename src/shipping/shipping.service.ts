@@ -591,9 +591,9 @@ export class ShippingService {
     const lng = Number(
       r['longitude'] ?? r['lng'] ?? geo?.['longitude'] ?? geo?.['lng'] ?? NaN,
     );
-    let address = '';
-    let postalCode = '';
-    let city = '';
+    let address: string;
+    let postalCode: string;
+    let city: string;
     const addr = r['address'];
     if (addr && typeof addr === 'object') {
       const a = addr as Record<string, unknown>;
