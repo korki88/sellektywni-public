@@ -225,7 +225,7 @@ model ExperimentAssignment {
 
 model AuditLog {
   id           String   @id @default(uuid())
-  userId       String   @map("user_id") @db.Uuid
+  userId       String   @map("user_id")
   userEmail    String   @map("user_email")
   action       String
   resourceType String   @map("resource_type")

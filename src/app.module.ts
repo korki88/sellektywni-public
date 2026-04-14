@@ -8,6 +8,7 @@ import { ExperimentsController } from './experiments/experiments.controller';
 import { ExperimentsModule } from './experiments/experiments.module';
 import { MailModule } from './mail/mail.module';
 import { ScheduledTasksModule } from './notifications/scheduled.module';
+import { AdminAiController } from './admin/admin-ai.controller';
 import { AdminController } from './admin/admin.controller';
 import { AdminFinanceController } from './admin/admin-finance.controller';
 import { AdminModule } from './admin/admin.module';
@@ -80,7 +81,7 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(SupabaseJwtMiddleware, LoadProfileMiddleware)
-      .forRoutes(AdminController, AdminFinanceController);
+      .forRoutes(AdminController, AdminFinanceController, AdminAiController);
 
     consumer
       .apply(SupabaseJwtMiddleware, LoadProfileMiddleware)
