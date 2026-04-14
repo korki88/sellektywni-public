@@ -46,6 +46,7 @@ import { FinancialIntelligenceModule } from './financial-intelligence/financial-
 import { FinancialIntelligenceController } from './financial-intelligence/financial-intelligence.controller';
 import { MarketingAutomationModule } from './marketing-automation/marketing-automation.module';
 import { MarketingAutomationController } from './marketing-automation/marketing-automation.controller';
+import { SocialMediaIntegratorModule } from './social-media-integrator/social-media-integrator.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { MarketingAutomationController } from './marketing-automation/marketing-
     AuditModule,
     FinancialIntelligenceModule,
     MarketingAutomationModule,
+    SocialMediaIntegratorModule,
     ExperimentsModule,
     ScheduledTasksModule,
   ],

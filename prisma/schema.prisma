@@ -109,6 +109,24 @@ enum MarketingDraftStatus {
   LAUNCHED
 }
 
+enum SocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+  GOOGLE_ADS
+}
+
+enum SocialConfigStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  MOCK_SENT
+  FAILED
+}
+
 /// Profil aplikacji — `userId` = `sub` z JWT Supabase (UUID użytkownika).
 model Profile {
   userId            String      @id @map("user_id") @db.Uuid
@@ -310,6 +328,34 @@ model MarketingDraft {
   @@index([status, createdAt])
   @@index([productId, createdAt])
   @@map("marketing_drafts")
+}
+
+model SocialConfig {
+  id           String             @id @default(uuid())
+  platform     SocialPlatform     @unique
+  accessToken  String             @map("access_token") @db.Text
+  refreshToken String?            @map("refresh_token") @db.Text
+  status       SocialConfigStatus @default(INACTIVE)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, updatedAt])
+  @@map("social_configs")
+}
+
+model MarketingCampaign {
+  id         String                  @id @default(uuid())
+  target     String
+  content    String                  @db.Text
+  platform   SocialPlatform
+  status     MarketingCampaignStatus @default(DRAFT)
+  externalId String?                 @map("external_id")
+  createdAt  DateTime                @default(now()) @map("created_at")
+  updatedAt  DateTime                @updatedAt @map("updated_at")
+
+  @@index([platform, status, createdAt])
+  @@index([status, createdAt])
+  @@map("marketing_campaigns")
 }
 
 /// Produkt zsynchronizowany z Dotykačką (id_dotykacka = identyfikator w chmurze Dotykačka).
