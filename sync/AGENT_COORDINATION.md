@@ -38,6 +38,7 @@ Każdy agent (lub ludzki deweloper prowadzący automatyzację) powinien mieć **
 | AGENT_ID | Domyślny branch push | Uwagi |
 |----------|----------------------|--------|
 | `cursor-sellekt-7f3a91c2` | `main-home` | Wdrożenie: analityka `/staff/analytics/*`, UI pomocy, filtr zamówień, dokumentacja koordynacji. |
+| `cursor-main-a9f3c2d1` | `main` | Główny agent projektu; merge `main` + `main-home` na branch `mani-merge`, porządki/refaktory i synchronizacja `sync/`. |
 
 **Kolejni agenci:** dopisz **nowy wiersz** z własnym `AGENT_ID` i preferowaną gałęzią (np. `agent/mój-id/main`).
 

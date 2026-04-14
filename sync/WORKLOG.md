@@ -10,6 +10,13 @@ Skrypt dopisania (opcjonalnie):
 
 ---
 
+## 2026-04-14 08:05:39 UTC — [agent:cursor-main-a9f3c2d1] Merge `main` + `main-home` do `mani-merge`
+
+- Utworzono branch **`mani-merge`** z `main` i wykonano merge `origin/main-home` bez nadpisywania `main` (backup obu wersji zachowany: `main`, `main-home`).
+- Zweryfikowano kompilację po scaleniu: `npm install`, `prisma generate` (lock Windows/EPERM przy rename query engine), finalnie `npm run build` przechodzi poprawnie.
+- Flutter po merge: `flutter analyze` zgłasza tylko informacje (deprecated `dart:html`, `prefer_const`), bez błędów blokujących runtime.
+- Zaktualizowano `sync/AGENT_COORDINATION.md` o nowy `AGENT_ID` i domyślny branch push = `main`, zgodnie z polityką tego stanowiska.
+
 ## 2026-04-14 — E-commerce: merchandising, staff, opinie, WWW (`www/app`)
 
 - **API / Prisma:** `customerNote`, `OrderStaffNote`, `Product.subtitle` / `isFeatured`; anulowanie zamówień (nieopłacone); endpointy `staff/orders/:id`, `staff/orders/:id/notes`, `staff/reviews`; uprawnienia `manage.catalog`, `manage.reviews`.
